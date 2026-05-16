@@ -1,6 +1,6 @@
 // ── ArcLending contract ───────────────────────────────────────────────────────
 // Set this address after running: cd contracts && npx hardhat run scripts/deployLending.ts --network arc_testnet
-export const LENDING_ADDRESS = '' as `0x${string}`
+export const LENDING_ADDRESS = '0x918C2DD0D65eA2550D0059f93A8D6EC9C76d780a' as `0x${string}`
 
 // ── Token addresses on Arc Testnet ────────────────────────────────────────────
 // Source: https://docs.arc.io/arc/references/contract-addresses
