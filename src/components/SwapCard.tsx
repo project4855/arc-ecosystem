@@ -216,15 +216,10 @@ export default function SwapCard() {
         {/* Success */}
         {txHash && (
           <div className="mt-4 p-3 bg-green-500/10 border border-green-500/30 rounded-xl">
-            <p className="text-green-400 text-sm font-medium text-center">✓ Swap successful!</p>
-            <a
-              href={`https://testnet.arcscan.app/tx/${txHash}`}
-              target="_blank"
-              rel="noreferrer"
-              className="block text-center text-xs text-green-400/70 hover:text-green-400 mt-1 underline underline-offset-2"
-            >
-              View on ArcScan →
-            </a>
+            <p className="text-green-400 text-sm font-medium text-center">✓ Swap simulated successfully!</p>
+            <p className="text-green-500/50 text-xs text-center mt-1">
+              Demo mode — add Circle Kit Key to enable real on-chain swaps
+            </p>
           </div>
         )}
 
