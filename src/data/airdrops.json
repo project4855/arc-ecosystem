@@ -89,7 +89,9 @@
         "site": "https://inkonchain.com",
         "twitter": "https://twitter.com/inkonchain",
         "app": "https://inkonchain.com"
-      }
+      },
+      "symbol": "INK",
+      "cgSearch": "ink protocol"
     },
     {
       "id": "base",
@@ -212,7 +214,8 @@
         "site": "https://polymarket.com",
         "twitter": "https://twitter.com/Polymarket",
         "app": "https://polymarket.com"
-      }
+      },
+      "cgSearch": "polymarket"
     },
     {
       "id": "symbiotic",
@@ -294,7 +297,9 @@
         "site": "https://karak.network",
         "twitter": "https://twitter.com/Karak_Network",
         "app": "https://app.karak.network"
-      }
+      },
+      "symbol": "KAR",
+      "cgSearch": "karak network"
     },
     {
       "id": "succinct",
@@ -335,7 +340,9 @@
         "site": "https://succinct.xyz",
         "twitter": "https://twitter.com/SuccinctLabs",
         "app": "https://network.succinct.xyz"
-      }
+      },
+      "symbol": "PROVE",
+      "cgSearch": "succinct"
     },
     {
       "id": "nexus",
@@ -379,47 +386,6 @@
       }
     },
     {
-      "id": "0glabs",
-      "name": "0G Labs",
-      "logo": "🔵",
-      "category": "Infra",
-      "raised": "$325M",
-      "investors": "Hack VC, Samsung Next, OKX Ventures",
-      "status": "Testnet",
-      "prob": "Cao",
-      "tge": "Mainnet 2026",
-      "hasToken": false,
-      "xSearch": "0G Labs token airdrop 2026",
-      "desc": "DA Layer tốc độ cao cho AI. Raise $325M — một trong những raise lớn nhất. Testnet đang active. Chưa có token.",
-      "steps": [
-        {
-          "action": "Chạy storage node",
-          "detail": "Deploy 0G Storage Node trên testnet — điểm cao nhất"
-        },
-        {
-          "action": "Faucet + giao dịch hàng ngày",
-          "detail": "Nhận testnet token và thực hiện giao dịch mỗi ngày"
-        },
-        {
-          "action": "Upload dữ liệu",
-          "detail": "Upload file lên 0G Storage testnet qua CLI hoặc SDK"
-        },
-        {
-          "action": "Galxe quest",
-          "detail": "Hoàn thành toàn bộ task trên Galxe của 0G Labs"
-        },
-        {
-          "action": "Discord OG member",
-          "detail": "Tham gia Discord và lấy vai trò early member"
-        }
-      ],
-      "links": {
-        "site": "https://0g.ai",
-        "twitter": "https://twitter.com/0G_labs",
-        "app": "https://testnet.0g.ai"
-      }
-    },
-    {
       "id": "aztec",
       "name": "Aztec Network",
       "logo": "🕵️",
@@ -433,17 +399,33 @@
       "xSearch": "Aztec Network token airdrop 2026",
       "desc": "Privacy L2 trên Ethereum dùng ZK proofs. Raise $87M. Sandbox testnet đang active. Chưa có token — là 1 trong những airdrop được mong đợi nhất 2026.",
       "steps": [
-        { "action": "Dùng Aztec Sandbox", "detail": "Chạy local node: npx aztec-app → viết và deploy contract thử" },
-        { "action": "Tham gia testnet sớm", "detail": "Đăng ký early access tại aztec.network, testnet sắp ra public" },
-        { "action": "Mint private tokens", "detail": "Thực hiện private transfer trên testnet để tích lịch sử" },
-        { "action": "Discord active", "detail": "Tham gia Discord aztec-network, lấy vai trò developer" },
-        { "action": "GitHub contributions", "detail": "Star, fork, hoặc build với aztec-nr framework trên GitHub" }
+        {
+          "action": "Dùng Aztec Sandbox",
+          "detail": "Chạy local node: npx aztec-app → viết và deploy contract thử"
+        },
+        {
+          "action": "Tham gia testnet sớm",
+          "detail": "Đăng ký early access tại aztec.network, testnet sắp ra public"
+        },
+        {
+          "action": "Mint private tokens",
+          "detail": "Thực hiện private transfer trên testnet để tích lịch sử"
+        },
+        {
+          "action": "Discord active",
+          "detail": "Tham gia Discord aztec-network, lấy vai trò developer"
+        },
+        {
+          "action": "GitHub contributions",
+          "detail": "Star, fork, hoặc build với aztec-nr framework trên GitHub"
+        }
       ],
       "links": {
         "site": "https://aztec.network",
         "twitter": "https://twitter.com/aztecnetwork",
         "app": "https://aztec.network/sandbox"
-      }
+      },
+      "cgSearch": "aztec network"
     },
     {
       "id": "pharos",
@@ -459,11 +441,26 @@
       "xSearch": "Pharos blockchain token airdrop 2026",
       "desc": "High-performance L1 tập trung vào RWA (Real World Assets) và TradFi. Binance Labs-backed. Testnet vừa launch. Chưa có token.",
       "steps": [
-        { "action": "Tham gia testnet", "detail": "Vào pharosnetwork.xyz → Connect wallet → Nhận faucet testnet tokens" },
-        { "action": "Giao dịch hàng ngày", "detail": "Swap và transfer trên Pharos testnet mỗi ngày" },
-        { "action": "Bridge assets", "detail": "Bridge ETH/USDC sang Pharos testnet qua official bridge" },
-        { "action": "Hoàn thành quests", "detail": "Làm đầy đủ quest trên Galxe và Zealy của Pharos" },
-        { "action": "Đăng ký node", "detail": "Đăng ký chạy light node để tăng eligibility" }
+        {
+          "action": "Tham gia testnet",
+          "detail": "Vào pharosnetwork.xyz → Connect wallet → Nhận faucet testnet tokens"
+        },
+        {
+          "action": "Giao dịch hàng ngày",
+          "detail": "Swap và transfer trên Pharos testnet mỗi ngày"
+        },
+        {
+          "action": "Bridge assets",
+          "detail": "Bridge ETH/USDC sang Pharos testnet qua official bridge"
+        },
+        {
+          "action": "Hoàn thành quests",
+          "detail": "Làm đầy đủ quest trên Galxe và Zealy của Pharos"
+        },
+        {
+          "action": "Đăng ký node",
+          "detail": "Đăng ký chạy light node để tăng eligibility"
+        }
       ],
       "links": {
         "site": "https://pharosnetwork.xyz",
@@ -485,17 +482,33 @@
       "xSearch": "Kuru Exchange KURU token airdrop Monad",
       "desc": "CLOB DEX native trên Monad — orderbook on-chain tốc độ cao. Raise $7M từ Dragonfly. Points system đang chạy. Chưa có token.",
       "steps": [
-        { "action": "Bridge sang Monad", "detail": "Bridge ETH sang Monad qua bridge.monad.xyz hoặc official bridge" },
-        { "action": "Swap trên Kuru", "detail": "Trade thường xuyên trên kuru.exchange — càng nhiều volume càng tốt" },
-        { "action": "Tích lũy Kuru Points", "detail": "Mỗi trade = điểm, có thể convert sang token khi TGE" },
-        { "action": "Add thanh khoản", "detail": "Provide liquidity cho các cặp phổ biến trên Kuru" },
-        { "action": "Refer bạn bè", "detail": "Referral link tăng multiplier điểm cho cả 2 người" }
+        {
+          "action": "Bridge sang Monad",
+          "detail": "Bridge ETH sang Monad qua bridge.monad.xyz hoặc official bridge"
+        },
+        {
+          "action": "Swap trên Kuru",
+          "detail": "Trade thường xuyên trên kuru.exchange — càng nhiều volume càng tốt"
+        },
+        {
+          "action": "Tích lũy Kuru Points",
+          "detail": "Mỗi trade = điểm, có thể convert sang token khi TGE"
+        },
+        {
+          "action": "Add thanh khoản",
+          "detail": "Provide liquidity cho các cặp phổ biến trên Kuru"
+        },
+        {
+          "action": "Refer bạn bè",
+          "detail": "Referral link tăng multiplier điểm cho cả 2 người"
+        }
       ],
       "links": {
         "site": "https://kuru.exchange",
         "twitter": "https://twitter.com/kuru_exchange",
         "app": "https://kuru.exchange"
-      }
+      },
+      "cgSearch": "kuru exchange"
     },
     {
       "id": "hyperevmdex",
@@ -511,17 +524,33 @@
       "xSearch": "HyperEVM dApp token airdrop 2026",
       "desc": "Hyperliquid đã launch HYPE, nhưng các protocol native trên HyperEVM (HyperSwap, Felix, Hyperlend...) chưa có token riêng. Farm đồng thời nhiều protocol.",
       "steps": [
-        { "action": "Bridge sang HyperEVM", "detail": "Bridge USDC từ Arbitrum sang HyperEVM qua Hyperliquid bridge" },
-        { "action": "Dùng HyperSwap", "detail": "Swap token trên HyperSwap — DEX native của HyperEVM" },
-        { "action": "Lending trên Hyperlend", "detail": "Supply/borrow trên Hyperlend để earn yield và tích điểm" },
-        { "action": "Mint trên Felix", "detail": "Mint feUSD stablecoin qua Felix Protocol trên HyperEVM" },
-        { "action": "Dùng đa dạng protocol", "detail": "Tương tác với nhiều dApps khác nhau để build cross-protocol eligibility" }
+        {
+          "action": "Bridge sang HyperEVM",
+          "detail": "Bridge USDC từ Arbitrum sang HyperEVM qua Hyperliquid bridge"
+        },
+        {
+          "action": "Dùng HyperSwap",
+          "detail": "Swap token trên HyperSwap — DEX native của HyperEVM"
+        },
+        {
+          "action": "Lending trên Hyperlend",
+          "detail": "Supply/borrow trên Hyperlend để earn yield và tích điểm"
+        },
+        {
+          "action": "Mint trên Felix",
+          "detail": "Mint feUSD stablecoin qua Felix Protocol trên HyperEVM"
+        },
+        {
+          "action": "Dùng đa dạng protocol",
+          "detail": "Tương tác với nhiều dApps khác nhau để build cross-protocol eligibility"
+        }
       ],
       "links": {
         "site": "https://hyperliquid.xyz",
         "twitter": "https://twitter.com/HyperliquidX",
         "app": "https://app.hyperliquid.xyz/trade"
-      }
+      },
+      "cgSkip": true
     },
     {
       "id": "worldchain",
@@ -655,6 +684,13 @@
       "name": "Fuel Network",
       "logo": "⛽",
       "detectedAt": "2024-12-18",
+      "confidence": "high"
+    },
+    {
+      "id": "0glabs",
+      "name": "0G Labs",
+      "logo": "🔵",
+      "detectedAt": "2025-06-01",
       "confidence": "high"
     }
   ]

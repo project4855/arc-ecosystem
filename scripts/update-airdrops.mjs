@@ -233,10 +233,18 @@ async function fetchAirdropsIO() {
  */
 function nameMatchLevel(projectName, coinName) {
   const norm    = s => s.toLowerCase().replace(/[^a-z0-9]/g, '')
-  const a       = norm(projectName)
-  const b       = norm(coinName)
+  const strip   = s => s.replace(/\b(labs?|network|exchange|protocol|finance|foundation)\b/gi, '').trim()
+
+  const a  = norm(projectName)
+  const b  = norm(coinName)
   if (a === b) return 'exact'
-  const ratio   = Math.min(a.length, b.length) / Math.max(a.length, b.length)
+
+  // So sánh tên rút gọn (bỏ "Labs", "Network"...) — VD: "0G Labs" vs "0G"
+  const as = norm(strip(projectName))
+  const bs = norm(strip(coinName))
+  if (as && bs && as === bs) return 'exact'
+
+  const ratio = Math.min(a.length, b.length) / Math.max(a.length, b.length)
   if (ratio >= 0.85 && (a.startsWith(b) || b.startsWith(a))) return 'close'
   return null
 }
@@ -248,7 +256,9 @@ function nameMatchLevel(projectName, coinName) {
 async function checkDexScreener(project) {
   if (project.cgSkip) return { hasToken: false, source: 'skipped' }
 
-  const searchTerm = project.cgSearch ?? project.symbol ?? project.name
+  // Ưu tiên: cgSearch > symbol > tên rút gọn (bỏ "Labs", "Network", "Exchange")
+  const shortName  = project.name.replace(/\b(labs?|network|exchange|protocol|finance|foundation)\b/gi, '').trim()
+  const searchTerm = project.cgSearch ?? project.symbol ?? shortName
 
   try {
     const url = `https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(searchTerm)}`
