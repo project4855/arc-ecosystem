@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   useHLLeaderboard,
   useHLTrades,
@@ -62,11 +62,14 @@ function Leaderboard({
 }) {
   const [timeWindow, setTimeWindow] = useState<LbWindow>('day')
   const { traders, loading, error, refresh } = useHLLeaderboard(timeWindow)
-  const top10 = traders.slice(0, 10)
+  const top10 = useMemo(() => traders.slice(0, 10), [traders])
 
-  useMemo(() => {
-    if (top10.length > 0) onTradersLoaded(top10.map(t => ({ address: t.address, displayName: t.displayName, rank: t.rank })))
-  }, [top10, onTradersLoaded])
+  useEffect(() => {
+    if (top10.length > 0) {
+      onTradersLoaded(top10.map(t => ({ address: t.address, displayName: t.displayName, rank: t.rank })))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [top10])
 
   // Max PnL để tính thanh bar
   const maxPnl = Math.max(...top10.map(t => Math.abs(t.windowPnl)), 1)
