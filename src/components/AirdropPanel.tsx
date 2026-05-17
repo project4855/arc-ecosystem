@@ -33,11 +33,19 @@ interface AirdropProject {
   }
 }
 
-// ── Data từ JSON (cập nhật hàng tuần) ────────────────────────────────────────
+// ── Data từ JSON (cập nhật tự động hàng ngày) ────────────────────────────────
 
-const PROJECTS = airdropData.projects as AirdropProject[]
+const PROJECTS     = airdropData.projects as AirdropProject[]
 const LAST_UPDATED = airdropData.lastUpdated
 const DATA_SOURCE  = airdropData.source
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const GRADUATED    = (airdropData as any).graduated as {
+  id: string; name: string; logo: string; detectedAt: string; confidence: string
+}[]
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const UPDATE_LOG   = (airdropData as any).updateLog as {
+  graduatedThisRun: string[]; checkedProjects: number; runAt: string; xApiUsed: boolean
+} | undefined
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -228,45 +236,55 @@ function SummaryStats({ projects }: { projects: AirdropProject[] }) {
   )
 }
 
-// ── Removed / already airdropped notice ──────────────────────────────────────
-
-const GRADUATED = [
-  { name: 'Monad',    ticker: '$MON',   date: 'Nov 2025',  icon: '🟣' },
-  { name: 'MegaETH', ticker: '$MEGA',  date: 'Apr 2026',  icon: '⚡' },
-  { name: 'Eclipse',  ticker: '$ES',    date: 'Jul 2025',  icon: '🌑' },
-  { name: 'Linea',    ticker: '$LINEA', date: 'Sep 2025',  icon: '🔷' },
-  { name: 'Movement', ticker: '$MOVE',  date: 'Dec 2024',  icon: '🔴' },
-  { name: 'Sophon',   ticker: '$SOPH',  date: 'Jun 2025',  icon: '🎮' },
-  { name: 'Babylon',  ticker: '$BBN',   date: '2025',      icon: '₿'  },
-  { name: 'Initia',   ticker: '$INIT',  date: '2024',      icon: '🌐' },
-]
+// ── Graduated banner (đọc từ JSON) ───────────────────────────────────────────
 
 function GraduatedBanner() {
   const [show, setShow] = useState(false)
+  const newThisRun = UPDATE_LOG?.graduatedThisRun ?? []
+
   return (
-    <div className="bg-gray-900/40 border border-gray-800 rounded-2xl p-4">
+    <div className={`border rounded-2xl p-4 ${
+      newThisRun.length > 0
+        ? 'bg-orange-500/5 border-orange-500/20'
+        : 'bg-gray-900/40 border-gray-800'
+    }`}>
       <button
         onClick={() => setShow((v) => !v)}
         className="w-full flex items-center justify-between text-xs text-gray-500 hover:text-gray-400 transition-colors"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {newThisRun.length > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-orange-500/20 border border-orange-500/30 text-orange-400 font-semibold animate-pulse">
+              🔔 {newThisRun.length} dự án vừa phát token!
+            </span>
+          )}
           <span>✅</span>
           <span className="font-semibold">Đã airdrop / có token ({GRADUATED.length} dự án)</span>
           <span className="text-gray-700">— không cần farm nữa</span>
         </div>
-        <span className={`transition-transform duration-200 ${show ? 'rotate-180' : ''}`}>▼</span>
+        <span className={`transition-transform duration-200 shrink-0 ${show ? 'rotate-180' : ''}`}>▼</span>
       </button>
 
       {show && (
         <div className="mt-3 flex flex-wrap gap-2">
-          {GRADUATED.map((g) => (
-            <div key={g.name} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800/60 rounded-xl border border-gray-700">
-              <span className="text-sm">{g.icon}</span>
-              <span className="text-gray-400 text-xs font-semibold">{g.name}</span>
-              <span className="text-gray-600 text-xs font-mono">{g.ticker}</span>
-              <span className="text-gray-700 text-xs">· {g.date}</span>
-            </div>
-          ))}
+          {GRADUATED.map((g) => {
+            const isNew = newThisRun.includes(g.name)
+            return (
+              <div key={g.id}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${
+                  isNew
+                    ? 'bg-orange-500/10 border-orange-500/30'
+                    : 'bg-gray-800/60 border-gray-700'
+                }`}>
+                <span className="text-sm">{g.logo}</span>
+                <span className={`text-xs font-semibold ${isNew ? 'text-orange-300' : 'text-gray-400'}`}>
+                  {g.name}
+                </span>
+                <span className="text-gray-700 text-xs">· {g.detectedAt}</span>
+                {isNew && <span className="text-orange-400 text-[10px] font-bold">NEW</span>}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -316,20 +334,25 @@ export default function AirdropPanel() {
           </div>
 
           {/* Update info */}
-          <div className="text-xs bg-gray-900/60 rounded-xl px-3 py-2.5 border border-gray-800 shrink-0 flex flex-col gap-1.5">
+          <div className="text-xs bg-gray-900/60 rounded-xl px-3 py-2.5 border border-gray-800 shrink-0 flex flex-col gap-1.5 min-w-[160px]">
             <div className="flex items-center gap-1.5 text-gray-400">
-              <span>🔄</span>
-              <span className="font-medium">Cập nhật lần cuối</span>
+              <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+              <span className="font-medium">Tự động cập nhật</span>
             </div>
             <div className="text-white font-semibold">{updatedDate}</div>
+            <div className="flex items-center gap-1 text-gray-600">
+              <span>{UPDATE_LOG?.xApiUsed ? '𝕏 X API ✓' : '𝕏 X API'}</span>
+              <span>·</span>
+              <span>CryptoRank</span>
+            </div>
             <a
-              href="https://x.com/search?q=crypto+airdrop+2026+no+token&f=live"
+              href="https://github.com/project4855/arc-spot/actions"
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1 text-sky-400 hover:text-sky-300 transition-colors mt-0.5"
+              className="flex items-center gap-1 text-violet-400 hover:text-violet-300 transition-colors"
             >
-              <span className="font-bold">𝕏</span>
-              <span>Kiểm tra X →</span>
+              <span>⚙️</span>
+              <span>GitHub Actions →</span>
             </a>
           </div>
         </div>

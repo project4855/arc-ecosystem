@@ -1,0 +1,59 @@
+name: 🪂 Auto-Update Airdrop Data
+
+on:
+  schedule:
+    # Chạy lúc 8:00 AM UTC mỗi ngày (3:00 PM giờ Việt Nam)
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+    # Cho phép chạy thủ công từ GitHub Actions tab
+
+permissions:
+  contents: write   # cần để commit + push
+
+jobs:
+  update-airdrops:
+    name: Fetch & Update Airdrop List
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 🔍 Run update script
+        run: node scripts/update-airdrops.mjs
+        env:
+          # Lấy từ GitHub Secrets → Settings → Secrets and variables → Actions
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+
+      - name: 📊 Show changes
+        run: |
+          echo "=== airdrops.json diff ==="
+          git diff src/data/airdrops.json || echo "(no changes)"
+
+      - name: 💾 Commit & push nếu có thay đổi
+        run: |
+          git config user.name  "Airdrop Bot 🤖"
+          git config user.email "bot@arc-spot-trade.io"
+
+          git add src/data/airdrops.json
+
+          # Chỉ commit nếu có thay đổi thực sự
+          if git diff --staged --quiet; then
+            echo "✅ Không có thay đổi — bỏ qua commit"
+          else
+            DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
+            git commit -m "chore(airdrops): auto-update ${DATE}
+
+          Tự động cập nhật từ X API + CryptoRank + airdrops.io"
+
+            git push
+            echo "✅ Đã push changes → Cloudflare Pages sẽ tự deploy"
+          fi
