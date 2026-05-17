@@ -7,6 +7,7 @@ import OrderBook from './components/OrderBook'
 import PriceChart from './components/PriceChart'
 import TransactionHistory from './components/TransactionHistory'
 import LendingPanel from './components/LendingPanel'
+import HyperliquidPanel from './components/HyperliquidPanel'
 
 const PAIRS = ['USDC/EURC', 'ETH/USDC', 'SOL/USDC', 'cirBTC/USDC', 'USDC/cirBTC', 'EURC/cirBTC'] as const
 type Pair = typeof PAIRS[number]
@@ -130,6 +131,9 @@ export default function App() {
             <LendingPanel />
           </>
         )}
+
+        {/* ── Hyperliquid live data ── */}
+        <HyperliquidPanel />
 
         {/* Stats bar */}
         <StatsBar />
