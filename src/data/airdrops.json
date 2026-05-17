@@ -133,47 +133,6 @@
       }
     },
     {
-      "id": "layerzero",
-      "name": "LayerZero",
-      "logo": "⬡",
-      "category": "Infra",
-      "raised": "$250M",
-      "investors": "a16z, Sequoia, Coinbase Ventures",
-      "status": "Mainnet Beta",
-      "prob": "Rất cao",
-      "tge": "TBD 2026",
-      "hasToken": false,
-      "xSearch": "LayerZero token airdrop 2026",
-      "desc": "Cross-chain interoperability protocol kết nối 70+ blockchain. Raise $250M. Chưa có token. Một trong những airdrop được mong đợi nhất.",
-      "steps": [
-        {
-          "action": "Bridge qua Stargate",
-          "detail": "Bridge tài sản qua stargate.finance (dùng LayerZero)"
-        },
-        {
-          "action": "Dùng apps trên LayerZero",
-          "detail": "Sử dụng các dApps tích hợp LayerZero messaging"
-        },
-        {
-          "action": "Đa dạng chain",
-          "detail": "Tương tác trên nhiều chain khác nhau qua LayerZero"
-        },
-        {
-          "action": "Volume đều đặn",
-          "detail": "Giao dịch nhỏ nhưng thường xuyên tốt hơn một lần lớn"
-        },
-        {
-          "action": "Tránh bot behavior",
-          "detail": "LayerZero đã filter sybil round 1 — dùng thật, không farm bot"
-        }
-      ],
-      "links": {
-        "site": "https://layerzero.network",
-        "twitter": "https://twitter.com/LayerZero_Core",
-        "app": "https://stargate.finance"
-      }
-    },
-    {
       "id": "metamask",
       "name": "MetaMask",
       "logo": "🦊",
@@ -461,47 +420,6 @@
       }
     },
     {
-      "id": "fuel",
-      "name": "Fuel Network",
-      "logo": "⛽",
-      "category": "Infra",
-      "raised": "$81.5M",
-      "investors": "Blockchain Capital, CoinFund",
-      "status": "Mainnet Beta",
-      "prob": "Trung bình",
-      "tge": "TBD 2026",
-      "hasToken": false,
-      "xSearch": "Fuel Network token airdrop 2026",
-      "desc": "Modular execution layer với UTXO model và ngôn ngữ Sway. Chưa có token confirmed.",
-      "steps": [
-        {
-          "action": "Bridge ETH / USDC",
-          "detail": "Bridge tài sản sang Fuel qua app.fuel.network/bridge"
-        },
-        {
-          "action": "Swap trên Spark DEX",
-          "detail": "Giao dịch trên Spark — CLOB DEX đầu tiên trên Fuel"
-        },
-        {
-          "action": "Dùng Mira Exchange",
-          "detail": "Swap và add LP trên Mira — AMM native của Fuel"
-        },
-        {
-          "action": "Deploy Sway contract",
-          "detail": "Viết và deploy smart contract bằng Sway language"
-        },
-        {
-          "action": "Volume đều đặn",
-          "detail": "Giao dịch hàng tuần để tích lũy lịch sử on-chain"
-        }
-      ],
-      "links": {
-        "site": "https://fuel.network",
-        "twitter": "https://twitter.com/fuel_network",
-        "app": "https://app.fuel.network"
-      }
-    },
-    {
       "id": "aztec",
       "name": "Aztec Network",
       "logo": "🕵️",
@@ -723,6 +641,20 @@
       "name": "Scroll",
       "logo": "📜",
       "detectedAt": "2024-10-22",
+      "confidence": "high"
+    },
+    {
+      "id": "layerzero",
+      "name": "LayerZero",
+      "logo": "⬡",
+      "detectedAt": "2024-06-20",
+      "confidence": "high"
+    },
+    {
+      "id": "fuel",
+      "name": "Fuel Network",
+      "logo": "⛽",
+      "detectedAt": "2024-12-18",
       "confidence": "high"
     }
   ]
