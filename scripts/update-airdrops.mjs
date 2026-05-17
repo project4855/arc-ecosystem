@@ -225,118 +225,191 @@ async function fetchAirdropsIO() {
 // ── CoinGecko verify ──────────────────────────────────────────────────────────
 // Nguồn đáng tin nhất: nếu coin có market_cap_rank → đang được trade thật sự
 
+// ── Helpers matching ─────────────────────────────────────────────────────────
+
 /**
- * So sánh tên dự án với tên coin trên CoinGecko.
+ * So sánh tên — tránh false positive như "MetaMask" vs "MetaMask USD"
  * Trả về: 'exact' | 'close' | null
- *
- * Quy tắc tránh false positive:
- * - "MetaMask" vs "MetaMask USD" → length ratio = 8/11 = 0.73 → KHÔNG match (< 0.85)
- * - "Polymarket" vs "Polymarket" → exact match ✓
- * - "Unichain" vs "Unichain" → exact match ✓
  */
 function nameMatchLevel(projectName, coinName) {
-  const norm  = s => s.toLowerCase().replace(/[^a-z0-9]/g, '')
-  const a     = norm(projectName)
-  const b     = norm(coinName)
-
+  const norm    = s => s.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const a       = norm(projectName)
+  const b       = norm(coinName)
   if (a === b) return 'exact'
-
-  // Phải đủ dài tương đồng — ngăn "MetaMask" khớp "MetaMask USD"
-  const shorter = Math.min(a.length, b.length)
-  const longer  = Math.max(a.length, b.length)
-  if (shorter / longer < 0.85) return null   // quá khác nhau về độ dài
-
-  if (a.startsWith(b) || b.startsWith(a)) return 'close'
+  const ratio   = Math.min(a.length, b.length) / Math.max(a.length, b.length)
+  if (ratio >= 0.85 && (a.startsWith(b) || b.startsWith(a))) return 'close'
   return null
 }
 
-async function checkCoinGecko(project) {
+// ── DexScreener verify ────────────────────────────────────────────────────────
+// Hoàn toàn miễn phí, không cần key, rate limit ~300 req/min
+// Tìm token đang được trade thật sự trên DEX
+
+async function checkDexScreener(project) {
+  if (project.cgSkip) return { hasToken: false, source: 'skipped' }
+
+  const searchTerm = project.cgSearch ?? project.symbol ?? project.name
+
+  try {
+    const url = `https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(searchTerm)}`
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(12_000),
+    })
+
+    if (!res.ok) return { hasToken: false, source: `dex-error-${res.status}` }
+
+    const { pairs = [] } = await res.json()
+    if (!pairs.length) return { hasToken: false, source: 'dex-no-pairs' }
+
+    // Tìm pair khớp tên/symbol của project
+    const match = pairs.find(p => {
+      const base = p.baseToken
+      const symMatch  = project.symbol && base.symbol?.toUpperCase() === project.symbol.toUpperCase()
+      const nameLevel = nameMatchLevel(project.name, base.name ?? '')
+      return symMatch || nameLevel === 'exact'
+    })
+
+    if (!match) return { hasToken: false, source: 'dex-no-match' }
+
+    // Cần volume 24h > $10K để xác nhận đang trade thật (loại scam/test token)
+    const vol24h = match.volume?.h24 ?? 0
+    const liq    = match.liquidity?.usd ?? 0
+
+    // Ngưỡng tối thiểu: phải có volume VÀ thanh khoản thực
+    if (vol24h < 10_000 && liq < 100_000) {
+      log(`  🔍 DexScreener: ${match.baseToken.symbol} vol=$${vol24h.toFixed(0)} liq=$${liq.toFixed(0)} — quá thấp`)
+      return { hasToken: false, source: 'dex-low-volume' }
+    }
+
+    // Sanity check: nếu vol >>> liq → scam / wash-trading (VD: MetaMask meme vol=$7M liq=$1K)
+    if (liq > 0 && vol24h > liq * 5) {
+      log(`  🚨 DexScreener: $${match.baseToken.symbol} vol/liq = ${(vol24h/liq).toFixed(0)}x — nghi scam/wash-trade, bỏ qua`)
+      return { hasToken: false, source: 'dex-suspicious-ratio' }
+    }
+
+    // Yêu cầu tối thiểu liq $100K để tránh token nhỏ lẻ trùng tên
+    if (liq < 100_000) {
+      log(`  🔍 DexScreener: $${match.baseToken.symbol} liq=$${liq.toFixed(0)} < $100K — quá nhỏ`)
+      return { hasToken: false, source: 'dex-low-liquidity' }
+    }
+
+    const confidence = (vol24h >= 50_000 && liq >= 500_000) || liq >= 2_000_000 ? 'high' : 'medium'
+    log(`  ✅ DexScreener: $${match.baseToken.symbol} vol24h=$${(vol24h/1000).toFixed(0)}K liq=$${(liq/1000).toFixed(0)}K | conf=${confidence}`)
+
+    return {
+      hasToken:    true,
+      coinSymbol:  match.baseToken.symbol,
+      coinName:    match.baseToken.name,
+      vol24h,
+      liquidity:   liq,
+      dexId:       match.dexId,
+      chainId:     match.chainId,
+      confidence,
+      source:      'dexscreener',
+    }
+  } catch (err) {
+    log(`  DexScreener error for ${project.name}: ${err.message}`)
+    return { hasToken: false, source: 'dex-exception' }
+  }
+}
+
+// ── CoinPaprika verify ────────────────────────────────────────────────────────
+// Hoàn toàn miễn phí, không cần key, rate limit ~150 req/min
+
+async function checkCoinPaprika(project) {
   if (project.cgSkip) return { hasToken: false, source: 'skipped' }
 
   const searchTerm = project.cgSearch ?? project.name
-  const CG_KEY     = process.env.COINGECKO_API_KEY ?? ''
 
   try {
-    const url = `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(searchTerm)}`
-    const headers = { Accept: 'application/json' }
-    if (CG_KEY) headers['x-cg-demo-api-key'] = CG_KEY
+    const url = `https://api.coinpaprika.com/v1/search?q=${encodeURIComponent(searchTerm)}&limit=10&categories=currencies`
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(12_000),
+    })
 
-    // Retry với exponential backoff khi bị rate limit (429)
-    let res
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      res = await fetch(url, { headers, signal: AbortSignal.timeout(12_000) })
-      if (res.status !== 429) break
-      const wait = attempt * 8_000   // 8s → 16s → 24s
-      log(`  ⚠️  CoinGecko 429 — retry ${attempt}/3 sau ${wait/1000}s...`)
-      await sleep(wait)
+    if (!res.ok) return { hasToken: false, source: `paprika-error-${res.status}` }
+
+    const { currencies = [] } = await res.json()
+    if (!currencies.length) return { hasToken: false, source: 'paprika-no-results' }
+
+    // Tìm match tên hoặc symbol
+    const match = currencies.find(c => {
+      const symMatch  = project.symbol && c.symbol?.toUpperCase() === project.symbol.toUpperCase()
+      const nameLevel = nameMatchLevel(project.name, c.name ?? '')
+      return symMatch || nameLevel === 'exact'
+    })
+
+    if (!match) return { hasToken: false, source: 'paprika-no-match' }
+
+    // is_active = đang được trade
+    if (!match.is_active) {
+      log(`  🔍 CoinPaprika: "${match.name}" — inactive`)
+      return { hasToken: false, source: 'paprika-inactive' }
     }
 
-    if (res.status === 429) {
-      log(`  ⚠️  CoinGecko rate limit vẫn sau 3 lần — bỏ qua ${project.name}`)
-      return { hasToken: false, source: 'rate-limited' }
-    }
-    if (!res.ok) return { hasToken: false, source: `error-${res.status}` }
-
-    const { coins = [] } = await res.json()
-    if (!coins.length) return { hasToken: false, source: 'no-results' }
-
-    // Ưu tiên symbol match (chính xác nhất), sau đó name match
-    let bestMatch   = null
-    let matchLevel  = null
-
-    for (const c of coins) {
-      // Symbol match: chỉ khi project đã biết symbol (tránh match coin khác)
-      if (project.symbol && c.symbol?.toUpperCase() === project.symbol.toUpperCase()) {
-        bestMatch  = c
-        matchLevel = 'symbol'
-        break
-      }
-      // Name match
-      const level = nameMatchLevel(project.name, c.name)
-      if (level === 'exact' && !bestMatch) { bestMatch = c; matchLevel = 'exact' }
-      else if (level === 'close' && !bestMatch) { bestMatch = c; matchLevel = 'close' }
+    // Rank phải hợp lý — tránh coin scam trùng tên
+    const rankLimit = project.symbol ? 2000 : 1000
+    if (match.rank && match.rank > rankLimit) {
+      log(`  🔍 CoinPaprika: "${match.name}" rank #${match.rank} — vượt ngưỡng, bỏ qua`)
+      return { hasToken: false, source: 'paprika-rank-too-low' }
     }
 
-    if (!bestMatch) return { hasToken: false, source: 'no-match' }
-
-    // Phải có market_cap_rank = đang được trade thật
-    if (!bestMatch.market_cap_rank) {
-      log(`  🔍 CoinGecko: "${bestMatch.name}" (${bestMatch.symbol?.toUpperCase()}) — chưa có market cap`)
-      return { hasToken: false, source: 'no-market-cap' }
-    }
-
-    // ── Ngưỡng market cap rank theo mức độ match ──
-    // Rank thấp (số lớn) = market cap nhỏ = có thể là coin scam trùng tên
-    // Symbol match: tin tưởng đến rank 1500
-    // Exact name: tin tưởng đến rank 1000
-    // Close name: chỉ tin rank < 300 (phải rất nổi bật)
-    const rankLimit = matchLevel === 'symbol' ? 1500
-                    : matchLevel === 'exact'  ? 1000
-                    :                           300   // close match
-
-    if (bestMatch.market_cap_rank > rankLimit) {
-      log(`  🔍 CoinGecko: "${bestMatch.name}" $${bestMatch.symbol?.toUpperCase()} rank #${bestMatch.market_cap_rank} — vượt ngưỡng ${rankLimit} cho ${matchLevel} match, bỏ qua`)
-      return { hasToken: false, source: 'rank-too-low' }
-    }
-
-    const confidence = bestMatch.market_cap_rank <= 300 ? 'high' : 'medium'
-
-    log(`  ✅ CoinGecko match: "${bestMatch.name}" $${bestMatch.symbol?.toUpperCase()} | rank #${bestMatch.market_cap_rank} | match=${matchLevel} | conf=${confidence}`)
+    const confidence = (match.rank && match.rank <= 300) ? 'high' : 'medium'
+    log(`  ✅ CoinPaprika: "${match.name}" $${match.symbol} rank #${match.rank} | conf=${confidence}`)
 
     return {
-      hasToken:      true,
-      coinId:        bestMatch.id,
-      coinSymbol:    bestMatch.symbol?.toUpperCase(),
-      marketCapRank: bestMatch.market_cap_rank,
-      coinName:      bestMatch.name,
-      matchLevel,
+      hasToken:   true,
+      coinSymbol: match.symbol,
+      coinName:   match.name,
+      rank:       match.rank,
       confidence,
-      source:        'coingecko',
+      source:     'coinpaprika',
     }
   } catch (err) {
-    log(`  CoinGecko error for ${project.name}: ${err.message}`)
-    return { hasToken: false, source: 'exception' }
+    log(`  CoinPaprika error for ${project.name}: ${err.message}`)
+    return { hasToken: false, source: 'paprika-exception' }
   }
+}
+
+// ── Combined verify (DexScreener + CoinPaprika) ───────────────────────────────
+
+async function checkTokenStatus(project) {
+  // Chạy song song cả 2 nguồn miễn phí
+  const [dex, paprika] = await Promise.all([
+    checkDexScreener(project),
+    checkCoinPaprika(project),
+  ])
+
+  // Cả 2 xác nhận → rất chắc chắn
+  if (dex.hasToken && paprika.hasToken) {
+    return {
+      hasToken:    true,
+      confidence:  'high',
+      coinSymbol:  dex.coinSymbol ?? paprika.coinSymbol,
+      sources:     ['dexscreener', 'coinpaprika'],
+      details:     { dex, paprika },
+    }
+  }
+
+  // 1 trong 2 xác nhận high confidence → tin
+  if (dex.hasToken && dex.confidence === 'high')     return { hasToken: true, confidence: 'high',   coinSymbol: dex.coinSymbol,     sources: ['dexscreener'], details: { dex } }
+  if (paprika.hasToken && paprika.confidence === 'high') return { hasToken: true, confidence: 'high',   coinSymbol: paprika.coinSymbol, sources: ['coinpaprika'], details: { paprika } }
+
+  // 1 trong 2 xác nhận medium → cần thêm X API verify
+  if (dex.hasToken || paprika.hasToken) {
+    return {
+      hasToken:    true,
+      confidence:  'medium',
+      coinSymbol:  dex.coinSymbol ?? paprika.coinSymbol,
+      sources:     [dex.hasToken ? 'dexscreener' : 'coinpaprika'],
+      needsXVerify: true,
+      details:     { dex, paprika },
+    }
+  }
+
+  return { hasToken: false, sources: [], details: { dex, paprika } }
 }
 
 // ── Kiểm tra từng dự án hiện tại ─────────────────────────────────────────────
@@ -344,38 +417,51 @@ async function checkCoinGecko(project) {
 async function checkProjectStatus(project) {
   log(`\nChecking: ${project.name}...`)
 
-  // ① CoinGecko — nguồn tin cậy nhất (không cần API key)
-  const cg = await checkCoinGecko(project)
-  await sleep(5_000)   // CoinGecko free: ~10 req/min → 5s/req, retry xử lý 429
+  // ① DexScreener + CoinPaprika song song (miễn phí, không cần key)
+  const tokenStatus = await checkTokenStatus(project)
 
-  if (cg.hasToken) {
-    log(`  🪙 CoinGecko confirm: $${cg.coinSymbol} | rank #${cg.marketCapRank} | confidence: ${cg.confidence}`)
+  if (tokenStatus.hasToken && !tokenStatus.needsXVerify) {
+    // Đủ chắc → graduate ngay
     return {
-      hasLaunched: true,
-      confidence:  cg.confidence,
-      source:      'coingecko',
-      coinSymbol:  cg.coinSymbol,
-      coinId:      cg.coinId,
-      marketCapRank: cg.marketCapRank,
-      tweets:      [],
-      projectId:   project.id,
+      hasLaunched:  true,
+      confidence:   tokenStatus.confidence,
+      source:       tokenStatus.sources.join('+'),
+      coinSymbol:   tokenStatus.coinSymbol,
+      tweets:       [],
+      projectId:    project.id,
     }
   }
 
-  log(`  ⬜ CoinGecko: chưa thấy token (${cg.source})`)
+  // ② X API — bổ sung khi cần verify thêm hoặc cả 2 API không tìm thấy
+  if (X_TOKEN) {
+    const needsX = tokenStatus.needsXVerify || !tokenStatus.hasToken
+    if (needsX) {
+      const xResult = await searchX(project.name, project.xSearch ?? project.name)
+      await sleep(3_000)
 
-  // ② X API — secondary signal
-  if (!X_TOKEN) return { hasLaunched: false, confidence: 'low', source: 'no-x-token', tweets: [], projectId: project.id }
+      // Nếu DexScreener/Paprika đã tìm thấy medium + X API cũng confirm → graduate
+      if (tokenStatus.hasToken && tokenStatus.needsXVerify && xResult.hasLaunched) {
+        log(`  📣 Double-confirm: onchain+X API → graduate`)
+        return {
+          hasLaunched: true,
+          confidence:  'high',
+          source:      `${tokenStatus.sources.join('+')}+x-api`,
+          coinSymbol:  tokenStatus.coinSymbol,
+          tweets:      xResult.tweets,
+          projectId:   project.id,
+        }
+      }
 
-  const xResult = await searchX(project.name, project.xSearch ?? project.name)
-  await sleep(3_000)   // Rate limit X API
-
-  if (xResult.hasLaunched && xResult.confidence !== 'low') {
-    log(`  📣 X API signal: confidence=${xResult.confidence} — cần verify thêm`)
-    return { ...xResult, source: 'x-api', projectId: project.id }
+      // Chỉ X API tìm thấy high confidence (không có onchain proof)
+      if (!tokenStatus.hasToken && xResult.hasLaunched && xResult.confidence === 'high') {
+        log(`  📣 X API high signal nhưng chưa có onchain proof — skip để tránh false positive`)
+      }
+    }
+  } else {
+    await sleep(1_000)
   }
 
-  log(`  ✓ ${project.name} → xác nhận chưa có token`)
+  log(`  ✓ ${project.name} → chưa có token`)
   return { hasLaunched: false, confidence: 'low', source: 'clean', tweets: [], projectId: project.id }
 }
 
@@ -461,8 +547,7 @@ async function main() {
       checkedProjects:   projects.length,
       runAt:             new Date().toISOString(),
       xApiUsed:          !!X_TOKEN,
-      coinGeckoUsed:     true,
-      verificationSources: ['coingecko', X_TOKEN ? 'x-api' : null].filter(Boolean),
+      verificationSources: ['dexscreener', 'coinpaprika', X_TOKEN ? 'x-api' : null].filter(Boolean),
       newSuggestionsFromCryptoRank: newSuggestions.map((c) => `${c.name} (${c.symbol})`),
     },
     projects:  stillActive,
