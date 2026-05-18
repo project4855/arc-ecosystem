@@ -1,8 +1,8 @@
-name: 🪂 Auto-Update Airdrop Data
+name: 🪂 Daily Airdrop + Yield + Funding Update
 
 on:
   schedule:
-    # Chạy lúc 8:00 AM UTC mỗi ngày (3:00 PM giờ Việt Nam)
+    # Chạy lúc 8:00 AM UTC mỗi ngày (15:00 giờ Việt Nam)
     - cron: '0 8 * * *'
   workflow_dispatch:
     # Cho phép chạy thủ công từ GitHub Actions tab
@@ -55,7 +55,12 @@ jobs:
             DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
             git commit -m "chore(airdrops): auto-update ${DATE}
 
-          Tự động cập nhật từ X API + CryptoRank + airdrops.io"
+          Tự động cập nhật từ:
+          - X API + DexScreener + CoinPaprika (verify token launched)
+          - CryptoRank (drophunting + funding rounds)
+          - DeFiLlama (yield farming pools)
+          - DappRadar (airdrop campaigns)
+          - AirdropAlert RSS (tin tức mới)"
 
             git pull --rebase origin main
             git push
