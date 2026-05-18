@@ -51,7 +51,7 @@ export default function App() {
 
         {/* ── Tab navigation ── */}
         <div className="flex justify-center">
-          <div className="flex bg-white border border-slate-200 shadow-sm rounded-2xl p-1 gap-1">
+          <div className="flex bg-white border border-slate-200 shadow-sm rounded-2xl p-1.5 gap-2">
             {([
               { key: 'trade',    label: '📊 Trade' },
               { key: 'bridge',   label: '🌉 Bridge' },
@@ -62,7 +62,7 @@ export default function App() {
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                className={`px-8 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                   tab === key
                     ? 'bg-violet-600 text-white shadow-lg'
                     : 'text-slate-500 hover:text-slate-900'
