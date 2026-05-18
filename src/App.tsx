@@ -11,10 +11,11 @@ import HyperliquidPanel from './components/HyperliquidPanel'
 import AirdropPanel from './components/AirdropPanel'
 import BridgePanel from './components/BridgePanel'
 import DerivativesPanel from './components/DerivativesPanel'
+import WalletPanel from './components/WalletPanel'
 
 const PAIRS = ['USDC/EURC', 'ETH/USDC', 'SOL/USDC', 'cirBTC/USDC', 'USDC/cirBTC', 'EURC/cirBTC'] as const
 type Pair = typeof PAIRS[number]
-type AppTab = 'trade' | 'bridge' | 'lending' | 'perps' | 'traders' | 'airdrops'
+type AppTab = 'trade' | 'bridge' | 'lending' | 'perps' | 'traders' | 'airdrops' | 'wallet'
 
 const FEATURES = [
   { icon: '⚡', text: 'Sub-second finality' },
@@ -94,6 +95,7 @@ export default function App() {
               { key: 'perps',    label: '⚡ Perps'    },
               { key: 'traders',  label: '🏆 Traders'  },
               { key: 'airdrops', label: '🪂 Airdrops' },
+              { key: 'wallet',   label: '👛 Wallet'   },
             ] as { key: AppTab; label: string }[]).map(({ key, label }) => (
               <button
                 key={key}
@@ -203,6 +205,18 @@ export default function App() {
               </p>
             </div>
             <AirdropPanel />
+          </>
+        )}
+
+        {/* ══ WALLET TAB ══ */}
+        {tab === 'wallet' && (
+          <>
+            <div className="text-center -mt-2 mb-2">
+              <p className="text-slate-500 text-sm">
+                Create or import a wallet · Receive USDC / EURC · Send tokens on Arc Testnet
+              </p>
+            </div>
+            <WalletPanel />
           </>
         )}
 
