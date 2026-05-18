@@ -65,18 +65,18 @@ export default function LendingPanel() {
     return (
       <div className="bg-white border border-amber-200 rounded-2xl shadow-sm p-8 text-center flex flex-col items-center gap-4">
         <span className="text-4xl">🏗️</span>
-        <h3 className="text-slate-900 font-bold text-lg">Contract chưa được deploy</h3>
+        <h3 className="text-slate-900 font-bold text-lg">Contract Not Deployed</h3>
         <p className="text-slate-500 text-sm max-w-md leading-relaxed">
-          Smart contract <code className="text-violet-600">ArcLending.sol</code> cần được deploy lên Arc Testnet trước.
-          Chạy lệnh sau trong terminal:
+          The <code className="text-violet-600">ArcLending.sol</code> smart contract needs to be deployed to Arc Testnet first.
+          Run the following commands in your terminal:
         </p>
         <div className="bg-slate-50 border border-slate-200 rounded-xl px-6 py-4 text-left w-full max-w-lg">
-          <p className="text-slate-400 text-xs mb-2"># 1. Thêm private key vào contracts/.env</p>
+          <p className="text-slate-400 text-xs mb-2"># 1. Add your private key to contracts/.env</p>
           <code className="text-emerald-600 text-sm block">PRIVATE_KEY=0x...</code>
           <p className="text-slate-400 text-xs mt-3 mb-2"># 2. Deploy contract</p>
           <code className="text-emerald-600 text-sm block">cd contracts</code>
           <code className="text-emerald-600 text-sm block">npx hardhat run scripts/deployLending.ts --network arc_testnet</code>
-          <p className="text-slate-400 text-xs mt-3 mb-2"># 3. Copy địa chỉ vào</p>
+          <p className="text-slate-400 text-xs mt-3 mb-2"># 3. Copy address to</p>
           <code className="text-violet-600 text-sm block">src/config/contracts.ts → LENDING_ADDRESS</code>
         </div>
         <a
@@ -85,7 +85,7 @@ export default function LendingPanel() {
           rel="noreferrer"
           className="text-xs text-emerald-600 hover:underline"
         >
-          💧 Lấy testnet USDC để trả phí gas → faucet.circle.com
+          💧 Get testnet USDC for gas fees → faucet.circle.com
         </a>
       </div>
     )
@@ -99,9 +99,9 @@ export default function LendingPanel() {
   }
 
   const stepLabel: Record<string, string> = {
-    approving: '⏳ Đang approve token...',
-    sending:   '⏳ Đang gửi giao dịch...',
-    done:      '✓ Thành công!',
+    approving: '⏳ Approving token...',
+    sending:   '⏳ Sending transaction...',
+    done:      '✓ Success!',
     idle:      '',
   }
 
@@ -142,7 +142,7 @@ export default function LendingPanel() {
           <p className="text-slate-500 text-xs mb-1">Health Factor</p>
           <HealthBadge factor={healthFactor} />
           {isFinite(healthFactor) && healthFactor < 1.2 && (
-            <p className="text-red-600 text-[10px] mt-0.5">⚠ Nguy cơ thanh lý</p>
+            <p className="text-red-600 text-[10px] mt-0.5">⚠ Liquidation risk</p>
           )}
         </div>
       </div>
@@ -154,7 +154,7 @@ export default function LendingPanel() {
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-col gap-2">
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-slate-900 font-semibold text-sm">Supply Markets</h3>
-            <span className="text-xs text-slate-500">Gửi token để nhận lãi</span>
+            <span className="text-xs text-slate-500">Deposit tokens to earn interest</span>
           </div>
           <div className="grid grid-cols-[1fr_60px_80px_auto] text-xs text-slate-400 px-1">
             <span>Token</span><span className="text-center">APY</span>
@@ -195,7 +195,7 @@ export default function LendingPanel() {
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-col gap-2">
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-slate-900 font-semibold text-sm">Borrow Markets</h3>
-            <span className="text-xs text-slate-500">Vay bằng tài sản thế chấp</span>
+            <span className="text-xs text-slate-500">Borrow against collateral</span>
           </div>
           <div className="grid grid-cols-[1fr_60px_72px_auto] text-xs text-slate-400 px-1">
             <span>Token</span><span className="text-center">APY</span>
@@ -233,7 +233,7 @@ export default function LendingPanel() {
                 <button
                   onClick={() => openModal('borrow', asset)}
                   disabled={totalSuppliedUSD === 0}
-                  title={totalSuppliedUSD === 0 ? 'Supply collateral trước' : ''}
+                  title={totalSuppliedUSD === 0 ? 'Supply collateral first' : ''}
                   className="px-2.5 py-1 rounded-lg bg-violet-50 border border-violet-200 text-violet-600 text-xs hover:bg-violet-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >Borrow</button>
                 {asset.userBorrowed > 0 && (
@@ -251,14 +251,14 @@ export default function LendingPanel() {
       {/* ── Connect prompt ── */}
       {!isConnected && (
         <div className="flex flex-col items-center gap-3 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
-          <p className="text-slate-500 text-sm">Kết nối ví để supply hoặc borrow</p>
+          <p className="text-slate-500 text-sm">Connect wallet to supply or borrow</p>
           <ConnectButton label="Connect Wallet" />
         </div>
       )}
 
       {/* ── Info row ── */}
       <p className="text-xs text-slate-400 px-1">
-        Collateral factors: USDC 90% · EURC 88% · Giao dịch thật trên Arc Testnet · Phí gas thanh toán bằng USDC
+        Collateral factors: USDC 90% · EURC 88% · Real transactions on Arc Testnet · Gas fees paid in USDC
       </p>
 
       {/* ── Modal ── */}
@@ -295,7 +295,7 @@ export default function LendingPanel() {
             </div>
 
             {/* Amount input */}
-            <label className="text-slate-500 text-xs block mb-1">Số lượng ({modal.asset.symbol})</label>
+            <label className="text-slate-500 text-xs block mb-1">Amount ({modal.asset.symbol})</label>
             <input
               type="number"
               min="0"
@@ -315,7 +315,7 @@ export default function LendingPanel() {
             {/* Borrow warning */}
             {modal.type === 'borrow' && (
               <div className="mb-4 p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
-                Giữ health factor &gt; 1.0 để tránh bị thanh lý tài sản thế chấp
+                Keep health factor &gt; 1.0 to avoid collateral liquidation
               </div>
             )}
 
@@ -354,7 +354,7 @@ export default function LendingPanel() {
                   onClick={() => setModal(null)}
                   disabled={isActing}
                   className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-500 text-sm font-medium hover:bg-slate-200 transition-colors disabled:opacity-40"
-                >Hủy</button>
+                >Cancel</button>
                 <button
                   onClick={handleConfirm}
                   disabled={!isConnected || !amount || parseFloat(amount) <= 0 || isActing}
