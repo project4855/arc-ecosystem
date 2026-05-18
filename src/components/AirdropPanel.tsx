@@ -875,7 +875,7 @@ function FundingPanel() {
 export default function AirdropPanel() {
   const [activeTab, setActiveTab]   = useState<AirdropTab>('airdrops')
   const [catFilter,  setCatFilter]  = useState<string>('All')
-  const [probFilter, setProbFilter] = useState<string>('Tất cả')
+  const [probFilter, setProbFilter] = useState<string>('All')
   const [search,     setSearch]     = useState('')
 
   const filtered = PROJECTS.filter((p) => {
@@ -975,7 +975,7 @@ export default function AirdropPanel() {
           {/* Data source note */}
           <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 rounded-xl px-3 py-2 border border-slate-200">
             <span>📌</span>
-            <span>Nguồn: {DATA_SOURCE}</span>
+            <span>Source: {DATA_SOURCE}</span>
           </div>
 
           {/* Stats */}
@@ -1057,8 +1057,8 @@ export default function AirdropPanel() {
       {activeTab === 'funding' && <FundingPanel />}
 
       <p className="text-center text-xs text-slate-400 py-2">
-        Thông tin mang tính tham khảo · Không phải lời khuyên tài chính ·
-        Luôn kiểm tra trên <a href="https://x.com" target="_blank" rel="noreferrer" className="text-sky-600 hover:text-sky-500">X</a> trước khi tham gia
+        For reference only · Not financial advice ·
+        Always verify on <a href="https://x.com" target="_blank" rel="noreferrer" className="text-sky-600 hover:text-sky-500">X</a> before participating
       </p>
     </div>
   )
