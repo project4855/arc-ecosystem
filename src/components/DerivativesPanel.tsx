@@ -441,20 +441,35 @@ function TradeForm({
 
 // ── Position card ─────────────────────────────────────────────────────────────
 
+/** Recalculate unrealised PnL + ROE from a live mark price */
+function calcLivePnl(pos: PerpPosition, livePrice: number): { pnl: number; roe: number; nearLiq: boolean } {
+  const price = livePrice > 0 ? livePrice : pos.entryPrice
+  const priceDelta = pos.isLong ? price - pos.entryPrice : pos.entryPrice - price
+  const pnl  = pos.entryPrice > 0 ? pos.sizeUsd * priceDelta / pos.entryPrice : 0
+  const roe  = pos.margin > 0 ? (pnl / pos.margin) * 100 : 0
+  // Warn if margin ratio < 10% (approaching 5% liquidation threshold)
+  const marginRatio = pos.sizeUsd > 0 ? (pos.margin + pnl) / pos.sizeUsd : 1
+  return { pnl, roe, nearLiq: marginRatio < 0.10 }
+}
+
 function PositionCard({
-  pos, onClose, onAddMargin, isClosing,
+  pos, livePrice, onClose, onAddMargin, isClosing,
 }: {
   pos:         PerpPosition
+  livePrice:   number          // live mark price from Hyperliquid
   onClose:     (id: bigint) => void
   onAddMargin: (id: bigint, amount: string) => void
   isClosing:   boolean
 }) {
   const [showAdd, setShowAdd] = useState(false)
   const [addAmt,  setAddAmt]  = useState('')
-  const pnlPos = pos.unrealisedPnl >= 0
+
+  const { pnl, roe, nearLiq } = calcLivePnl(pos, livePrice)
+  const pnlPos = pnl >= 0
+  const currentPrice = livePrice > 0 ? livePrice : pos.entryPrice
 
   return (
-    <div className={`bg-white border rounded-2xl p-4 shadow-sm flex flex-col gap-3 ${pos.liquidatable ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`}>
+    <div className={`bg-white border rounded-2xl p-4 shadow-sm flex flex-col gap-3 ${nearLiq ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CoinIcon coin={pos.coin} size={8} />
@@ -465,7 +480,7 @@ function PositionCard({
                 pos.isLong ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
                            : 'bg-red-50 text-red-600 border border-red-200'
               }`}>{pos.isLong ? '▲ LONG' : '▼ SHORT'} {pos.leverage}×</span>
-              {pos.liquidatable && (
+              {nearLiq && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-300 animate-pulse">⚠ NEAR LIQ</span>
               )}
             </div>
@@ -474,17 +489,19 @@ function PositionCard({
             </p>
           </div>
         </div>
+        {/* Live PnL — updates every 5s with mark price */}
         <div className="text-right">
-          <p className={`font-bold text-base ${pnlPos ? 'text-emerald-600' : 'text-red-500'}`}>{fmtUSD(pos.unrealisedPnl, true)}</p>
-          <p className={`text-[10px] font-semibold ${pnlPos ? 'text-emerald-500' : 'text-red-400'}`}>{fmtPct(pos.roe)}</p>
+          <p className={`font-bold text-base ${pnlPos ? 'text-emerald-600' : 'text-red-500'}`}>{fmtUSD(pnl, true)}</p>
+          <p className={`text-[10px] font-semibold ${pnlPos ? 'text-emerald-500' : 'text-red-400'}`}>{fmtPct(roe)}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         {[
-          { label: 'Margin',     value: fmtUSD(pos.margin),         cls: 'text-slate-700' },
-          { label: 'Liq. Price', value: fmtPrice(pos.liquidationPrice), cls: 'text-red-600' },
-          { label: 'PnL / ROE',  value: `${fmtUSD(pos.unrealisedPnl, true)} / ${fmtPct(pos.roe)}`, cls: pnlPos ? 'text-emerald-600' : 'text-red-500' },
+          { label: 'Margin',       value: fmtUSD(pos.margin),             cls: 'text-slate-700' },
+          { label: 'Mark Price',   value: fmtPrice(currentPrice),          cls: pnlPos ? 'text-emerald-600' : 'text-red-500' },
+          { label: 'Liq. Price',   value: fmtPrice(pos.liquidationPrice),  cls: 'text-red-600' },
+          { label: 'PnL / ROE',    value: `${fmtUSD(pnl, true)} / ${fmtPct(roe)}`, cls: pnlPos ? 'text-emerald-600' : 'text-red-500' },
         ].map(s => (
           <div key={s.label} className="bg-slate-50 rounded-xl p-2 text-center">
             <p className="text-slate-400 text-[10px] mb-0.5">{s.label}</p>
@@ -609,7 +626,18 @@ export default function DerivativesPanel() {
   const { openPosition, closePosition, addMargin, txStep, txHash, txError, reset, balanceUSDC, isConnected } = usePerpTrade()
 
   const openCount = positions.length
-  const totalPnl  = positions.reduce((s, p) => s + p.unrealisedPnl, 0)
+
+  // Helper: get live mark price for a coin (falls back to entry price)
+  const getLivePrice = useCallback(
+    (positionCoin: string) => liveMarkets.find(m => m.coin === positionCoin)?.markPx ?? 0,
+    [liveMarkets],
+  )
+
+  // Total PnL recalculated from live prices every 5s
+  const totalPnl = useMemo(
+    () => positions.reduce((sum, p) => sum + calcLivePnl(p, getLivePrice(p.coin)).pnl, 0),
+    [positions, getLivePrice],
+  )
 
   const handleOpen = useCallback(async (c: string, isLong: boolean, margin: string, leverage: number) => {
     await openPosition(c, isLong, margin, leverage)
@@ -811,6 +839,7 @@ export default function DerivativesPanel() {
               </div>
               {positions.map(pos => (
                 <PositionCard key={pos.id.toString()} pos={pos}
+                  livePrice={getLivePrice(pos.coin)}
                   onClose={handleClose} onAddMargin={handleAddMargin}
                   isClosing={txStep === 'sending'} />
               ))}
