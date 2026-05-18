@@ -1,6 +1,6 @@
 // ── AirdropPanel.tsx ──────────────────────────────────────────────────────────
-// Chỉ liệt kê dự án CHƯA phát token / chưa airdrop
-// Dữ liệu xác minh từ X & nguồn tin. Cập nhật hàng ngày.
+// Lists projects WITHOUT a token or airdrop yet
+// Dữ liệu xác minh từ X & nguồn tin. Updated daily.
 
 import { useState, useEffect } from 'react'
 import airdropData from '../data/airdrops.json'
@@ -124,11 +124,13 @@ const CATEGORY_COLORS: Record<string, string> = {
   'BTC Layer':'bg-amber-50 text-amber-700 border-amber-200',
 }
 
-const PROB_CONFIG: Record<string, { color: string; bg: string; dot: string; bar: string }> = {
-  'Rất cao':    { color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', dot: 'bg-emerald-500', bar: 'from-emerald-500 to-green-400' },
-  'Cao':        { color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', dot: 'bg-emerald-500', bar: 'from-green-500 to-teal-400'   },
-  'Trung bình': { color: 'text-amber-600',   bg: 'bg-amber-50 border-amber-200',     dot: 'bg-amber-500',   bar: 'from-yellow-500 to-amber-400'  },
+const PROB_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string; bar: string }> = {
+  'Rất cao':    { label: 'Very High', color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', dot: 'bg-emerald-500', bar: 'from-emerald-500 to-green-400' },
+  'Cao':        { label: 'High',      color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', dot: 'bg-emerald-500', bar: 'from-green-500 to-teal-400'   },
+  'Trung bình': { label: 'Medium',    color: 'text-amber-600',   bg: 'bg-amber-50 border-amber-200',     dot: 'bg-amber-500',   bar: 'from-yellow-500 to-amber-400'  },
 }
+
+const PROB_LABEL = (prob: string) => PROB_CONFIG[prob]?.label ?? prob
 
 const STATUS_COLORS: Record<string, string> = {
   'Testnet':      'text-blue-600 bg-blue-50 border-blue-200',
@@ -137,7 +139,7 @@ const STATUS_COLORS: Record<string, string> = {
   'Points Live':  'text-purple-600 bg-purple-50 border-purple-200',
 }
 
-const ALL_CATEGORIES = ['Tất cả', 'L1', 'L2', 'Infra', 'DeFi', 'BTC Layer', 'Gaming'] as const
+const ALL_CATEGORIES = ['All', 'L1', 'L2', 'Infra', 'DeFi', 'BTC Layer', 'Gaming'] as const
 
 // ── TGE Countdown ─────────────────────────────────────────────────────────────
 
@@ -187,7 +189,7 @@ function CountdownBadge({ tge }: { tge: string }) {
     return (
       <div className="flex items-center gap-1.5 text-xs">
         <span>🗓</span>
-        <span className="text-slate-500">Dự kiến TGE:</span>
+        <span className="text-slate-500">Expected TGE:</span>
         <span className="text-amber-600 font-semibold">{tge}</span>
       </div>
     )
@@ -202,7 +204,7 @@ function CountdownBadge({ tge }: { tge: string }) {
       <div className="flex items-center gap-1.5 text-xs flex-wrap">
         <span>🚨</span>
         <span className="text-slate-500">TGE:</span>
-        <span className="text-orange-600 font-bold animate-pulse">{tge} — có thể đã TGE!</span>
+        <span className="text-orange-600 font-bold animate-pulse">{tge} — may have launched!</span>
       </div>
     )
   }
@@ -211,19 +213,19 @@ function CountdownBadge({ tge }: { tge: string }) {
   if (days <= 30) {
     countdown = (
       <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-600 font-bold animate-pulse">
-        ⏰ {days}d {hours}h nữa!
+        ⏰ {days}d {hours}h left!
       </span>
     )
   } else if (days <= 90) {
     countdown = (
       <span className="px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-orange-600 font-semibold">
-        📅 ~{days} ngày nữa
+        📅 ~{days} days left
       </span>
     )
   } else {
     countdown = (
       <span className="px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-600 font-medium">
-        📅 ~{Math.ceil(days / 30)} tháng nữa
+        📅 ~{Math.ceil(days / 30)} months left
       </span>
     )
   }
@@ -275,7 +277,7 @@ function ProjectCard({ p }: { p: AirdropProject }) {
                   {p.status}
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 font-medium">
-                  ✗ Chưa có token
+                  No token yet
                 </span>
               </div>
             </div>
@@ -284,18 +286,18 @@ function ProjectCard({ p }: { p: AirdropProject }) {
           {/* Prob badge */}
           <div className={`shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-lg border ${probCfg.bg}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${probCfg.dot} animate-pulse`} />
-            <span className={`text-xs font-bold ${probCfg.color}`}>{p.prob}</span>
+            <span className={`text-xs font-bold ${probCfg.color}`}>{PROB_LABEL(p.prob)}</span>
           </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-slate-50 rounded-xl p-2.5">
-            <div className="text-slate-400 text-[10px] mb-0.5">💰 Vốn huy động</div>
+            <div className="text-slate-400 text-[10px] mb-0.5">💰 Raised</div>
             <div className="text-slate-900 font-bold text-sm">{p.raised}</div>
           </div>
           <div className="bg-slate-50 rounded-xl p-2.5">
-            <div className="text-slate-400 text-[10px] mb-0.5">🏦 Nhà đầu tư</div>
+            <div className="text-slate-400 text-[10px] mb-0.5">🏦 Investors</div>
             <div className="text-slate-600 text-xs font-medium leading-tight">{p.investors}</div>
           </div>
         </div>
@@ -314,7 +316,7 @@ function ProjectCard({ p }: { p: AirdropProject }) {
           className="flex items-center gap-2 text-xs text-slate-400 hover:text-sky-600 transition-colors"
         >
           <span className="font-bold">𝕏</span>
-          <span>Xem cập nhật mới nhất trên X →</span>
+          <span>Latest updates on X →</span>
         </a>
       </div>
 
@@ -326,7 +328,7 @@ function ProjectCard({ p }: { p: AirdropProject }) {
         >
           <div className="flex items-center gap-2">
             <span>📋</span>
-            <span>Cách tham gia ({p.steps.length} bước)</span>
+            <span>How to qualify ({p.steps.length} bước)</span>
           </div>
           <span className={`transition-transform duration-200 text-slate-400 ${expanded ? 'rotate-180' : ''}`}>▼</span>
         </button>
@@ -381,10 +383,10 @@ function SummaryStats({ projects }: { projects: AirdropProject[] }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       {[
-        { label: 'Chưa airdrop',   value: String(projects.length), icon: '🪂', color: 'text-violet-600' },
-        { label: 'Xác suất rất cao', value: String(veryHigh),      icon: '🎯', color: 'text-emerald-600' },
-        { label: 'Xác suất cao',   value: String(high),            icon: '✅', color: 'text-emerald-600'   },
-        { label: 'Đang hoạt động', value: String(live),            icon: '🟢', color: 'text-blue-600'    },
+        { label: 'No Token Yet',   value: String(projects.length), icon: '🪂', color: 'text-violet-600' },
+        { label: 'Very High', value: String(veryHigh),      icon: '🎯', color: 'text-emerald-600' },
+        { label: 'High',   value: String(high),            icon: '✅', color: 'text-emerald-600'   },
+        { label: 'Active', value: String(live),            icon: '🟢', color: 'text-blue-600'    },
       ].map((s) => (
         <div key={s.label} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-3 text-center">
           <div className="text-xl mb-1">{s.icon}</div>
@@ -415,12 +417,12 @@ function GraduatedBanner() {
         <div className="flex items-center gap-2 flex-wrap">
           {newThisRun.length > 0 && (
             <span className="px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-orange-600 font-semibold animate-pulse">
-              🔔 {newThisRun.length} dự án vừa phát token!
+              🔔 {newThisRun.length} projects just launched token!
             </span>
           )}
           <span>✅</span>
-          <span className="font-semibold">Đã airdrop / có token ({GRADUATED.length} dự án)</span>
-          <span className="text-slate-300">— không cần farm nữa</span>
+          <span className="font-semibold">Airdropped / token launched ({GRADUATED.length} projects)</span>
+          <span className="text-slate-300">— no need to farm</span>
         </div>
         <span className={`transition-transform duration-200 shrink-0 text-slate-400 ${show ? 'rotate-180' : ''}`}>▼</span>
       </button>
@@ -454,13 +456,13 @@ function GraduatedBanner() {
 // ── Yield Farming Panel ───────────────────────────────────────────────────────
 
 function YieldFarmingPanel() {
-  const [chainFilter, setChainFilter] = useState('Tất cả')
+  const [chainFilter, setChainFilter] = useState('All')
   const [search, setSearch] = useState('')
 
-  const chains = ['Tất cả', ...Array.from(new Set(YIELDS.map(y => y.chain))).sort()]
+  const chains = ['All', ...Array.from(new Set(YIELDS.map(y => y.chain))).sort()]
 
   const filtered = YIELDS.filter(y => {
-    if (chainFilter !== 'Tất cả' && y.chain !== chainFilter) return false
+    if (chainFilter !== 'All' && y.chain !== chainFilter) return false
     if (search && !y.project.toLowerCase().includes(search.toLowerCase()) &&
         !y.symbol.toLowerCase().includes(search.toLowerCase())) return false
     return true
@@ -476,8 +478,8 @@ function YieldFarmingPanel() {
     return (
       <div className="text-center py-20 text-slate-400">
         <div className="text-5xl mb-4">🌾</div>
-        <div className="text-slate-500 font-semibold mb-2">Chưa có dữ liệu Yield Farming</div>
-        <p className="text-sm max-w-sm mx-auto">Dữ liệu sẽ được cập nhật tự động hàng ngày từ DeFiLlama. Chạy lại GitHub Actions để lấy dữ liệu.</p>
+        <div className="text-slate-500 font-semibold mb-2">No yield farming data yet</div>
+        <p className="text-sm max-w-sm mx-auto">Data is updated automatically every day from DeFiLlama. Re-run GitHub Actions to fetch data.</p>
       </div>
     )
   }
@@ -489,7 +491,7 @@ function YieldFarmingPanel() {
         <span className="text-2xl">🌾</span>
         <div>
           <div className="font-bold text-slate-900 text-sm">DeFiLlama Yield Farming</div>
-          <div className="text-slate-500 text-xs mt-0.5">Top {YIELDS.length} pools · APY cao nhất · TVL &gt; $5M · Cập nhật hàng ngày</div>
+          <div className="text-slate-500 text-xs mt-0.5">Top {YIELDS.length} pools · Highest APY · TVL &gt; $5M · Updated daily</div>
         </div>
         <a href="https://defillama.com/yields" target="_blank" rel="noreferrer"
           className="ml-auto text-xs text-emerald-600 hover:text-emerald-700 font-medium">
@@ -503,7 +505,7 @@ function YieldFarmingPanel() {
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
           <input
             type="text"
-            placeholder="Tìm protocol..."
+            placeholder="Search protocol..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-400 w-40"
@@ -566,7 +568,7 @@ function YieldFarmingPanel() {
                         ? 'bg-red-50 border-red-200 text-red-600'
                         : 'bg-emerald-50 border-emerald-200 text-emerald-600'
                     }`}>
-                      {y.ilRisk === 'YES' ? '⚠ IL' : '✓ Thấp'}
+                      {y.ilRisk === 'YES' ? '⚠ IL Risk' : '✓ Low'}
                     </span>
                   </td>
                 </tr>
@@ -577,8 +579,8 @@ function YieldFarmingPanel() {
       </div>
 
       <p className="text-center text-xs text-slate-400">
-        Dữ liệu từ <a href="https://defillama.com/yields" target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline">DeFiLlama</a> ·
-        Cập nhật lúc {YIELDS[0]?.fetchedAt ? new Date(YIELDS[0].fetchedAt).toLocaleString('vi-VN') : '—'}
+        Data from <a href="https://defillama.com/yields" target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline">DeFiLlama</a> ·
+        Last updated {YIELDS[0]?.fetchedAt ? new Date(YIELDS[0].fetchedAt).toLocaleString('en-US') : '—'}
       </p>
     </div>
   )
@@ -593,8 +595,8 @@ function ExternalAirdropsPanel() {
     return (
       <div className="text-center py-20 text-slate-400">
         <div className="text-5xl mb-4">📡</div>
-        <div className="text-slate-500 font-semibold mb-2">Chưa có dữ liệu tổng hợp</div>
-        <p className="text-sm max-w-sm mx-auto">Dữ liệu từ DappRadar và AirdropAlert sẽ được cập nhật tự động hàng ngày qua GitHub Actions.</p>
+        <div className="text-slate-500 font-semibold mb-2">No aggregated data yet</div>
+        <p className="text-sm max-w-sm mx-auto">Data from DappRadar và AirdropAlert sẽ được cập nhật tự động hàng ngày qua GitHub Actions.</p>
         <div className="mt-4 flex justify-center gap-3">
           <a href="https://dappradar.com/rewards" target="_blank" rel="noreferrer"
             className="text-xs text-violet-600 hover:underline">dappradar.com/rewards →</a>
@@ -617,7 +619,7 @@ function ExternalAirdropsPanel() {
               {EXTERNAL_AIRDROPS.length} campaigns
             </span>
             <a href="https://dappradar.com/rewards" target="_blank" rel="noreferrer"
-              className="ml-auto text-xs text-violet-600 hover:underline">Xem tất cả →</a>
+              className="ml-auto text-xs text-violet-600 hover:underline">View all →</a>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
             {EXTERNAL_AIRDROPS.map(a => (
@@ -636,7 +638,7 @@ function ExternalAirdropsPanel() {
                   </div>
                   {a.totalValue && (
                     <div className="text-right shrink-0">
-                      <div className="text-xs text-slate-400">Tổng thưởng</div>
+                      <div className="text-xs text-slate-400">Total Reward</div>
                       <div className="text-emerald-600 font-bold text-sm">{a.totalValue}</div>
                     </div>
                   )}
@@ -647,14 +649,14 @@ function ExternalAirdropsPanel() {
                 <div className="flex items-center justify-between mt-auto">
                   {a.endDate && (
                     <div className="text-xs text-slate-400">
-                      <span>⏰ Hết hạn: </span>
+                      <span>⏰ Ends: </span>
                       <span className="text-amber-600 font-medium">{a.endDate}</span>
                     </div>
                   )}
                   {a.link && (
                     <a href={a.link} target="_blank" rel="noreferrer"
                       className="ml-auto text-xs text-violet-600 hover:text-violet-700 font-semibold transition-colors">
-                      Tham gia →
+                      Join →
                     </a>
                   )}
                 </div>
@@ -669,7 +671,7 @@ function ExternalAirdropsPanel() {
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <span className="text-lg">🔔</span>
-            <h3 className="font-bold text-slate-900">AirdropAlert — Tin mới nhất</h3>
+            <h3 className="font-bold text-slate-900">AirdropAlert — Latest News</h3>
             <span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-orange-600">
               {ALERT_FEED.length} items
             </span>
@@ -690,13 +692,13 @@ function ExternalAirdropsPanel() {
                   <div className="flex items-center gap-3 mt-1.5">
                     {item.pubDate && (
                       <span className="text-slate-400 text-[10px]">
-                        {new Date(item.pubDate).toLocaleDateString('vi-VN')}
+                        {new Date(item.pubDate).toLocaleDateString('en-US')}
                       </span>
                     )}
                     {item.link && (
                       <a href={item.link} target="_blank" rel="noreferrer"
                         className="text-[10px] text-orange-600 hover:underline font-medium">
-                        Đọc thêm →
+                        Read more →
                       </a>
                     )}
                   </div>
@@ -705,8 +707,8 @@ function ExternalAirdropsPanel() {
             ))}
           </div>
           <p className="text-xs text-slate-400 text-center">
-            RSS từ <a href="https://airdropalert.com" target="_blank" rel="noreferrer" className="text-orange-600 hover:underline">AirdropAlert</a> ·
-            Cập nhật lúc {ALERT_FEED[0]?.fetchedAt ? new Date(ALERT_FEED[0].fetchedAt).toLocaleString('vi-VN') : '—'}
+            RSS from <a href="https://airdropalert.com" target="_blank" rel="noreferrer" className="text-orange-600 hover:underline">AirdropAlert</a> ·
+            Last updated {ALERT_FEED[0]?.fetchedAt ? new Date(ALERT_FEED[0].fetchedAt).toLocaleString('en-US') : '—'}
           </p>
         </div>
       )}
@@ -718,12 +720,12 @@ function ExternalAirdropsPanel() {
 
 function FundingPanel() {
   const [search, setSearch] = useState('')
-  const [stageFilter, setStageFilter] = useState('Tất cả')
+  const [stageFilter, setStageFilter] = useState('All')
 
-  const stages = ['Tất cả', ...Array.from(new Set(FUNDING_ROUNDS.map(r => r.stage ?? 'Unknown'))).filter(Boolean).sort()]
+  const stages = ['All', ...Array.from(new Set(FUNDING_ROUNDS.map(r => r.stage ?? 'Unknown'))).filter(Boolean).sort()]
 
   const filtered = FUNDING_ROUNDS.filter(r => {
-    if (stageFilter !== 'Tất cả' && (r.stage ?? 'Unknown') !== stageFilter) return false
+    if (stageFilter !== 'All' && (r.stage ?? 'Unknown') !== stageFilter) return false
     if (search && !r.coinName.toLowerCase().includes(search.toLowerCase()) &&
         !(r.symbol ?? '').toLowerCase().includes(search.toLowerCase())) return false
     return true
@@ -741,8 +743,8 @@ function FundingPanel() {
     return (
       <div className="text-center py-20 text-slate-400">
         <div className="text-5xl mb-4">💰</div>
-        <div className="text-slate-500 font-semibold mb-2">Chưa có dữ liệu Gọi vốn</div>
-        <p className="text-sm max-w-sm mx-auto">Dữ liệu funding rounds từ CryptoRank sẽ được cập nhật tự động hàng ngày.</p>
+        <div className="text-slate-500 font-semibold mb-2">No funding data yet</div>
+        <p className="text-sm max-w-sm mx-auto">Funding rounds data from CryptoRank is updated automatically every day.</p>
         <a href="https://cryptorank.io/funding-rounds" target="_blank" rel="noreferrer"
           className="mt-3 inline-block text-xs text-violet-600 hover:underline">cryptorank.io/funding-rounds →</a>
       </div>
@@ -755,8 +757,8 @@ function FundingPanel() {
       <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200">
         <span className="text-2xl">💰</span>
         <div>
-          <div className="font-bold text-slate-900 text-sm">CryptoRank — Funding Rounds mới nhất</div>
-          <div className="text-slate-500 text-xs mt-0.5">{FUNDING_ROUNDS.length} deals · Dự án chưa trade = tiềm năng airdrop · Cập nhật hàng ngày</div>
+          <div className="font-bold text-slate-900 text-sm">CryptoRank — Latest Funding Rounds</div>
+          <div className="text-slate-500 text-xs mt-0.5">{FUNDING_ROUNDS.length} deals · Pre-launch projects = airdrop potential · Updated daily</div>
         </div>
         <a href="https://cryptorank.io/funding-rounds" target="_blank" rel="noreferrer"
           className="ml-auto text-xs text-amber-700 hover:text-amber-800 font-medium">
@@ -767,9 +769,9 @@ function FundingPanel() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Tổng deals', value: String(FUNDING_ROUNDS.length), color: 'text-amber-600', icon: '📊' },
-          { label: 'Chưa trade', value: String(FUNDING_ROUNDS.filter(r => !r.isTraded).length), color: 'text-violet-600', icon: '🎯' },
-          { label: 'Tổng vốn', value: formatAmount(FUNDING_ROUNDS.reduce((s, r) => s + (r.amountUsd ?? 0), 0)), color: 'text-emerald-600', icon: '💵' },
+          { label: 'Total Deals', value: String(FUNDING_ROUNDS.length), color: 'text-amber-600', icon: '📊' },
+          { label: 'Pre-launch', value: String(FUNDING_ROUNDS.filter(r => !r.isTraded).length), color: 'text-violet-600', icon: '🎯' },
+          { label: 'Total Raised', value: formatAmount(FUNDING_ROUNDS.reduce((s, r) => s + (r.amountUsd ?? 0), 0)), color: 'text-emerald-600', icon: '💵' },
         ].map(s => (
           <div key={s.label} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-3 text-center">
             <div className="text-lg mb-1">{s.icon}</div>
@@ -785,7 +787,7 @@ function FundingPanel() {
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
           <input
             type="text"
-            placeholder="Tìm dự án..."
+            placeholder="Search projects..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-400 w-40"
@@ -831,7 +833,7 @@ function FundingPanel() {
                   )}
                   {!r.isTraded && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-violet-700 font-semibold">
-                      🎯 Chưa trade
+                      🎯 Pre-launch
                     </span>
                   )}
                 </div>
@@ -861,8 +863,8 @@ function FundingPanel() {
       </div>
 
       <p className="text-center text-xs text-slate-400">
-        Dữ liệu từ <a href="https://cryptorank.io" target="_blank" rel="noreferrer" className="text-amber-600 hover:underline">CryptoRank</a> ·
-        Cập nhật lúc {FUNDING_ROUNDS[0]?.fetchedAt ? new Date(FUNDING_ROUNDS[0].fetchedAt).toLocaleString('vi-VN') : '—'}
+        Data from <a href="https://cryptorank.io" target="_blank" rel="noreferrer" className="text-amber-600 hover:underline">CryptoRank</a> ·
+        Last updated {FUNDING_ROUNDS[0]?.fetchedAt ? new Date(FUNDING_ROUNDS[0].fetchedAt).toLocaleString('en-US') : '—'}
       </p>
     </div>
   )
@@ -872,27 +874,27 @@ function FundingPanel() {
 
 export default function AirdropPanel() {
   const [activeTab, setActiveTab]   = useState<AirdropTab>('airdrops')
-  const [catFilter,  setCatFilter]  = useState<string>('Tất cả')
+  const [catFilter,  setCatFilter]  = useState<string>('All')
   const [probFilter, setProbFilter] = useState<string>('Tất cả')
   const [search,     setSearch]     = useState('')
 
   const filtered = PROJECTS.filter((p) => {
-    if (catFilter  !== 'Tất cả' && p.category !== catFilter) return false
-    if (probFilter !== 'Tất cả' && p.prob     !== probFilter) return false
+    if (catFilter  !== 'All' && p.category !== catFilter) return false
+    if (probFilter !== 'All' && p.prob     !== probFilter) return false
     if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
 
   // Format last updated
-  const updatedDate = new Date(LAST_UPDATED).toLocaleDateString('vi-VN', {
+  const updatedDate = new Date(LAST_UPDATED).toLocaleDateString('en-US', {
     day: '2-digit', month: '2-digit', year: 'numeric',
   })
 
   const TABS: { key: AirdropTab; label: string; count?: number }[] = [
     { key: 'airdrops', label: '🪂 Airdrop',      count: PROJECTS.length },
     { key: 'yields',   label: '🌾 Yield Farming', count: YIELDS.length || undefined },
-    { key: 'external', label: '📡 Tổng hợp',      count: (EXTERNAL_AIRDROPS.length + ALERT_FEED.length) || undefined },
-    { key: 'funding',  label: '💰 Gọi vốn',       count: FUNDING_ROUNDS.length || undefined },
+    { key: 'external', label: '📡 Aggregated',     count: (EXTERNAL_AIRDROPS.length + ALERT_FEED.length) || undefined },
+    { key: 'funding',  label: '💰 Funding',        count: FUNDING_ROUNDS.length || undefined },
   ]
 
   return (
@@ -906,15 +908,15 @@ export default function AirdropPanel() {
               <span className="text-2xl">🪂</span>
               <h2 className="text-slate-900 font-bold text-lg">Airdrop Radar</h2>
               <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold">
-                ✗ Chưa phát token
+                No token yet
               </span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-violet-600 font-medium">
-                {PROJECTS.length} dự án
+                {PROJECTS.length} projects
               </span>
             </div>
             <p className="text-slate-500 text-sm leading-relaxed max-w-xl">
-              Chỉ liệt kê dự án <strong className="text-slate-900">chưa phát token và chưa airdrop</strong>.
-              Kết hợp dữ liệu từ <strong className="text-slate-900">DeFiLlama · DappRadar · AirdropAlert · CryptoRank</strong>.
+              Only projects <strong className="text-slate-900">without a token or airdrop yet</strong>.
+              Data from <strong className="text-slate-900">DeFiLlama · DappRadar · AirdropAlert · CryptoRank</strong>.
             </p>
           </div>
 
@@ -922,13 +924,13 @@ export default function AirdropPanel() {
           <div className="text-xs bg-white rounded-xl px-3 py-2.5 border border-slate-200 shrink-0 flex flex-col gap-1.5 min-w-[160px]">
             <div className="flex items-center gap-1.5 text-slate-500">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="font-medium">Tự động cập nhật</span>
+              <span className="font-medium">Auto-updated daily</span>
             </div>
             <div className="text-slate-900 font-semibold">{updatedDate}</div>
             <div className="flex items-center gap-1 text-slate-400">
               <span>{UPDATE_LOG?.xApiUsed ? '𝕏 X API ✓' : '𝕏 X API'}</span>
               <span>·</span>
-              <span>5 nguồn</span>
+              <span>5 sources</span>
             </div>
             <a
               href="https://github.com/project4855/arc-spot/actions"
@@ -988,7 +990,7 @@ export default function AirdropPanel() {
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600">🔍</span>
               <input
                 type="text"
-                placeholder="Tìm dự án..."
+                placeholder="Search projects..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-400 w-36"
@@ -1012,7 +1014,7 @@ export default function AirdropPanel() {
             </div>
 
             <div className="flex gap-1 ml-auto">
-              {['Tất cả', 'Rất cao', 'Cao', 'Trung bình'].map((p) => (
+              {['All', 'Rất cao', 'Cao', 'Trung bình'].map((p) => (
                 <button
                   key={p}
                   onClick={() => setProbFilter(p)}
@@ -1022,20 +1024,20 @@ export default function AirdropPanel() {
                       : 'bg-white border border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-900'
                   }`}
                 >
-                  {p === 'Tất cả' ? 'Xác suất' : p}
+                  {p === 'All' ? 'Probability' : PROB_LABEL(p)}
                 </button>
               ))}
             </div>
           </div>
 
           {filtered.length !== PROJECTS.length && (
-            <p className="text-slate-400 text-xs">Hiển thị {filtered.length}/{PROJECTS.length} dự án</p>
+            <p className="text-slate-400 text-xs">Showing {filtered.length} of {PROJECTS.length} projects</p>
           )}
 
           {filtered.length === 0 ? (
             <div className="text-center py-16 text-slate-400">
               <div className="text-4xl mb-3">🔍</div>
-              <div>Không tìm thấy dự án phù hợp</div>
+              <div>No matching projects found</div>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">

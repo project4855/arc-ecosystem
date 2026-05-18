@@ -21,9 +21,9 @@ function fmtTime(ms: number): string {
 
 function fmtRelTime(ms: number): string {
   const sec = Math.floor((Date.now() - ms) / 1000)
-  if (sec < 60)   return `${sec}s`
-  if (sec < 3600) return `${Math.floor(sec / 60)}p`
-  return `${Math.floor(sec / 3600)}h`
+  if (sec < 60)   return `${sec}s ago`
+  if (sec < 3600) return `${Math.floor(sec / 60)}m ago`
+  return `${Math.floor(sec / 3600)}h ago`
 }
 
 function shortAddr(addr: string, name: string | null): string {
@@ -41,7 +41,7 @@ function Spinner() {
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
       </svg>
-      <span className="text-sm">Đang tải...</span>
+      <span className="text-sm">Loading...</span>
     </div>
   )
 }
@@ -49,10 +49,10 @@ function Spinner() {
 // ── Leaderboard ───────────────────────────────────────────────────────────────
 
 const WINDOWS: { key: LbWindow; label: string }[] = [
-  { key: 'day',     label: '1 Ngày'  },
-  { key: 'week',    label: '1 Tuần'  },
-  { key: 'month',   label: '1 Tháng' },
-  { key: 'allTime', label: 'Tất cả'  },
+  { key: 'day',     label: '1D'       },
+  { key: 'week',    label: '1W'       },
+  { key: 'month',   label: '1M'       },
+  { key: 'allTime', label: 'All Time' },
 ]
 
 function Leaderboard({
@@ -177,7 +177,7 @@ function Leaderboard({
         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
         <span>Live · 60s</span>
         <a href="https://app.hyperliquid.xyz/leaderboard" target="_blank" rel="noreferrer"
-          className="ml-auto hover:text-violet-600 transition-colors">Xem thêm ↗</a>
+          className="ml-auto hover:text-violet-600 transition-colors">View more ↗</a>
       </div>
     </div>
   )
@@ -197,7 +197,7 @@ function RecentTrades() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <span className="text-lg">⚡</span>
-            <h3 className="text-slate-900 font-bold text-sm">Lệnh thị trường</h3>
+            <h3 className="text-slate-900 font-bold text-sm">Market Orders</h3>
           </div>
           <div className="flex gap-1">
             {['ALL', 'BTC', 'ETH', 'SOL'].map(c => (
@@ -205,7 +205,7 @@ function RecentTrades() {
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
                   filterCoin === c ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'
                 }`}>
-                {c === 'ALL' ? 'Tất cả' : c}
+                {c === 'ALL' ? 'All' : c}
               </button>
             ))}
           </div>
@@ -213,7 +213,7 @@ function RecentTrades() {
 
         {/* Column header */}
         <div className="grid grid-cols-[44px_48px_1fr_70px] text-[10px] text-slate-400 uppercase tracking-wide">
-          <span>Giờ</span><span>Token</span><span className="text-center">Chiều</span><span className="text-right">Giá trị</span>
+          <span>Time</span><span>Token</span><span className="text-center">Side</span><span className="text-right">Value</span>
         </div>
       </div>
 
@@ -243,7 +243,7 @@ function RecentTrades() {
                 <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                   isBuy ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                 }`}>
-                  {isBuy ? 'MUA' : 'BÁN'}
+                  {isBuy ? 'BUY' : 'SELL'}
                 </span>
               </div>
 
@@ -260,7 +260,7 @@ function RecentTrades() {
 
       <div className="px-4 py-2 border-t border-slate-200 flex items-center gap-1.5 text-[11px] text-slate-400">
         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-        <span>Live · 5s · {displayed.length} lệnh</span>
+        <span>Live · 5s · {displayed.length} orders</span>
         <span className="ml-auto text-slate-300">🐋 ≥ $100K</span>
       </div>
     </div>
@@ -318,7 +318,7 @@ function CopyTradeSignals({ fills }: { fills: HLTraderFill[] }) {
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className={`text-[11px] tracking-wider ${isLong ? 'text-emerald-500' : 'text-red-500'}`}>{bars}</span>
                   <span className="text-slate-400 text-[10px]">{fmtUSD(s.totalValue)}</span>
-                  <span className="text-slate-300 text-[10px]">{fmtRelTime(s.latestTime)} trước</span>
+                  <span className="text-slate-300 text-[10px]">{fmtRelTime(s.latestTime)}</span>
                 </div>
               </div>
               <div className={`flex flex-col items-center px-2 py-1 rounded-lg ${isLong ? 'bg-emerald-100' : 'bg-red-100'}`}>
@@ -329,7 +329,7 @@ function CopyTradeSignals({ fills }: { fills: HLTraderFill[] }) {
           )
         })}
       </div>
-      <p className="text-[10px] text-slate-400 mt-2">⚠️ Tín hiệu tham khảo · Không phải lời khuyên đầu tư</p>
+      <p className="text-[10px] text-slate-400 mt-2">⚠️ For reference only · Not investment advice</p>
     </div>
   )
 }
@@ -344,16 +344,16 @@ const DIR_CONFIG: Record<string, { icon: string; color: string; bg: string }> = 
 }
 
 function TopTraderFills({ traders }: { traders: { address: string; displayName: string | null; rank: number }[] }) {
-  const [filterCoin, setFilterCoin] = useState('Tất cả')
-  const [filterDir,  setFilterDir]  = useState('Tất cả')
+  const [filterCoin, setFilterCoin] = useState('All')
+  const [filterDir,  setFilterDir]  = useState('All')
   const { fills, loading, error } = useHLTraderFills(traders, 10)
 
-  const coins    = ['Tất cả', ...Array.from(new Set(fills.map(f => f.coin))).sort().slice(0, 10)]
-  const dirOpts  = ['Tất cả', 'Open Long', 'Open Short', 'Close Long', 'Close Short']
+  const coins    = ['All', ...Array.from(new Set(fills.map(f => f.coin))).sort().slice(0, 10)]
+  const dirOpts  = ['All', 'Open Long', 'Open Short', 'Close Long', 'Close Short']
 
   const displayed = fills.filter(f => {
-    if (filterCoin !== 'Tất cả' && f.coin !== filterCoin) return false
-    if (filterDir  !== 'Tất cả' && f.dir  !== filterDir)  return false
+    if (filterCoin !== 'All' && f.coin !== filterCoin) return false
+    if (filterDir  !== 'All' && f.dir  !== filterDir)  return false
     return true
   })
 
@@ -364,7 +364,7 @@ function TopTraderFills({ traders }: { traders: { address: string; displayName: 
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <span className="text-lg">🔭</span>
-            <h3 className="text-slate-900 font-bold text-sm">Lệnh của Top Traders</h3>
+            <h3 className="text-slate-900 font-bold text-sm">Top Trader Orders</h3>
             <span className="text-[11px] bg-violet-50 border border-violet-200 text-violet-600 px-2 py-0.5 rounded-full font-semibold">
               Top {traders.length}
             </span>
@@ -375,7 +375,7 @@ function TopTraderFills({ traders }: { traders: { address: string; displayName: 
           </div>
           <div className="flex items-center gap-1.5 text-xs text-slate-400">
             <span className="w-1.5 h-1.5 bg-violet-600 rounded-full animate-pulse"/>
-            <span>Cập nhật 15s</span>
+            <span>Updates every 15s</span>
           </div>
         </div>
 
@@ -391,7 +391,7 @@ function TopTraderFills({ traders }: { traders: { address: string; displayName: 
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
                   filterCoin === c ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'
                 }`}>
-                {c === 'Tất cả' ? 'Tất cả coin' : `${COIN_ICONS[c] ?? ''}${c}`}
+                {c === 'All' ? 'All coins' : `${COIN_ICONS[c] ?? ''}${c}`}
               </button>
             ))}
           </div>
@@ -408,7 +408,7 @@ function TopTraderFills({ traders }: { traders: { address: string; displayName: 
                     filterDir === d ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'
                   }`}>
                   {cfg && <span className={filterDir === d ? 'text-white' : cfg.color}>{cfg.icon}</span>}
-                  {d === 'Tất cả' ? 'Tất cả chiều' : d.replace('Open ', 'Mở ').replace('Close ', 'Đóng ')}
+                  {d === 'All' ? 'All sides' : d}
                 </button>
               )
             })}
@@ -455,7 +455,7 @@ function TopTraderFills({ traders }: { traders: { address: string; displayName: 
               {/* Time */}
               <div>
                 <div className="text-slate-500 font-mono text-[10px]">{fmtTime(f.time)}</div>
-                <div className="text-slate-300 text-[10px]">{fmtRelTime(f.time)} trước</div>
+                <div className="text-slate-300 text-[10px]">{fmtRelTime(f.time)}</div>
               </div>
 
               {/* Coin */}
@@ -467,7 +467,7 @@ function TopTraderFills({ traders }: { traders: { address: string; displayName: 
               <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg w-fit ${dirCfg.bg}`}>
                 <span className={`text-sm ${dirCfg.color}`}>{dirCfg.icon}</span>
                 <span className={`text-[10px] font-semibold ${dirCfg.color}`}>
-                  {f.dir.replace('Open ', 'Mở ').replace('Close ', 'Đóng ')}
+                  {f.dir}
                 </span>
               </div>
 
@@ -492,7 +492,7 @@ function TopTraderFills({ traders }: { traders: { address: string; displayName: 
       {/* Footer */}
       <div className="px-5 py-3 border-t border-slate-200 flex items-center gap-2 text-[11px] text-slate-400">
         <span className="w-1.5 h-1.5 bg-violet-600 rounded-full animate-pulse"/>
-        <span>{displayed.length} lệnh · Top {traders.length} traders · 15s</span>
+        <span>{displayed.length} orders · Top {traders.length} traders · 15s</span>
         <span className="ml-auto text-slate-300">▲ Mở Long · ▼ Mở Short · ▽▵ Đóng · 🐋 ≥$100K</span>
       </div>
     </div>
@@ -516,7 +516,7 @@ export default function HyperliquidPanel() {
             className="w-4 h-4 rounded-sm"
             onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
           />
-          <span className="text-slate-400 text-xs font-medium">Dữ liệu thực từ Hyperliquid Mainnet</span>
+          <span className="text-slate-400 text-xs font-medium">Live data from Hyperliquid Mainnet</span>
         </div>
         <div className="flex-1 h-px bg-slate-200" />
       </div>
