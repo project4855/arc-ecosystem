@@ -222,6 +222,179 @@ async function fetchAirdropsIO() {
   }
 }
 
+// ── DeFiLlama Yields ──────────────────────────────────────────────────────────
+// Free API, no auth needed. Returns top yield farming pools.
+
+async function fetchDefiLlamaYields() {
+  try {
+    log('Fetching DeFiLlama yields...')
+    const res = await fetch('https://yields.llama.fi/pools', {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(20_000),
+    })
+    if (!res.ok) {
+      log(`DeFiLlama yields error: ${res.status}`)
+      return []
+    }
+
+    const json = await res.json()
+    const pools = json.data ?? []
+
+    // Lọc pool có TVL > $5M, APY > 3%, không stablecoin-only, không deprecated
+    const filtered = pools
+      .filter(p =>
+        p.tvlUsd >= 5_000_000 &&
+        p.apy >= 3 &&
+        p.status !== 'dead' &&
+        !p.outlier &&
+        p.exposure !== 'single' // bỏ single-sided stablecoin vô nghĩa
+      )
+      .sort((a, b) => b.apy - a.apy)
+      .slice(0, 50)
+
+    return filtered.map(p => ({
+      pool:        p.pool,
+      chain:       p.chain,
+      project:     p.project,
+      symbol:      p.symbol,
+      tvlUsd:      p.tvlUsd,
+      apy:         Math.round(p.apy * 100) / 100,
+      apyBase:     p.apyBase ?? null,
+      apyReward:   p.apyReward ?? null,
+      stablecoin:  p.stablecoin ?? false,
+      ilRisk:      p.ilRisk ?? 'NO',
+      exposure:    p.exposure,
+      fetchedAt:   new Date().toISOString(),
+    }))
+  } catch (err) {
+    log(`DeFiLlama fetch error: ${err.message}`)
+    return []
+  }
+}
+
+// ── DappRadar Airdrops ────────────────────────────────────────────────────────
+// Public demo key. Returns active airdrop campaigns.
+
+async function fetchDappRadarAirdrops() {
+  try {
+    log('Fetching DappRadar airdrops...')
+    const res = await fetch(
+      'https://api.dappradar.com/4tsxo4vuhotaojtl/airdrops?resultsPerPage=25&page=1',
+      {
+        headers: { Accept: 'application/json', 'X-BLOBR-KEY': '4tsxo4vuhotaojtl' },
+        signal: AbortSignal.timeout(15_000),
+      }
+    )
+    if (!res.ok) {
+      log(`DappRadar error: ${res.status}`)
+      return []
+    }
+
+    const json = await res.json()
+    const items = json.results ?? json.data?.results ?? []
+
+    return items.slice(0, 25).map(a => ({
+      id:          a.id ?? a.slug ?? String(Math.random()),
+      name:        a.name ?? a.title ?? 'Unknown',
+      logo:        a.logo ?? a.icon ?? null,
+      chain:       a.chain ?? a.network ?? null,
+      description: (a.description ?? '').slice(0, 200),
+      totalValue:  a.totalValue ?? a.total_value ?? null,
+      endDate:     a.endDate ?? a.end_date ?? null,
+      link:        a.link ?? a.url ?? null,
+      type:        a.type ?? 'airdrop',
+      fetchedAt:   new Date().toISOString(),
+    }))
+  } catch (err) {
+    log(`DappRadar fetch error: ${err.message}`)
+    return []
+  }
+}
+
+// ── AirdropAlert RSS ──────────────────────────────────────────────────────────
+// RSS feed — parse XML manually (no external parser needed)
+
+async function fetchAirdropAlertRSS() {
+  try {
+    log('Fetching AirdropAlert RSS...')
+    const res = await fetch('https://airdropalert.com/feed/', {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AirdropBot/1.0)' },
+      signal: AbortSignal.timeout(15_000),
+    })
+    if (!res.ok) {
+      log(`AirdropAlert RSS error: ${res.status}`)
+      return []
+    }
+
+    const xml = await res.text()
+
+    // Parse RSS items from XML
+    const items = []
+    const itemRegex = /<item>([\s\S]*?)<\/item>/g
+    let itemMatch
+    while ((itemMatch = itemRegex.exec(xml)) !== null) {
+      const block = itemMatch[1]
+
+      const title   = (/<title><!\[CDATA\[([^\]]+)\]\]><\/title>/.exec(block) ?? /<title>([^<]+)<\/title>/.exec(block))?.[1]?.trim() ?? ''
+      const link    = (/<link>([^<]+)<\/link>/.exec(block))?.[1]?.trim() ?? ''
+      const pubDate = (/<pubDate>([^<]+)<\/pubDate>/.exec(block))?.[1]?.trim() ?? ''
+      const desc    = (/<description><!\[CDATA\[([^\]]+)\]\]><\/description>/.exec(block) ?? /<description>([^<]+)<\/description>/.exec(block))?.[1]?.trim().replace(/<[^>]+>/g, '').slice(0, 200) ?? ''
+
+      if (title) {
+        items.push({ title, link, pubDate, description: desc, fetchedAt: new Date().toISOString() })
+      }
+    }
+
+    log(`AirdropAlert RSS: ${items.length} items`)
+    return items.slice(0, 20)
+  } catch (err) {
+    log(`AirdropAlert RSS error: ${err.message}`)
+    return []
+  }
+}
+
+// ── CryptoRank Funding Rounds ─────────────────────────────────────────────────
+// v0 API — no auth needed
+
+async function fetchCryptoRankFunding() {
+  try {
+    log('Fetching CryptoRank funding rounds...')
+    const res = await fetch(
+      'https://api.cryptorank.io/v0/funds/fundingrounds?limit=30&sortBy=date&order=desc',
+      {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(15_000),
+      }
+    )
+    if (!res.ok) {
+      log(`CryptoRank funding error: ${res.status}`)
+      return []
+    }
+
+    const json = await res.json()
+    const rounds = json.data ?? []
+
+    return rounds.slice(0, 30).map(r => ({
+      id:          r.id ?? String(r.coinKey ?? Math.random()),
+      coinName:    r.coinName ?? r.name ?? 'Unknown',
+      coinKey:     r.coinKey ?? null,
+      symbol:      r.symbol ?? null,
+      logo:        r.coin?.image?.icon ?? null,
+      amount:      r.amount ?? null,
+      amountUsd:   r.amountUsd ?? r.amount ?? null,
+      stage:       r.stage ?? r.type ?? null,
+      date:        r.date ?? null,
+      investors:   (r.investors ?? []).slice(0, 5).map(i => i.name ?? i).filter(Boolean),
+      category:    r.category ?? null,
+      isTraded:    r.isTraded ?? false,
+      fetchedAt:   new Date().toISOString(),
+    }))
+  } catch (err) {
+    log(`CryptoRank funding error: ${err.message}`)
+    return []
+  }
+}
+
 // ── CoinGecko verify ──────────────────────────────────────────────────────────
 // Nguồn đáng tin nhất: nếu coin có market_cap_rank → đang được trade thật sự
 
@@ -548,10 +721,30 @@ async function main() {
     log(`airdrops.io có ${airdropsIONames.length} tên: ${airdropsIONames.join(', ')}`)
   }
 
-  // 5. Ghi lại JSON
+  // 5. Fetch external data sources (chạy song song để nhanh)
+  log('\n── Fetching external data sources ──')
+  const [defiLlamaYields, dappRadarAirdrops, airdropAlertItems, cryptorankFunding] =
+    await Promise.allSettled([
+      fetchDefiLlamaYields(),
+      fetchDappRadarAirdrops(),
+      fetchAirdropAlertRSS(),
+      fetchCryptoRankFunding(),
+    ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : []))
+
+  log(`DeFiLlama yields: ${defiLlamaYields.length} pools`)
+  log(`DappRadar airdrops: ${dappRadarAirdrops.length} items`)
+  log(`AirdropAlert RSS: ${airdropAlertItems.length} items`)
+  log(`CryptoRank funding: ${cryptorankFunding.length} rounds`)
+
+  // Keep previous external data if fetch failed (fallback)
+  const prevYields    = store.yields ?? []
+  const prevExternal  = store.externalAirdrops ?? []
+  const prevFunding   = store.cryptorankFunding ?? []
+
+  // 6. Ghi lại JSON
   const updated = {
     lastUpdated: new Date().toISOString().split('T')[0],
-    source:      'Auto-updated daily via GitHub Actions · X API + CryptoRank + airdrops.io',
+    source:      'Auto-updated daily via GitHub Actions · X API + CryptoRank + DeFiLlama + DappRadar + AirdropAlert',
     updateLog: {
       graduatedThisRun:  newGraduated.map((g) => g.name),
       checkedProjects:   projects.length,
@@ -559,19 +752,34 @@ async function main() {
       xApiUsed:          !!X_TOKEN,
       verificationSources: ['dexscreener', 'coinpaprika', X_TOKEN ? 'x-api' : null].filter(Boolean),
       newSuggestionsFromCryptoRank: newSuggestions.map((c) => `${c.name} (${c.symbol})`),
+      externalFetchCounts: {
+        defiLlama:    defiLlamaYields.length,
+        dappRadar:    dappRadarAirdrops.length,
+        airdropAlert: airdropAlertItems.length,
+        cryptorank:   cryptorankFunding.length,
+      },
     },
     projects:  stillActive,
     graduated: [
       ...newGraduated,
       ...(graduated.filter((g) => !newGraduated.find((n) => n.id === g.id))),
     ],
+    // External live data (updated daily)
+    yields:           defiLlamaYields.length  > 0 ? defiLlamaYields  : prevYields,
+    externalAirdrops: dappRadarAirdrops.length > 0 ? dappRadarAirdrops : prevExternal,
+    airdropAlertFeed: airdropAlertItems.length > 0 ? airdropAlertItems : (store.airdropAlertFeed ?? []),
+    cryptorankFunding: cryptorankFunding.length > 0 ? cryptorankFunding : prevFunding,
   }
 
   writeFileSync(DATA, JSON.stringify(updated, null, 2), 'utf-8')
 
   log(`\n═══ Kết quả ═══`)
-  log(`  Active:    ${stillActive.length} dự án`)
-  log(`  Graduated: ${newGraduated.length} dự án mới phát hiện`)
+  log(`  Active:         ${stillActive.length} dự án`)
+  log(`  Graduated:      ${newGraduated.length} dự án mới phát hiện`)
+  log(`  DeFiLlama:      ${defiLlamaYields.length} pools`)
+  log(`  DappRadar:      ${dappRadarAirdrops.length} airdrops`)
+  log(`  AirdropAlert:   ${airdropAlertItems.length} items`)
+  log(`  CryptoRank FRs: ${cryptorankFunding.length} funding rounds`)
   log(`  File đã ghi: ${DATA}`)
   log('═══ Done ═══')
 }

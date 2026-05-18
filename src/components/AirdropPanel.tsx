@@ -1,9 +1,11 @@
 // ── AirdropPanel.tsx ──────────────────────────────────────────────────────────
 // Chỉ liệt kê dự án CHƯA phát token / chưa airdrop
-// Dữ liệu xác minh từ X & nguồn tin. Cập nhật hàng tuần.
+// Dữ liệu xác minh từ X & nguồn tin. Cập nhật hàng ngày.
 
 import { useState, useEffect } from 'react'
 import airdropData from '../data/airdrops.json'
+
+type AirdropTab = 'airdrops' | 'yields' | 'external' | 'funding'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -33,6 +35,60 @@ interface AirdropProject {
   }
 }
 
+// ── External data types ────────────────────────────────────────────────────────
+
+interface YieldPool {
+  pool:       string
+  chain:      string
+  project:    string
+  symbol:     string
+  tvlUsd:     number
+  apy:        number
+  apyBase:    number | null
+  apyReward:  number | null
+  stablecoin: boolean
+  ilRisk:     string
+  exposure:   string
+  fetchedAt:  string
+}
+
+interface ExternalAirdrop {
+  id:          string
+  name:        string
+  logo:        string | null
+  chain:       string | null
+  description: string
+  totalValue:  string | null
+  endDate:     string | null
+  link:        string | null
+  type:        string
+  fetchedAt:   string
+}
+
+interface AlertItem {
+  title:       string
+  link:        string
+  pubDate:     string
+  description: string
+  fetchedAt:   string
+}
+
+interface FundingRound {
+  id:        string
+  coinName:  string
+  coinKey:   string | null
+  symbol:    string | null
+  logo:      string | null
+  amount:    number | null
+  amountUsd: number | null
+  stage:     string | null
+  date:      string | null
+  investors: string[]
+  category:  string | null
+  isTraded:  boolean
+  fetchedAt: string
+}
+
 // ── Data từ JSON (cập nhật tự động hàng ngày) ────────────────────────────────
 
 const PROJECTS     = airdropData.projects as AirdropProject[]
@@ -44,8 +100,18 @@ const GRADUATED    = (airdropData as any).graduated as {
 }[]
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const UPDATE_LOG   = (airdropData as any).updateLog as {
-  graduatedThisRun: string[]; checkedProjects: number; runAt: string; xApiUsed: boolean
+  graduatedThisRun: string[]; checkedProjects: number; runAt: string; xApiUsed: boolean;
+  externalFetchCounts?: { defiLlama: number; dappRadar: number; airdropAlert: number; cryptorank: number }
 } | undefined
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const YIELDS            = (airdropData as any).yields            as YieldPool[]      ?? []
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const EXTERNAL_AIRDROPS = (airdropData as any).externalAirdrops  as ExternalAirdrop[] ?? []
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ALERT_FEED        = (airdropData as any).airdropAlertFeed  as AlertItem[]       ?? []
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const FUNDING_ROUNDS    = (airdropData as any).cryptorankFunding  as FundingRound[]   ?? []
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -385,9 +451,427 @@ function GraduatedBanner() {
   )
 }
 
+// ── Yield Farming Panel ───────────────────────────────────────────────────────
+
+function YieldFarmingPanel() {
+  const [chainFilter, setChainFilter] = useState('Tất cả')
+  const [search, setSearch] = useState('')
+
+  const chains = ['Tất cả', ...Array.from(new Set(YIELDS.map(y => y.chain))).sort()]
+
+  const filtered = YIELDS.filter(y => {
+    if (chainFilter !== 'Tất cả' && y.chain !== chainFilter) return false
+    if (search && !y.project.toLowerCase().includes(search.toLowerCase()) &&
+        !y.symbol.toLowerCase().includes(search.toLowerCase())) return false
+    return true
+  })
+
+  const formatTvl = (tvl: number) => {
+    if (tvl >= 1_000_000_000) return `$${(tvl / 1_000_000_000).toFixed(1)}B`
+    if (tvl >= 1_000_000)     return `$${(tvl / 1_000_000).toFixed(1)}M`
+    return `$${(tvl / 1_000).toFixed(0)}K`
+  }
+
+  if (YIELDS.length === 0) {
+    return (
+      <div className="text-center py-20 text-slate-400">
+        <div className="text-5xl mb-4">🌾</div>
+        <div className="text-slate-500 font-semibold mb-2">Chưa có dữ liệu Yield Farming</div>
+        <p className="text-sm max-w-sm mx-auto">Dữ liệu sẽ được cập nhật tự động hàng ngày từ DeFiLlama. Chạy lại GitHub Actions để lấy dữ liệu.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-emerald-50 border border-emerald-200">
+        <span className="text-2xl">🌾</span>
+        <div>
+          <div className="font-bold text-slate-900 text-sm">DeFiLlama Yield Farming</div>
+          <div className="text-slate-500 text-xs mt-0.5">Top {YIELDS.length} pools · APY cao nhất · TVL &gt; $5M · Cập nhật hàng ngày</div>
+        </div>
+        <a href="https://defillama.com/yields" target="_blank" rel="noreferrer"
+          className="ml-auto text-xs text-emerald-600 hover:text-emerald-700 font-medium">
+          defillama.com →
+        </a>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+          <input
+            type="text"
+            placeholder="Tìm protocol..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-400 w-40"
+          />
+        </div>
+        <div className="flex gap-1 flex-wrap">
+          {chains.slice(0, 8).map(c => (
+            <button key={c} onClick={() => setChainFilter(c)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                chainFilter === c
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-white border border-slate-200 text-slate-500 hover:border-slate-400'
+              }`}>
+              {c}
+            </button>
+          ))}
+        </div>
+        <span className="ml-auto text-xs text-slate-400">{filtered.length} pools</span>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500">#</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Protocol / Pool</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Chain</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500">APY</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500">TVL</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500">IL Risk</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {filtered.slice(0, 50).map((y, i) => (
+                <tr key={y.pool} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-4 py-3 text-slate-400 text-xs">{i + 1}</td>
+                  <td className="px-4 py-3">
+                    <div className="font-semibold text-slate-900 text-xs">{y.project}</div>
+                    <div className="text-slate-400 text-[10px] mt-0.5">{y.symbol}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 border border-blue-100 text-blue-600 font-medium">
+                      {y.chain}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <span className={`font-bold text-sm ${y.apy >= 20 ? 'text-emerald-600' : y.apy >= 10 ? 'text-blue-600' : 'text-slate-700'}`}>
+                      {y.apy.toFixed(1)}%
+                    </span>
+                    {y.apyReward && y.apyReward > 0 && (
+                      <div className="text-[10px] text-violet-500 mt-0.5">+{y.apyReward.toFixed(1)}% reward</div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right text-xs text-slate-600 font-medium">{formatTvl(y.tvlUsd)}</td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${
+                      y.ilRisk === 'YES'
+                        ? 'bg-red-50 border-red-200 text-red-600'
+                        : 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                    }`}>
+                      {y.ilRisk === 'YES' ? '⚠ IL' : '✓ Thấp'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <p className="text-center text-xs text-slate-400">
+        Dữ liệu từ <a href="https://defillama.com/yields" target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline">DeFiLlama</a> ·
+        Cập nhật lúc {YIELDS[0]?.fetchedAt ? new Date(YIELDS[0].fetchedAt).toLocaleString('vi-VN') : '—'}
+      </p>
+    </div>
+  )
+}
+
+// ── External Airdrops Panel ────────────────────────────────────────────────────
+
+function ExternalAirdropsPanel() {
+  const hasData = EXTERNAL_AIRDROPS.length > 0 || ALERT_FEED.length > 0
+
+  if (!hasData) {
+    return (
+      <div className="text-center py-20 text-slate-400">
+        <div className="text-5xl mb-4">📡</div>
+        <div className="text-slate-500 font-semibold mb-2">Chưa có dữ liệu tổng hợp</div>
+        <p className="text-sm max-w-sm mx-auto">Dữ liệu từ DappRadar và AirdropAlert sẽ được cập nhật tự động hàng ngày qua GitHub Actions.</p>
+        <div className="mt-4 flex justify-center gap-3">
+          <a href="https://dappradar.com/rewards" target="_blank" rel="noreferrer"
+            className="text-xs text-violet-600 hover:underline">dappradar.com/rewards →</a>
+          <a href="https://airdropalert.com" target="_blank" rel="noreferrer"
+            className="text-xs text-blue-600 hover:underline">airdropalert.com →</a>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* DappRadar section */}
+      {EXTERNAL_AIRDROPS.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🎮</span>
+            <h3 className="font-bold text-slate-900">DappRadar Airdrops & Rewards</h3>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-violet-600">
+              {EXTERNAL_AIRDROPS.length} campaigns
+            </span>
+            <a href="https://dappradar.com/rewards" target="_blank" rel="noreferrer"
+              className="ml-auto text-xs text-violet-600 hover:underline">Xem tất cả →</a>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {EXTERNAL_AIRDROPS.map(a => (
+              <div key={a.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center shrink-0 text-xl">
+                    {a.logo ? <img src={a.logo} alt="" className="w-8 h-8 rounded-lg object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display='none' }} /> : '🎁'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-slate-900 text-sm truncate">{a.name}</div>
+                    {a.chain && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 border border-blue-100 text-blue-600 font-medium">
+                        {a.chain}
+                      </span>
+                    )}
+                  </div>
+                  {a.totalValue && (
+                    <div className="text-right shrink-0">
+                      <div className="text-xs text-slate-400">Tổng thưởng</div>
+                      <div className="text-emerald-600 font-bold text-sm">{a.totalValue}</div>
+                    </div>
+                  )}
+                </div>
+                {a.description && (
+                  <p className="text-slate-500 text-xs leading-relaxed line-clamp-2">{a.description}</p>
+                )}
+                <div className="flex items-center justify-between mt-auto">
+                  {a.endDate && (
+                    <div className="text-xs text-slate-400">
+                      <span>⏰ Hết hạn: </span>
+                      <span className="text-amber-600 font-medium">{a.endDate}</span>
+                    </div>
+                  )}
+                  {a.link && (
+                    <a href={a.link} target="_blank" rel="noreferrer"
+                      className="ml-auto text-xs text-violet-600 hover:text-violet-700 font-semibold transition-colors">
+                      Tham gia →
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* AirdropAlert RSS section */}
+      {ALERT_FEED.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🔔</span>
+            <h3 className="font-bold text-slate-900">AirdropAlert — Tin mới nhất</h3>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-orange-600">
+              {ALERT_FEED.length} items
+            </span>
+            <a href="https://airdropalert.com" target="_blank" rel="noreferrer"
+              className="ml-auto text-xs text-orange-600 hover:underline">airdropalert.com →</a>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm divide-y divide-slate-50">
+            {ALERT_FEED.map((item, i) => (
+              <div key={i} className="px-4 py-3 hover:bg-slate-50 transition-colors flex items-start gap-3">
+                <div className="w-5 h-5 rounded-full bg-orange-50 border border-orange-200 text-orange-600 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                  {i + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-slate-900 text-sm leading-tight">{item.title}</div>
+                  {item.description && (
+                    <p className="text-slate-500 text-xs mt-1 line-clamp-2">{item.description}</p>
+                  )}
+                  <div className="flex items-center gap-3 mt-1.5">
+                    {item.pubDate && (
+                      <span className="text-slate-400 text-[10px]">
+                        {new Date(item.pubDate).toLocaleDateString('vi-VN')}
+                      </span>
+                    )}
+                    {item.link && (
+                      <a href={item.link} target="_blank" rel="noreferrer"
+                        className="text-[10px] text-orange-600 hover:underline font-medium">
+                        Đọc thêm →
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-slate-400 text-center">
+            RSS từ <a href="https://airdropalert.com" target="_blank" rel="noreferrer" className="text-orange-600 hover:underline">AirdropAlert</a> ·
+            Cập nhật lúc {ALERT_FEED[0]?.fetchedAt ? new Date(ALERT_FEED[0].fetchedAt).toLocaleString('vi-VN') : '—'}
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Funding Rounds Panel ──────────────────────────────────────────────────────
+
+function FundingPanel() {
+  const [search, setSearch] = useState('')
+  const [stageFilter, setStageFilter] = useState('Tất cả')
+
+  const stages = ['Tất cả', ...Array.from(new Set(FUNDING_ROUNDS.map(r => r.stage ?? 'Unknown'))).filter(Boolean).sort()]
+
+  const filtered = FUNDING_ROUNDS.filter(r => {
+    if (stageFilter !== 'Tất cả' && (r.stage ?? 'Unknown') !== stageFilter) return false
+    if (search && !r.coinName.toLowerCase().includes(search.toLowerCase()) &&
+        !(r.symbol ?? '').toLowerCase().includes(search.toLowerCase())) return false
+    return true
+  })
+
+  const formatAmount = (usd: number | null) => {
+    if (!usd) return '—'
+    if (usd >= 1_000_000_000) return `$${(usd / 1_000_000_000).toFixed(1)}B`
+    if (usd >= 1_000_000)     return `$${(usd / 1_000_000).toFixed(1)}M`
+    if (usd >= 1_000)         return `$${(usd / 1_000).toFixed(0)}K`
+    return `$${usd}`
+  }
+
+  if (FUNDING_ROUNDS.length === 0) {
+    return (
+      <div className="text-center py-20 text-slate-400">
+        <div className="text-5xl mb-4">💰</div>
+        <div className="text-slate-500 font-semibold mb-2">Chưa có dữ liệu Gọi vốn</div>
+        <p className="text-sm max-w-sm mx-auto">Dữ liệu funding rounds từ CryptoRank sẽ được cập nhật tự động hàng ngày.</p>
+        <a href="https://cryptorank.io/funding-rounds" target="_blank" rel="noreferrer"
+          className="mt-3 inline-block text-xs text-violet-600 hover:underline">cryptorank.io/funding-rounds →</a>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200">
+        <span className="text-2xl">💰</span>
+        <div>
+          <div className="font-bold text-slate-900 text-sm">CryptoRank — Funding Rounds mới nhất</div>
+          <div className="text-slate-500 text-xs mt-0.5">{FUNDING_ROUNDS.length} deals · Dự án chưa trade = tiềm năng airdrop · Cập nhật hàng ngày</div>
+        </div>
+        <a href="https://cryptorank.io/funding-rounds" target="_blank" rel="noreferrer"
+          className="ml-auto text-xs text-amber-700 hover:text-amber-800 font-medium">
+          cryptorank.io →
+        </a>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Tổng deals', value: String(FUNDING_ROUNDS.length), color: 'text-amber-600', icon: '📊' },
+          { label: 'Chưa trade', value: String(FUNDING_ROUNDS.filter(r => !r.isTraded).length), color: 'text-violet-600', icon: '🎯' },
+          { label: 'Tổng vốn', value: formatAmount(FUNDING_ROUNDS.reduce((s, r) => s + (r.amountUsd ?? 0), 0)), color: 'text-emerald-600', icon: '💵' },
+        ].map(s => (
+          <div key={s.label} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-3 text-center">
+            <div className="text-lg mb-1">{s.icon}</div>
+            <div className={`font-bold text-base ${s.color}`}>{s.value}</div>
+            <div className="text-slate-400 text-xs">{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+          <input
+            type="text"
+            placeholder="Tìm dự án..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-400 w-40"
+          />
+        </div>
+        <div className="flex gap-1 flex-wrap">
+          {stages.slice(0, 6).map(s => (
+            <button key={s} onClick={() => setStageFilter(s)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                stageFilter === s
+                  ? 'bg-amber-600 text-white shadow-sm'
+                  : 'bg-white border border-slate-200 text-slate-500 hover:border-slate-400'
+              }`}>
+              {s}
+            </button>
+          ))}
+        </div>
+        <span className="ml-auto text-xs text-slate-400">{filtered.length} deals</span>
+      </div>
+
+      {/* Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+        {filtered.map(r => (
+          <div key={r.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0 text-xl">
+                {r.logo
+                  ? <img src={r.logo} alt="" className="w-8 h-8 rounded-lg object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display='none' }} />
+                  : '🪙'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-slate-900 text-sm truncate">{r.coinName}</div>
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                  {r.symbol && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-mono">
+                      ${r.symbol}
+                    </span>
+                  )}
+                  {r.stage && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 font-medium">
+                      {r.stage}
+                    </span>
+                  )}
+                  {!r.isTraded && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-violet-700 font-semibold">
+                      🎯 Chưa trade
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="text-emerald-600 font-bold">{formatAmount(r.amountUsd)}</div>
+                {r.date && <div className="text-[10px] text-slate-400 mt-0.5">{r.date}</div>}
+              </div>
+            </div>
+            {r.investors.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {r.investors.map(inv => (
+                  <span key={inv} className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600">
+                    {inv}
+                  </span>
+                ))}
+              </div>
+            )}
+            {r.category && (
+              <div className="flex items-center gap-1 text-xs text-slate-400">
+                <span>📂</span>
+                <span>{r.category}</span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <p className="text-center text-xs text-slate-400">
+        Dữ liệu từ <a href="https://cryptorank.io" target="_blank" rel="noreferrer" className="text-amber-600 hover:underline">CryptoRank</a> ·
+        Cập nhật lúc {FUNDING_ROUNDS[0]?.fetchedAt ? new Date(FUNDING_ROUNDS[0].fetchedAt).toLocaleString('vi-VN') : '—'}
+      </p>
+    </div>
+  )
+}
+
 // ── Main Panel ────────────────────────────────────────────────────────────────
 
 export default function AirdropPanel() {
+  const [activeTab, setActiveTab]   = useState<AirdropTab>('airdrops')
   const [catFilter,  setCatFilter]  = useState<string>('Tất cả')
   const [probFilter, setProbFilter] = useState<string>('Tất cả')
   const [search,     setSearch]     = useState('')
@@ -403,6 +887,13 @@ export default function AirdropPanel() {
   const updatedDate = new Date(LAST_UPDATED).toLocaleDateString('vi-VN', {
     day: '2-digit', month: '2-digit', year: 'numeric',
   })
+
+  const TABS: { key: AirdropTab; label: string; count?: number }[] = [
+    { key: 'airdrops', label: '🪂 Airdrop',      count: PROJECTS.length },
+    { key: 'yields',   label: '🌾 Yield Farming', count: YIELDS.length || undefined },
+    { key: 'external', label: '📡 Tổng hợp',      count: (EXTERNAL_AIRDROPS.length + ALERT_FEED.length) || undefined },
+    { key: 'funding',  label: '💰 Gọi vốn',       count: FUNDING_ROUNDS.length || undefined },
+  ]
 
   return (
     <div className="flex flex-col gap-5">
@@ -423,7 +914,7 @@ export default function AirdropPanel() {
             </div>
             <p className="text-slate-500 text-sm leading-relaxed max-w-xl">
               Chỉ liệt kê dự án <strong className="text-slate-900">chưa phát token và chưa airdrop</strong>.
-              Xác minh từ X và các nguồn tin. Cập nhật hàng tuần.
+              Kết hợp dữ liệu từ <strong className="text-slate-900">DeFiLlama · DappRadar · AirdropAlert · CryptoRank</strong>.
             </p>
           </div>
 
@@ -437,7 +928,7 @@ export default function AirdropPanel() {
             <div className="flex items-center gap-1 text-slate-400">
               <span>{UPDATE_LOG?.xApiUsed ? '𝕏 X API ✓' : '𝕏 X API'}</span>
               <span>·</span>
-              <span>CryptoRank</span>
+              <span>5 nguồn</span>
             </div>
             <a
               href="https://github.com/project4855/arc-spot/actions"
@@ -452,79 +943,116 @@ export default function AirdropPanel() {
         </div>
       </div>
 
-      {/* Data source note */}
-      <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 rounded-xl px-3 py-2 border border-slate-200">
-        <span>📌</span>
-        <span>Nguồn: {DATA_SOURCE}</span>
+      {/* Sub-tab navigation */}
+      <div className="flex bg-white border border-slate-200 shadow-sm rounded-2xl p-1 gap-1 flex-wrap">
+        {TABS.map(({ key, label, count }) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+              activeTab === key
+                ? 'bg-violet-600 text-white shadow-sm'
+                : 'text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            {label}
+            {count !== undefined && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                activeTab === key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+              }`}>
+                {count}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
-      {/* Stats */}
-      <SummaryStats projects={PROJECTS} />
+      {/* ═══ AIRDROP TAB ═══ */}
+      {activeTab === 'airdrops' && (
+        <>
+          {/* Data source note */}
+          <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 rounded-xl px-3 py-2 border border-slate-200">
+            <span>📌</span>
+            <span>Nguồn: {DATA_SOURCE}</span>
+          </div>
 
-      {/* Already graduated */}
-      <GraduatedBanner />
+          {/* Stats */}
+          <SummaryStats projects={PROJECTS} />
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600">🔍</span>
-          <input
-            type="text"
-            placeholder="Tìm dự án..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-400 w-36"
-          />
-        </div>
+          {/* Already graduated */}
+          <GraduatedBanner />
 
-        <div className="flex gap-1 flex-wrap">
-          {ALL_CATEGORIES.map((c) => (
-            <button
-              key={c}
-              onClick={() => setCatFilter(c)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                catFilter === c
-                  ? 'bg-violet-600 text-white shadow-sm'
-                  : 'bg-white border border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-900'
-              }`}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600">🔍</span>
+              <input
+                type="text"
+                placeholder="Tìm dự án..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-400 w-36"
+              />
+            </div>
 
-        <div className="flex gap-1 ml-auto">
-          {['Tất cả', 'Rất cao', 'Cao', 'Trung bình'].map((p) => (
-            <button
-              key={p}
-              onClick={() => setProbFilter(p)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                probFilter === p
-                  ? 'bg-violet-600 text-white shadow-sm'
-                  : 'bg-white border border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-900'
-              }`}
-            >
-              {p === 'Tất cả' ? 'Xác suất' : p}
-            </button>
-          ))}
-        </div>
-      </div>
+            <div className="flex gap-1 flex-wrap">
+              {ALL_CATEGORIES.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setCatFilter(c)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                    catFilter === c
+                      ? 'bg-violet-600 text-white shadow-sm'
+                      : 'bg-white border border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-900'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
 
-      {filtered.length !== PROJECTS.length && (
-        <p className="text-slate-400 text-xs">Hiển thị {filtered.length}/{PROJECTS.length} dự án</p>
+            <div className="flex gap-1 ml-auto">
+              {['Tất cả', 'Rất cao', 'Cao', 'Trung bình'].map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setProbFilter(p)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                    probFilter === p
+                      ? 'bg-violet-600 text-white shadow-sm'
+                      : 'bg-white border border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-900'
+                  }`}
+                >
+                  {p === 'Tất cả' ? 'Xác suất' : p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {filtered.length !== PROJECTS.length && (
+            <p className="text-slate-400 text-xs">Hiển thị {filtered.length}/{PROJECTS.length} dự án</p>
+          )}
+
+          {filtered.length === 0 ? (
+            <div className="text-center py-16 text-slate-400">
+              <div className="text-4xl mb-3">🔍</div>
+              <div>Không tìm thấy dự án phù hợp</div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {filtered.map((p) => <ProjectCard key={p.id} p={p} />)}
+            </div>
+          )}
+        </>
       )}
 
-      {/* Cards */}
-      {filtered.length === 0 ? (
-        <div className="text-center py-16 text-slate-400">
-          <div className="text-4xl mb-3">🔍</div>
-          <div>Không tìm thấy dự án phù hợp</div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map((p) => <ProjectCard key={p.id} p={p} />)}
-        </div>
-      )}
+      {/* ═══ YIELD FARMING TAB ═══ */}
+      {activeTab === 'yields' && <YieldFarmingPanel />}
+
+      {/* ═══ EXTERNAL AGGREGATED TAB ═══ */}
+      {activeTab === 'external' && <ExternalAirdropsPanel />}
+
+      {/* ═══ FUNDING ROUNDS TAB ═══ */}
+      {activeTab === 'funding' && <FundingPanel />}
 
       <p className="text-center text-xs text-slate-400 py-2">
         Thông tin mang tính tham khảo · Không phải lời khuyên tài chính ·

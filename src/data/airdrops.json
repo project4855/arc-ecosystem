@@ -1,13 +1,23 @@
 {
   "lastUpdated": "2026-05-17",
-  "source": "Auto-updated daily via GitHub Actions · X API + CryptoRank + airdrops.io",
+  "source": "Auto-updated daily via GitHub Actions · X API + CryptoRank + DeFiLlama + DappRadar + AirdropAlert",
   "updateLog": {
     "graduatedThisRun": [],
     "checkedProjects": 13,
     "runAt": "2026-05-17T08:19:28.723Z",
     "xApiUsed": true,
-    "newSuggestionsFromCryptoRank": []
+    "newSuggestionsFromCryptoRank": [],
+    "externalFetchCounts": {
+      "defiLlama": 0,
+      "dappRadar": 0,
+      "airdropAlert": 0,
+      "cryptorank": 0
+    }
   },
+  "yields": [],
+  "externalAirdrops": [],
+  "airdropAlertFeed": [],
+  "cryptorankFunding": [],
   "projects": [
     {
       "id": "unichain",
