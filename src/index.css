@@ -7,8 +7,8 @@
 }
 
 body {
-  background-color: #0a0b0e;
-  color: #e2e8f0;
+  background-color: #f8fafc;
+  color: #0f172a;
   font-family: 'Inter', system-ui, sans-serif;
   min-height: 100vh;
 }
@@ -17,28 +17,19 @@ body {
   min-height: 100vh;
 }
 
-/* RainbowKit dark theme override */
-[data-rk] {
-  --rk-colors-accentColor: #7c3aed !important;
-  --rk-colors-accentColorForeground: #ffffff !important;
-}
-
-/* Custom scrollbar */
+/* Custom scrollbar — light */
 ::-webkit-scrollbar {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #111318;
+  background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-  background: #374151;
+  background: #94a3b8;
   border-radius: 3px;
 }
 
-/* Glow effects */
-.glow-purple {
-  box-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
-}
-.glow-blue {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+/* Subtle shadow for cards */
+.card-shadow {
+  box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
 }

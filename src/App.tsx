@@ -25,24 +25,24 @@ export default function App() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#0a0b0e] flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar />
 
       <main className="flex-1 flex flex-col px-4 pt-6 pb-16 gap-6 max-w-[1400px] mx-auto w-full">
 
         {/* Hero */}
         <div className="text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-medium mb-3">
-            <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-pulse" />
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-50 border border-violet-200 text-violet-700 text-xs font-medium mb-3">
+            <span className="w-1.5 h-1.5 bg-violet-600 rounded-full animate-pulse" />
             Live on Arc Testnet
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">
             DeFi on{' '}
             <span className="bg-gradient-to-r from-violet-400 to-blue-400 bg-clip-text text-transparent">
               Arc Network
             </span>
           </h1>
-          <p className="mt-2 text-gray-400 text-sm sm:text-base">
+          <p className="mt-2 text-slate-500 text-sm sm:text-base">
             Sub-second finality · Gas fees in USDC · Circle App Kit
           </p>
         </div>
@@ -51,7 +51,7 @@ export default function App() {
 
         {/* ── Tab navigation ── */}
         <div className="flex justify-center">
-          <div className="flex bg-[#0d0e12] border border-gray-800 rounded-2xl p-1 gap-1">
+          <div className="flex bg-white border border-slate-200 shadow-sm rounded-2xl p-1 gap-1">
             {([
               { key: 'trade',    label: '📊 Trade' },
               { key: 'bridge',   label: '🌉 Bridge' },
@@ -65,7 +65,7 @@ export default function App() {
                 className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                   tab === key
                     ? 'bg-violet-600 text-white shadow-lg'
-                    : 'text-gray-400 hover:text-white'
+                    : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
                 {label}
@@ -86,7 +86,7 @@ export default function App() {
                   className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
                     pair === p
                       ? 'bg-violet-600 border-violet-500 text-white'
-                      : 'bg-[#0d0e12] border-gray-800 text-gray-400 hover:border-gray-600 hover:text-white'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:text-slate-900'
                   }`}
                 >
                   {p}
@@ -99,14 +99,14 @@ export default function App() {
               href="https://faucet.circle.com"
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-3 w-full max-w-xl mx-auto px-4 py-3 rounded-2xl bg-green-500/10 border border-green-500/25 hover:border-green-500/50 hover:bg-green-500/15 transition-all group"
+              className="flex items-center gap-3 w-full max-w-xl mx-auto px-4 py-3 rounded-2xl bg-emerald-50 border border-emerald-200 hover:border-emerald-300 hover:bg-emerald-100 transition-all group"
             >
               <span className="text-2xl">💧</span>
               <div className="flex-1 text-left">
-                <p className="text-green-400 font-semibold text-sm">Get Free Testnet USDC</p>
-                <p className="text-green-500/70 text-xs mt-0.5">faucet.circle.com → select Arc Testnet</p>
+                <p className="text-emerald-700 font-semibold text-sm">Get Free Testnet USDC</p>
+                <p className="text-emerald-600/70 text-xs mt-0.5">faucet.circle.com → select Arc Testnet</p>
               </div>
-              <span className="text-green-500 text-sm group-hover:translate-x-0.5 transition-transform">→</span>
+              <span className="text-emerald-600 text-sm group-hover:translate-x-0.5 transition-transform">→</span>
             </a>
 
             {/* Trading layout */}
@@ -129,7 +129,7 @@ export default function App() {
         {tab === 'bridge' && (
           <>
             <div className="text-center -mt-2 mb-2">
-              <p className="text-gray-500 text-sm">
+              <p className="text-slate-500 text-sm">
                 Bridge USDC từ các chain về Arc Testnet · Powered by Circle CCTP
               </p>
             </div>
@@ -141,7 +141,7 @@ export default function App() {
         {tab === 'lending' && (
           <>
             <div className="text-center -mt-2 mb-2">
-              <p className="text-gray-500 text-sm">
+              <p className="text-slate-500 text-sm">
                 Supply assets to earn yield · Borrow against your collateral
               </p>
             </div>
@@ -153,7 +153,7 @@ export default function App() {
         {tab === 'traders' && (
           <>
             <div className="text-center -mt-2 mb-2">
-              <p className="text-gray-500 text-sm">
+              <p className="text-slate-500 text-sm">
                 Dữ liệu thực từ Hyperliquid · Cập nhật liên tục
               </p>
             </div>
@@ -165,7 +165,7 @@ export default function App() {
         {tab === 'airdrops' && (
           <>
             <div className="text-center -mt-2 mb-2">
-              <p className="text-gray-500 text-sm">
+              <p className="text-slate-500 text-sm">
                 Dự án tiềm năng airdrop · Vốn huy động · Cách tham gia
               </p>
             </div>
@@ -178,24 +178,24 @@ export default function App() {
 
         {/* How it works */}
         <div className="w-full max-w-3xl mx-auto">
-          <h2 className="text-center text-white font-semibold text-xl mb-5">How it works</h2>
+          <h2 className="text-center text-slate-900 font-semibold text-xl mb-5">How it works</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { step: '01', title: 'Connect Wallet',    desc: 'Connect MetaMask or any EVM wallet. Arc Testnet is added automatically.' },
               { step: '02', title: 'Get Testnet USDC',  desc: 'Visit the Circle faucet to get free USDC on Arc Testnet for testing.' },
               { step: '03', title: 'Trade or Lend',     desc: 'Swap tokens instantly or supply assets to earn yield and borrow against collateral.' },
             ].map((item) => (
-              <div key={item.step} className="bg-[#0d0e12] border border-gray-800 rounded-2xl p-5 hover:border-violet-500/40 transition-colors">
-                <div className="text-violet-500 font-mono text-xs font-bold mb-3">{item.step}</div>
-                <h3 className="text-white font-semibold mb-2">{item.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
+              <div key={item.step} className="bg-white border border-slate-200 shadow-sm rounded-2xl p-5 hover:border-violet-300 transition-colors">
+                <div className="text-violet-600 font-mono text-xs font-bold mb-3">{item.step}</div>
+                <h3 className="text-slate-900 font-semibold mb-2">{item.title}</h3>
+                <p className="text-slate-500 text-sm leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </main>
 
-      <footer className="border-t border-gray-800 py-6 px-4 text-center text-xs text-gray-600">
+      <footer className="border-t border-slate-200 py-6 px-4 text-center text-xs text-slate-400">
         Built on{' '}
         <a href="https://arc.network" target="_blank" rel="noreferrer" className="text-violet-500 hover:text-violet-400">Arc Network</a>
         {' '}· Powered by{' '}

@@ -36,7 +36,7 @@ const COIN_ICONS: Record<string, string> = { BTC: '₿', ETH: 'Ξ', SOL: '◎', 
 
 function Spinner() {
   return (
-    <div className="flex items-center justify-center py-16 text-gray-600 gap-2">
+    <div className="flex items-center justify-center py-16 text-slate-400 gap-2">
       <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
@@ -75,30 +75,30 @@ function Leaderboard({
   const maxPnl = Math.max(...top10.map(t => Math.abs(t.windowPnl)), 1)
 
   return (
-    <div className="bg-[#0d0e12] border border-gray-800 rounded-2xl overflow-hidden flex flex-col">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="px-5 pt-4 pb-3 border-b border-gray-800/70">
+      <div className="px-5 pt-4 pb-3 border-b border-slate-200">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <span className="text-lg">🏆</span>
-            <h3 className="text-white font-bold text-sm">Top 10 Traders</h3>
-            <span className="text-[11px] text-gray-600 bg-gray-800/80 px-2 py-0.5 rounded-full">Hyperliquid</span>
+            <h3 className="text-slate-900 font-bold text-sm">Top 10 Traders</h3>
+            <span className="text-[11px] text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded-full">Hyperliquid</span>
           </div>
           <button onClick={refresh}
-            className="text-gray-600 hover:text-white transition-colors w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-800"
+            className="text-slate-400 hover:text-slate-900 transition-colors w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100"
             title="Refresh">
             ↻
           </button>
         </div>
 
         {/* Time window */}
-        <div className="grid grid-cols-4 gap-1 bg-gray-900/70 rounded-xl p-1">
+        <div className="grid grid-cols-4 gap-1 bg-slate-100 rounded-xl p-1">
           {WINDOWS.map(({ key, label }) => (
             <button key={key} onClick={() => setTimeWindow(key)}
               className={`py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 timeWindow === key
-                  ? 'bg-violet-600 text-white shadow-md shadow-violet-900/30'
-                  : 'text-gray-500 hover:text-gray-300'
+                  ? 'bg-violet-600 text-white shadow-md'
+                  : 'text-slate-500 hover:text-slate-700'
               }`}>
               {label}
             </button>
@@ -107,7 +107,7 @@ function Leaderboard({
       </div>
 
       {/* Column header */}
-      <div className="grid grid-cols-[36px_1fr_110px_72px] text-[10px] text-gray-600 uppercase tracking-wide px-5 py-2 bg-gray-900/30">
+      <div className="grid grid-cols-[36px_1fr_110px_72px] text-[10px] text-slate-400 uppercase tracking-wide px-5 py-2 bg-slate-50">
         <span>#</span>
         <span>Trader</span>
         <span className="text-right">PnL</span>
@@ -118,7 +118,7 @@ function Leaderboard({
       {loading && !top10.length ? <Spinner /> : error ? (
         <div className="text-center py-10 text-red-400/70 text-xs">{error}</div>
       ) : (
-        <div className="divide-y divide-gray-800/40">
+        <div className="divide-y divide-slate-100">
           {top10.map((t) => {
             const pos    = t.windowPnl >= 0
             const medal  = t.rank === 1 ? '🥇' : t.rank === 2 ? '🥈' : t.rank === 3 ? '🥉' : null
@@ -127,34 +127,34 @@ function Leaderboard({
 
             return (
               <div key={t.address + t.rank}
-                className={`grid grid-cols-[36px_1fr_110px_72px] items-center px-5 py-3 transition-colors hover:bg-white/[0.03] group ${
-                  isTop3 ? 'bg-violet-500/[0.03]' : ''
+                className={`grid grid-cols-[36px_1fr_110px_72px] items-center px-5 py-3 transition-colors hover:bg-slate-50 group ${
+                  isTop3 ? 'bg-violet-50/50' : ''
                 }`}>
 
                 {/* Rank */}
                 <div className="font-mono text-sm">
-                  {medal ?? <span className="text-gray-600 text-xs">#{t.rank}</span>}
+                  {medal ?? <span className="text-slate-400 text-xs">#{t.rank}</span>}
                 </div>
 
                 {/* Trader */}
                 <div className="min-w-0">
                   <a href={`https://app.hyperliquid.xyz/stats/${t.address}`}
                     target="_blank" rel="noreferrer"
-                    className="text-gray-300 text-xs font-medium hover:text-violet-400 transition-colors truncate block">
+                    className="text-slate-700 text-xs font-medium hover:text-violet-600 transition-colors truncate block">
                     {shortAddr(t.address, t.displayName)}
-                    <span className="opacity-0 group-hover:opacity-60 text-violet-400 ml-1">↗</span>
+                    <span className="opacity-0 group-hover:opacity-60 text-violet-600 ml-1">↗</span>
                   </a>
-                  <div className="text-gray-600 text-[10px] mt-0.5 font-mono truncate">
+                  <div className="text-slate-400 text-[10px] mt-0.5 font-mono truncate">
                     {fmtUSD(t.accountValue)} acct
                   </div>
                 </div>
 
                 {/* PnL + bar */}
                 <div className="flex flex-col items-end gap-1">
-                  <span className={`font-mono text-xs font-bold ${pos ? 'text-green-400' : 'text-red-400'}`}>
+                  <span className={`font-mono text-xs font-bold ${pos ? 'text-emerald-600' : 'text-red-600'}`}>
                     {pos ? '+' : ''}{fmtUSD(t.windowPnl)}
                   </span>
-                  <div className="w-full h-1 rounded-full bg-gray-800/80 overflow-hidden">
+                  <div className="w-full h-1 rounded-full bg-slate-200 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${pos ? 'bg-gradient-to-r from-green-600 to-green-400' : 'bg-gradient-to-r from-red-600 to-red-400'}`}
                       style={{ width: `${barW}%` }}
@@ -163,7 +163,7 @@ function Leaderboard({
                 </div>
 
                 {/* ROI */}
-                <div className={`text-right font-mono text-xs font-semibold ${pos ? 'text-green-400' : 'text-red-400'}`}>
+                <div className={`text-right font-mono text-xs font-semibold ${pos ? 'text-emerald-600' : 'text-red-600'}`}>
                   {pos ? '+' : ''}{t.roi.toFixed(1)}%
                 </div>
               </div>
@@ -173,11 +173,11 @@ function Leaderboard({
       )}
 
       {/* Footer */}
-      <div className="px-5 py-2.5 border-t border-gray-800/70 flex items-center gap-2 text-[11px] text-gray-600 mt-auto">
-        <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+      <div className="px-5 py-2.5 border-t border-slate-200 flex items-center gap-2 text-[11px] text-slate-400 mt-auto">
+        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
         <span>Live · 60s</span>
         <a href="https://app.hyperliquid.xyz/leaderboard" target="_blank" rel="noreferrer"
-          className="ml-auto hover:text-violet-400 transition-colors">Xem thêm ↗</a>
+          className="ml-auto hover:text-violet-600 transition-colors">Xem thêm ↗</a>
       </div>
     </div>
   )
@@ -191,19 +191,19 @@ function RecentTrades() {
   const displayed = (filterCoin === 'ALL' ? trades : trades.filter(t => t.coin === filterCoin)).slice(0, 30)
 
   return (
-    <div className="bg-[#0d0e12] border border-gray-800 rounded-2xl overflow-hidden flex flex-col">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="px-4 pt-4 pb-3 border-b border-gray-800/70">
+      <div className="px-4 pt-4 pb-3 border-b border-slate-200">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <span className="text-lg">⚡</span>
-            <h3 className="text-white font-bold text-sm">Lệnh thị trường</h3>
+            <h3 className="text-slate-900 font-bold text-sm">Lệnh thị trường</h3>
           </div>
           <div className="flex gap-1">
             {['ALL', 'BTC', 'ETH', 'SOL'].map(c => (
               <button key={c} onClick={() => setFilterCoin(c)}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
-                  filterCoin === c ? 'bg-violet-600 text-white' : 'bg-gray-800/80 text-gray-500 hover:text-white'
+                  filterCoin === c ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'
                 }`}>
                 {c === 'ALL' ? 'Tất cả' : c}
               </button>
@@ -212,13 +212,13 @@ function RecentTrades() {
         </div>
 
         {/* Column header */}
-        <div className="grid grid-cols-[44px_48px_1fr_70px] text-[10px] text-gray-600 uppercase tracking-wide">
+        <div className="grid grid-cols-[44px_48px_1fr_70px] text-[10px] text-slate-400 uppercase tracking-wide">
           <span>Giờ</span><span>Token</span><span className="text-center">Chiều</span><span className="text-right">Giá trị</span>
         </div>
       </div>
 
       {/* Rows */}
-      <div className="flex flex-col overflow-y-auto flex-1 max-h-[520px] scrollbar-thin scrollbar-thumb-gray-800">
+      <div className="flex flex-col overflow-y-auto flex-1 max-h-[520px] scrollbar-thin scrollbar-thumb-slate-300">
         {loading && !trades.length ? <Spinner /> : error ? (
           <div className="text-center py-10 text-red-400/70 text-xs">{error}</div>
         ) : displayed.map((t, i) => {
@@ -226,22 +226,22 @@ function RecentTrades() {
           const isWhale = t.value >= 100_000
           return (
             <div key={`${t.id}-${i}`}
-              className={`grid grid-cols-[44px_48px_1fr_70px] items-center px-4 py-2 border-b border-gray-800/30 hover:bg-white/[0.03] transition-colors ${
-                isWhale ? 'bg-yellow-500/5' : ''
+              className={`grid grid-cols-[44px_48px_1fr_70px] items-center px-4 py-2 border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                isWhale ? 'bg-amber-50' : ''
               }`}>
 
               {/* Time */}
-              <span className="text-gray-600 font-mono text-[10px]">{fmtTime(t.time)}</span>
+              <span className="text-slate-400 font-mono text-[10px]">{fmtTime(t.time)}</span>
 
               {/* Coin */}
-              <span className="text-gray-300 font-mono text-[11px] font-semibold">
+              <span className="text-slate-700 font-mono text-[11px] font-semibold">
                 {COIN_ICONS[t.coin] ?? ''}{t.coin}
               </span>
 
               {/* Direction badge */}
               <div className="flex justify-center">
                 <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                  isBuy ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
+                  isBuy ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                 }`}>
                   {isBuy ? 'MUA' : 'BÁN'}
                 </span>
@@ -249,7 +249,7 @@ function RecentTrades() {
 
               {/* Value */}
               <span className={`text-right font-mono text-[11px] font-semibold ${
-                isWhale ? 'text-yellow-400' : t.value >= 10_000 ? 'text-gray-200' : 'text-gray-500'
+                isWhale ? 'text-amber-600' : t.value >= 10_000 ? 'text-slate-700' : 'text-slate-500'
               }`}>
                 {fmtUSD(t.value)}{isWhale && ' 🐋'}
               </span>
@@ -258,10 +258,10 @@ function RecentTrades() {
         })}
       </div>
 
-      <div className="px-4 py-2 border-t border-gray-800/70 flex items-center gap-1.5 text-[11px] text-gray-600">
-        <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+      <div className="px-4 py-2 border-t border-slate-200 flex items-center gap-1.5 text-[11px] text-slate-400">
+        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
         <span>Live · 5s · {displayed.length} lệnh</span>
-        <span className="ml-auto text-gray-700">🐋 ≥ $100K</span>
+        <span className="ml-auto text-slate-300">🐋 ≥ $100K</span>
       </div>
     </div>
   )
@@ -292,12 +292,12 @@ function CopyTradeSignals({ fills }: { fills: HLTraderFill[] }) {
   if (signals.length === 0) return null
 
   return (
-    <div className="bg-gradient-to-r from-violet-950/60 via-indigo-950/40 to-blue-950/60 border border-violet-500/20 rounded-2xl p-4">
+    <div className="bg-gradient-to-r from-violet-50 via-indigo-50 to-blue-50 border border-violet-200 rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-3">
         <span className="text-base">🔥</span>
-        <span className="text-white font-bold text-sm">Copy Trade Signal</span>
-        <span className="px-2 py-0.5 rounded-full bg-violet-500/25 border border-violet-500/30 text-violet-300 text-[10px] font-bold animate-pulse">LIVE</span>
-        <span className="text-gray-500 text-xs hidden sm:block">· ≥2 top traders mở cùng vị thế</span>
+        <span className="text-slate-900 font-bold text-sm">Copy Trade Signal</span>
+        <span className="px-2 py-0.5 rounded-full bg-violet-100 border border-violet-300 text-violet-700 text-[10px] font-bold animate-pulse">LIVE</span>
+        <span className="text-slate-500 text-xs hidden sm:block">· ≥2 top traders mở cùng vị thế</span>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -307,29 +307,29 @@ function CopyTradeSignals({ fills }: { fills: HLTraderFill[] }) {
           return (
             <div key={`${s.coin}|${s.dir}`}
               className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all hover:scale-[1.02] cursor-default ${
-                isLong ? 'bg-green-500/10 border-green-500/25' : 'bg-red-500/10 border-red-500/25'
+                isLong ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'
               }`}>
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
-                  <span className={`font-bold text-base ${isLong ? 'text-green-400' : 'text-red-400'}`}>{isLong ? '▲' : '▼'}</span>
-                  <span className={`font-bold text-sm ${isLong ? 'text-green-300' : 'text-red-300'}`}>{s.coin}</span>
-                  <span className={`text-xs ${isLong ? 'text-green-600' : 'text-red-600'}`}>{isLong ? 'Long' : 'Short'}</span>
+                  <span className={`font-bold text-base ${isLong ? 'text-emerald-600' : 'text-red-600'}`}>{isLong ? '▲' : '▼'}</span>
+                  <span className={`font-bold text-sm ${isLong ? 'text-emerald-700' : 'text-red-700'}`}>{s.coin}</span>
+                  <span className={`text-xs ${isLong ? 'text-emerald-600' : 'text-red-600'}`}>{isLong ? 'Long' : 'Short'}</span>
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className={`text-[11px] tracking-wider ${isLong ? 'text-green-500' : 'text-red-500'}`}>{bars}</span>
-                  <span className="text-gray-600 text-[10px]">{fmtUSD(s.totalValue)}</span>
-                  <span className="text-gray-700 text-[10px]">{fmtRelTime(s.latestTime)} trước</span>
+                  <span className={`text-[11px] tracking-wider ${isLong ? 'text-emerald-500' : 'text-red-500'}`}>{bars}</span>
+                  <span className="text-slate-400 text-[10px]">{fmtUSD(s.totalValue)}</span>
+                  <span className="text-slate-300 text-[10px]">{fmtRelTime(s.latestTime)} trước</span>
                 </div>
               </div>
-              <div className={`flex flex-col items-center px-2 py-1 rounded-lg ${isLong ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-                <span className="text-white font-bold text-lg leading-none">{s.traders.size}</span>
-                <span className="text-gray-500 text-[9px]">traders</span>
+              <div className={`flex flex-col items-center px-2 py-1 rounded-lg ${isLong ? 'bg-emerald-100' : 'bg-red-100'}`}>
+                <span className="text-slate-900 font-bold text-lg leading-none">{s.traders.size}</span>
+                <span className="text-slate-500 text-[9px]">traders</span>
               </div>
             </div>
           )
         })}
       </div>
-      <p className="text-[10px] text-gray-700 mt-2">⚠️ Tín hiệu tham khảo · Không phải lời khuyên đầu tư</p>
+      <p className="text-[10px] text-slate-400 mt-2">⚠️ Tín hiệu tham khảo · Không phải lời khuyên đầu tư</p>
     </div>
   )
 }
@@ -337,10 +337,10 @@ function CopyTradeSignals({ fills }: { fills: HLTraderFill[] }) {
 // ── Top Trader Fills ──────────────────────────────────────────────────────────
 
 const DIR_CONFIG: Record<string, { icon: string; color: string; bg: string }> = {
-  'Open Long':   { icon: '▲', color: 'text-green-400', bg: 'bg-green-500/10' },
-  'Close Long':  { icon: '▽', color: 'text-green-600', bg: 'bg-green-500/5'  },
-  'Open Short':  { icon: '▼', color: 'text-red-400',   bg: 'bg-red-500/10'   },
-  'Close Short': { icon: '△', color: 'text-red-600',   bg: 'bg-red-500/5'    },
+  'Open Long':   { icon: '▲', color: 'text-emerald-700', bg: 'bg-emerald-50' },
+  'Close Long':  { icon: '▽', color: 'text-emerald-600', bg: 'bg-emerald-50/60'  },
+  'Open Short':  { icon: '▼', color: 'text-red-700',   bg: 'bg-red-50'   },
+  'Close Short': { icon: '△', color: 'text-red-600',   bg: 'bg-red-50/60'    },
 }
 
 function TopTraderFills({ traders }: { traders: { address: string; displayName: string | null; rank: number }[] }) {
@@ -358,14 +358,14 @@ function TopTraderFills({ traders }: { traders: { address: string; displayName: 
   })
 
   return (
-    <div className="bg-[#0d0e12] border border-gray-800 rounded-2xl overflow-hidden">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-gray-800/70">
+      <div className="px-5 py-4 border-b border-slate-200">
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <span className="text-lg">🔭</span>
-            <h3 className="text-white font-bold text-sm">Lệnh của Top Traders</h3>
-            <span className="text-[11px] bg-violet-500/15 border border-violet-500/25 text-violet-400 px-2 py-0.5 rounded-full font-semibold">
+            <h3 className="text-slate-900 font-bold text-sm">Lệnh của Top Traders</h3>
+            <span className="text-[11px] bg-violet-50 border border-violet-200 text-violet-600 px-2 py-0.5 rounded-full font-semibold">
               Top {traders.length}
             </span>
             {loading && <svg className="animate-spin h-3.5 w-3.5 text-gray-600" viewBox="0 0 24 24" fill="none">
@@ -373,8 +373,8 @@ function TopTraderFills({ traders }: { traders: { address: string; displayName: 
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
             </svg>}
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-gray-600">
-            <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-pulse"/>
+          <div className="flex items-center gap-1.5 text-xs text-slate-400">
+            <span className="w-1.5 h-1.5 bg-violet-600 rounded-full animate-pulse"/>
             <span>Cập nhật 15s</span>
           </div>
         </div>
@@ -389,14 +389,14 @@ function TopTraderFills({ traders }: { traders: { address: string; displayName: 
             {coins.map(c => (
               <button key={c} onClick={() => setFilterCoin(c)}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
-                  filterCoin === c ? 'bg-violet-600 text-white' : 'bg-gray-800/80 text-gray-500 hover:text-white'
+                  filterCoin === c ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'
                 }`}>
                 {c === 'Tất cả' ? 'Tất cả coin' : `${COIN_ICONS[c] ?? ''}${c}`}
               </button>
             ))}
           </div>
 
-          <div className="w-px bg-gray-800 hidden sm:block self-stretch" />
+          <div className="w-px bg-slate-200 hidden sm:block self-stretch" />
 
           {/* Direction filter */}
           <div className="flex gap-1 flex-wrap">
@@ -405,7 +405,7 @@ function TopTraderFills({ traders }: { traders: { address: string; displayName: 
               return (
                 <button key={d} onClick={() => setFilterDir(d)}
                   className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors flex items-center gap-1 ${
-                    filterDir === d ? 'bg-violet-600 text-white' : 'bg-gray-800/80 text-gray-500 hover:text-white'
+                    filterDir === d ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-900'
                   }`}>
                   {cfg && <span className={filterDir === d ? 'text-white' : cfg.color}>{cfg.icon}</span>}
                   {d === 'Tất cả' ? 'Tất cả chiều' : d.replace('Open ', 'Mở ').replace('Close ', 'Đóng ')}
@@ -417,17 +417,17 @@ function TopTraderFills({ traders }: { traders: { address: string; displayName: 
       </div>
 
       {/* Column header */}
-      <div className="grid grid-cols-[28px_120px_80px_56px_100px_80px_80px] text-[10px] text-gray-600 uppercase tracking-wide px-5 py-2 bg-gray-900/30 gap-2">
+      <div className="grid grid-cols-[28px_120px_80px_56px_100px_80px_80px] text-[10px] text-slate-400 uppercase tracking-wide px-5 py-2 bg-slate-50 gap-2">
         <span>#</span><span>Trader</span><span>Thời gian</span><span>Coin</span>
         <span>Chiều</span><span className="text-right">Giá trị</span><span className="text-right">PnL đóng</span>
       </div>
 
       {/* Rows */}
-      <div className="divide-y divide-gray-800/30 max-h-[480px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800">
+      <div className="divide-y divide-slate-100 max-h-[480px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300">
         {loading && fills.length === 0 ? <Spinner /> : error ? (
           <div className="text-center py-10 text-red-400/70 text-xs">{error}</div>
         ) : displayed.length === 0 ? (
-          <div className="text-center py-12 text-gray-600 text-sm">Không có lệnh phù hợp</div>
+          <div className="text-center py-12 text-slate-400 text-sm">Không có lệnh phù hợp</div>
         ) : displayed.map((f, idx) => {
           const dirCfg  = DIR_CONFIG[f.dir] ?? { icon: '?', color: 'text-gray-400', bg: 'bg-gray-800/30' }
           const hasPnl  = f.closedPnl !== 0
@@ -437,29 +437,29 @@ function TopTraderFills({ traders }: { traders: { address: string; displayName: 
 
           return (
             <div key={`${f.id}-${idx}`}
-              className={`grid grid-cols-[28px_120px_80px_56px_100px_80px_80px] items-center px-5 py-3 gap-2 hover:bg-white/[0.03] transition-colors group ${
-                isWhale ? 'bg-yellow-500/[0.04]' : ''
+              className={`grid grid-cols-[28px_120px_80px_56px_100px_80px_80px] items-center px-5 py-3 gap-2 hover:bg-slate-50 transition-colors group ${
+                isWhale ? 'bg-amber-50' : ''
               }`}>
 
               {/* Rank */}
-              <span className="text-xs font-mono text-gray-600">{medal ?? `#${f.rank}`}</span>
+              <span className="text-xs font-mono text-slate-400">{medal ?? `#${f.rank}`}</span>
 
               {/* Trader */}
               <a href={`https://app.hyperliquid.xyz/stats/${f.trader}`}
                 target="_blank" rel="noreferrer"
-                className="font-mono text-[11px] text-gray-400 hover:text-violet-400 transition-colors truncate">
+                className="font-mono text-[11px] text-slate-500 hover:text-violet-600 transition-colors truncate">
                 {shortAddr(f.trader, f.displayName)}
-                <span className="opacity-0 group-hover:opacity-60 text-violet-400 ml-1">↗</span>
+                <span className="opacity-0 group-hover:opacity-60 text-violet-600 ml-1">↗</span>
               </a>
 
               {/* Time */}
               <div>
-                <div className="text-gray-500 font-mono text-[10px]">{fmtTime(f.time)}</div>
-                <div className="text-gray-700 text-[10px]">{fmtRelTime(f.time)} trước</div>
+                <div className="text-slate-500 font-mono text-[10px]">{fmtTime(f.time)}</div>
+                <div className="text-slate-300 text-[10px]">{fmtRelTime(f.time)} trước</div>
               </div>
 
               {/* Coin */}
-              <span className="font-mono font-bold text-gray-300 text-[11px]">
+              <span className="font-mono font-bold text-slate-700 text-[11px]">
                 {COIN_ICONS[f.coin] ?? ''}{f.coin}
               </span>
 
@@ -473,14 +473,14 @@ function TopTraderFills({ traders }: { traders: { address: string; displayName: 
 
               {/* Value */}
               <span className={`text-right font-mono text-[11px] font-bold ${
-                isWhale ? 'text-yellow-400' : f.value >= 10_000 ? 'text-gray-200' : 'text-gray-500'
+                isWhale ? 'text-amber-600' : f.value >= 10_000 ? 'text-slate-700' : 'text-slate-500'
               }`}>
                 {fmtUSD(f.value)}{isWhale && ' 🐋'}
               </span>
 
               {/* Closed PnL */}
               <span className={`text-right font-mono text-[11px] font-semibold ${
-                !hasPnl ? 'text-gray-700' : pnlPos ? 'text-green-400' : 'text-red-400'
+                !hasPnl ? 'text-slate-300' : pnlPos ? 'text-emerald-600' : 'text-red-600'
               }`}>
                 {!hasPnl ? '—' : `${pnlPos ? '+' : ''}${fmtUSD(f.closedPnl)}`}
               </span>
@@ -490,10 +490,10 @@ function TopTraderFills({ traders }: { traders: { address: string; displayName: 
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-3 border-t border-gray-800/70 flex items-center gap-2 text-[11px] text-gray-600">
-        <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-pulse"/>
+      <div className="px-5 py-3 border-t border-slate-200 flex items-center gap-2 text-[11px] text-slate-400">
+        <span className="w-1.5 h-1.5 bg-violet-600 rounded-full animate-pulse"/>
         <span>{displayed.length} lệnh · Top {traders.length} traders · 15s</span>
-        <span className="ml-auto text-gray-700">▲ Mở Long · ▼ Mở Short · ▽▵ Đóng · 🐋 ≥$100K</span>
+        <span className="ml-auto text-slate-300">▲ Mở Long · ▼ Mở Short · ▽▵ Đóng · 🐋 ≥$100K</span>
       </div>
     </div>
   )
@@ -510,15 +510,15 @@ export default function HyperliquidPanel() {
     <div className="flex flex-col gap-4">
       {/* Divider */}
       <div className="flex items-center gap-3">
-        <div className="flex-1 h-px bg-gray-800" />
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#0d0e12] border border-gray-800">
+        <div className="flex-1 h-px bg-slate-200" />
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-slate-200">
           <img src="https://app.hyperliquid.xyz/favicon.ico" alt=""
             className="w-4 h-4 rounded-sm"
             onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
           />
-          <span className="text-gray-500 text-xs font-medium">Dữ liệu thực từ Hyperliquid Mainnet</span>
+          <span className="text-slate-400 text-xs font-medium">Dữ liệu thực từ Hyperliquid Mainnet</span>
         </div>
-        <div className="flex-1 h-px bg-gray-800" />
+        <div className="flex-1 h-px bg-slate-200" />
       </div>
 
       {/* Row 1: Leaderboard (left) + Market Trades (right) */}

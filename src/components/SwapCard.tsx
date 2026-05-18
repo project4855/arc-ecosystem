@@ -167,19 +167,19 @@ export default function SwapCard({ fromTokenProp = 'USDC', toTokenProp = 'EURC',
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="bg-[#0d0e12] border border-gray-800 rounded-3xl p-6 shadow-2xl glow-purple">
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-white font-bold text-xl">Swap</h2>
-            <p className="text-gray-500 text-sm mt-0.5">Arc Testnet · Circle App Kit</p>
+            <h2 className="text-slate-900 font-bold text-xl">Swap</h2>
+            <p className="text-slate-500 text-sm mt-0.5">Arc Testnet · Circle App Kit</p>
           </div>
           {/* Mode badge */}
           <div className={`px-2 py-1 rounded-lg text-xs font-medium ${
             isRealMode
-              ? 'bg-green-500/10 border border-green-500/30 text-green-400'
-              : 'bg-yellow-500/10 border border-yellow-500/30 text-yellow-400'
+              ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+              : 'bg-amber-50 border border-amber-200 text-amber-700'
           }`}>
             {isRealMode ? '⚡ Live' : '🔸 Demo'}
           </div>
@@ -204,7 +204,7 @@ export default function SwapCard({ fromTokenProp = 'USDC', toTokenProp = 'EURC',
         <div className="flex justify-center my-2">
           <button
             onClick={handleFlip}
-            className="w-10 h-10 rounded-xl bg-[#1a1d24] border border-gray-700 hover:border-violet-500 hover:bg-violet-500/10 flex items-center justify-center text-gray-400 hover:text-violet-400 transition-all duration-200 text-lg"
+            className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 hover:border-violet-400 hover:bg-violet-50 flex items-center justify-center text-slate-600 hover:text-violet-600 transition-all duration-200 text-lg"
           >
             ⇅
           </button>
@@ -221,28 +221,28 @@ export default function SwapCard({ fromTokenProp = 'USDC', toTokenProp = 'EURC',
         />
 
         {/* Rate info — always visible */}
-        <div className="mt-3 px-4 py-3 bg-[#111318] rounded-xl border border-gray-800">
+        <div className="mt-3 px-4 py-3 bg-slate-50 rounded-xl border border-slate-200">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-500">Rate</span>
-            <span className="text-gray-300 font-mono">
+            <span className="text-slate-500">Rate</span>
+            <span className="text-slate-700 font-mono">
               1 {fromToken} ≈ {rate.toLocaleString(undefined, { maximumSignificantDigits: 6 })} {toToken}
             </span>
           </div>
           {fromAmount && parseFloat(fromAmount) > 0 && (
             <div className="flex items-center justify-between text-sm mt-1">
-              <span className="text-gray-500">You receive</span>
-              <span className="text-green-400 font-mono font-semibold">
+              <span className="text-slate-500">You receive</span>
+              <span className="text-emerald-600 font-mono font-semibold">
                 ≈ {toAmount} {toToken}
               </span>
             </div>
           )}
           <div className="flex items-center justify-between text-sm mt-1">
-            <span className="text-gray-500">Gas</span>
-            <span className="text-green-400 text-xs">~0.001 USDC</span>
+            <span className="text-slate-500">Gas</span>
+            <span className="text-emerald-600 text-xs">~0.001 USDC</span>
           </div>
           <div className="flex items-center justify-between text-sm mt-1">
-            <span className="text-gray-500">Network</span>
-            <span className="text-violet-400 text-xs">Arc Testnet</span>
+            <span className="text-slate-500">Network</span>
+            <span className="text-violet-600 text-xs">Arc Testnet</span>
           </div>
         </div>
 
@@ -255,7 +255,7 @@ export default function SwapCard({ fromTokenProp = 'USDC', toTokenProp = 'EURC',
           ) : !isArc ? (
             <button
               disabled
-              className="w-full py-4 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 font-semibold text-sm cursor-not-allowed"
+              className="w-full py-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 font-semibold text-sm cursor-not-allowed"
             >
               Switch to Arc Testnet
             </button>
@@ -282,13 +282,13 @@ export default function SwapCard({ fromTokenProp = 'USDC', toTokenProp = 'EURC',
 
         {/* Success */}
         {txHash && txHash !== 'demo' && (
-          <div className="mt-4 p-3 bg-green-500/10 border border-green-500/30 rounded-xl">
-            <p className="text-green-400 text-sm font-medium text-center">✓ Swap successful!</p>
+          <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+            <p className="text-emerald-600 text-sm font-medium text-center">✓ Swap successful!</p>
             <a
               href={`https://testnet.arcscan.app/tx/${txHash}`}
               target="_blank"
               rel="noreferrer"
-              className="block text-center text-xs text-green-400/70 hover:text-green-400 mt-1 underline underline-offset-2 truncate"
+              className="block text-center text-xs text-emerald-600/70 hover:text-emerald-600 mt-1 underline underline-offset-2 truncate"
             >
               View on ArcScan →
             </a>
@@ -296,23 +296,23 @@ export default function SwapCard({ fromTokenProp = 'USDC', toTokenProp = 'EURC',
         )}
 
         {txHash === 'demo' && (
-          <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
-            <p className="text-yellow-400 text-sm font-medium text-center">🔸 Demo swap completed</p>
-            <p className="text-yellow-500/60 text-xs text-center mt-1">
-              Add <code className="bg-black/30 px-1 rounded">VITE_CIRCLE_KIT_KEY</code> to enable real swaps
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <p className="text-amber-700 text-sm font-medium text-center">🔸 Demo swap completed</p>
+            <p className="text-amber-600/60 text-xs text-center mt-1">
+              Add <code className="bg-slate-100 px-1 rounded">VITE_CIRCLE_KIT_KEY</code> to enable real swaps
             </p>
           </div>
         )}
 
         {/* Error */}
         {error && (
-          <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
-            <p className="text-red-400 text-sm text-center">{error}</p>
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+            <p className="text-red-600 text-sm text-center">{error}</p>
           </div>
         )}
       </div>
 
-      <p className="text-center text-xs text-gray-600 mt-4">
+      <p className="text-center text-xs text-slate-400 mt-4">
         Powered by{' '}
         <a href="https://docs.arc.io/app-kit" target="_blank" rel="noreferrer" className="text-violet-500 hover:text-violet-400">
           Circle App Kit

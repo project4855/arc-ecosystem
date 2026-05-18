@@ -50,25 +50,25 @@ const UPDATE_LOG   = (airdropData as any).updateLog as {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, string> = {
-  'L1':       'bg-violet-500/15 text-violet-300 border-violet-500/30',
-  'L2':       'bg-blue-500/15 text-blue-300 border-blue-500/30',
-  'DeFi':     'bg-green-500/15 text-green-300 border-green-500/30',
-  'Infra':    'bg-orange-500/15 text-orange-300 border-orange-500/30',
-  'Gaming':   'bg-pink-500/15 text-pink-300 border-pink-500/30',
-  'BTC Layer':'bg-yellow-500/15 text-yellow-300 border-yellow-500/30',
+  'L1':       'bg-violet-50 text-violet-700 border-violet-200',
+  'L2':       'bg-blue-50 text-blue-700 border-blue-200',
+  'DeFi':     'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'Infra':    'bg-orange-50 text-orange-700 border-orange-200',
+  'Gaming':   'bg-pink-50 text-pink-700 border-pink-200',
+  'BTC Layer':'bg-amber-50 text-amber-700 border-amber-200',
 }
 
 const PROB_CONFIG: Record<string, { color: string; bg: string; dot: string; bar: string }> = {
-  'Rất cao':    { color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/30', dot: 'bg-emerald-400', bar: 'from-emerald-500 to-green-400' },
-  'Cao':        { color: 'text-green-400',   bg: 'bg-green-500/10 border-green-500/30',     dot: 'bg-green-400',   bar: 'from-green-500 to-teal-400'   },
-  'Trung bình': { color: 'text-yellow-400',  bg: 'bg-yellow-500/10 border-yellow-500/30',   dot: 'bg-yellow-400',  bar: 'from-yellow-500 to-amber-400'  },
+  'Rất cao':    { color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', dot: 'bg-emerald-500', bar: 'from-emerald-500 to-green-400' },
+  'Cao':        { color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', dot: 'bg-emerald-500', bar: 'from-green-500 to-teal-400'   },
+  'Trung bình': { color: 'text-amber-600',   bg: 'bg-amber-50 border-amber-200',     dot: 'bg-amber-500',   bar: 'from-yellow-500 to-amber-400'  },
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  'Testnet':      'text-blue-400 bg-blue-500/10 border-blue-500/20',
-  'Mainnet Beta': 'text-green-400 bg-green-500/10 border-green-500/20',
-  'Pre-launch':   'text-gray-400 bg-gray-500/10 border-gray-500/20',
-  'Points Live':  'text-purple-400 bg-purple-500/10 border-purple-500/20',
+  'Testnet':      'text-blue-600 bg-blue-50 border-blue-200',
+  'Mainnet Beta': 'text-emerald-600 bg-emerald-50 border-emerald-200',
+  'Pre-launch':   'text-slate-500 bg-slate-100 border-slate-200',
+  'Points Live':  'text-purple-600 bg-purple-50 border-purple-200',
 }
 
 const ALL_CATEGORIES = ['Tất cả', 'L1', 'L2', 'Infra', 'DeFi', 'BTC Layer', 'Gaming'] as const
@@ -121,8 +121,8 @@ function CountdownBadge({ tge }: { tge: string }) {
     return (
       <div className="flex items-center gap-1.5 text-xs">
         <span>🗓</span>
-        <span className="text-gray-500">Dự kiến TGE:</span>
-        <span className="text-yellow-400 font-semibold">{tge}</span>
+        <span className="text-slate-500">Dự kiến TGE:</span>
+        <span className="text-amber-600 font-semibold">{tge}</span>
       </div>
     )
   }
@@ -135,8 +135,8 @@ function CountdownBadge({ tge }: { tge: string }) {
     return (
       <div className="flex items-center gap-1.5 text-xs flex-wrap">
         <span>🚨</span>
-        <span className="text-gray-500">TGE:</span>
-        <span className="text-orange-400 font-bold animate-pulse">{tge} — có thể đã TGE!</span>
+        <span className="text-slate-500">TGE:</span>
+        <span className="text-orange-600 font-bold animate-pulse">{tge} — có thể đã TGE!</span>
       </div>
     )
   }
@@ -144,19 +144,19 @@ function CountdownBadge({ tge }: { tge: string }) {
   let countdown: React.ReactNode
   if (days <= 30) {
     countdown = (
-      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 font-bold animate-pulse">
+      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-600 font-bold animate-pulse">
         ⏰ {days}d {hours}h nữa!
       </span>
     )
   } else if (days <= 90) {
     countdown = (
-      <span className="px-2 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-400 font-semibold">
+      <span className="px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-orange-600 font-semibold">
         📅 ~{days} ngày nữa
       </span>
     )
   } else {
     countdown = (
-      <span className="px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 font-medium">
+      <span className="px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-600 font-medium">
         📅 ~{Math.ceil(days / 30)} tháng nữa
       </span>
     )
@@ -165,8 +165,8 @@ function CountdownBadge({ tge }: { tge: string }) {
   return (
     <div className="flex items-center gap-1.5 text-xs flex-wrap">
       <span>🗓</span>
-      <span className="text-gray-500">TGE:</span>
-      <span className="text-yellow-400">{tge}</span>
+      <span className="text-slate-500">TGE:</span>
+      <span className="text-amber-600">{tge}</span>
       <span className="text-gray-700">·</span>
       {countdown}
     </div>
@@ -184,7 +184,7 @@ function ProjectCard({ p }: { p: AirdropProject }) {
   const xUrl = `https://x.com/search?q=${encodeURIComponent(p.xSearch)}&f=live`
 
   return (
-    <div className="bg-[#0d0e12] border border-gray-800 rounded-2xl overflow-hidden hover:border-gray-700 transition-all flex flex-col">
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-md transition-all flex flex-col shadow-sm">
 
       {/* Accent bar */}
       <div className={`h-0.5 bg-gradient-to-r ${probCfg.bar}`} />
@@ -194,12 +194,12 @@ function ProjectCard({ p }: { p: AirdropProject }) {
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-3">
-            <div className="text-2xl w-10 h-10 flex items-center justify-center rounded-xl bg-gray-800/60 shrink-0">
+            <div className="text-2xl w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 shrink-0">
               {p.logo}
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-white font-bold text-sm">{p.name}</h3>
+                <h3 className="text-slate-900 font-bold text-sm">{p.name}</h3>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${catColor}`}>
                   {p.category}
                 </span>
@@ -208,7 +208,7 @@ function ProjectCard({ p }: { p: AirdropProject }) {
                 <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${statusColor}`}>
                   {p.status}
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-800 border border-gray-700 text-gray-400 font-medium">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 font-medium">
                   ✗ Chưa có token
                 </span>
               </div>
@@ -224,18 +224,18 @@ function ProjectCard({ p }: { p: AirdropProject }) {
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-2">
-          <div className="bg-gray-900/50 rounded-xl p-2.5">
-            <div className="text-gray-600 text-[10px] mb-0.5">💰 Vốn huy động</div>
-            <div className="text-white font-bold text-sm">{p.raised}</div>
+          <div className="bg-slate-50 rounded-xl p-2.5">
+            <div className="text-slate-400 text-[10px] mb-0.5">💰 Vốn huy động</div>
+            <div className="text-slate-900 font-bold text-sm">{p.raised}</div>
           </div>
-          <div className="bg-gray-900/50 rounded-xl p-2.5">
-            <div className="text-gray-600 text-[10px] mb-0.5">🏦 Nhà đầu tư</div>
-            <div className="text-gray-300 text-xs font-medium leading-tight">{p.investors}</div>
+          <div className="bg-slate-50 rounded-xl p-2.5">
+            <div className="text-slate-400 text-[10px] mb-0.5">🏦 Nhà đầu tư</div>
+            <div className="text-slate-600 text-xs font-medium leading-tight">{p.investors}</div>
           </div>
         </div>
 
         {/* Description */}
-        <p className="text-gray-400 text-xs leading-relaxed">{p.desc}</p>
+        <p className="text-slate-500 text-xs leading-relaxed">{p.desc}</p>
 
         {/* TGE với countdown */}
         {p.tge && <CountdownBadge tge={p.tge} />}
@@ -245,7 +245,7 @@ function ProjectCard({ p }: { p: AirdropProject }) {
           href={xUrl}
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-2 text-xs text-gray-600 hover:text-sky-400 transition-colors"
+          className="flex items-center gap-2 text-xs text-slate-400 hover:text-sky-600 transition-colors"
         >
           <span className="font-bold">𝕏</span>
           <span>Xem cập nhật mới nhất trên X →</span>
@@ -253,28 +253,28 @@ function ProjectCard({ p }: { p: AirdropProject }) {
       </div>
 
       {/* Steps accordion */}
-      <div className="border-t border-gray-800/80">
+      <div className="border-t border-slate-100">
         <button
           onClick={() => setExpanded((v) => !v)}
-          className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-gray-500 hover:text-white hover:bg-white/5 transition-all"
+          className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all"
         >
           <div className="flex items-center gap-2">
             <span>📋</span>
             <span>Cách tham gia ({p.steps.length} bước)</span>
           </div>
-          <span className={`transition-transform duration-200 text-gray-600 ${expanded ? 'rotate-180' : ''}`}>▼</span>
+          <span className={`transition-transform duration-200 text-slate-400 ${expanded ? 'rotate-180' : ''}`}>▼</span>
         </button>
 
         {expanded && (
-          <div className="px-4 pb-4 flex flex-col gap-2.5 bg-gray-900/20">
+          <div className="px-4 pb-4 flex flex-col gap-2.5 bg-slate-50/50">
             {p.steps.map((s, i) => (
               <div key={i} className="flex gap-3 items-start">
-                <div className="w-5 h-5 rounded-full bg-violet-600/20 border border-violet-500/30 text-violet-400 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-5 h-5 rounded-full bg-violet-50 border border-violet-200 text-violet-600 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
                   {i + 1}
                 </div>
                 <div>
-                  <div className="text-white text-xs font-semibold">{s.action}</div>
-                  <div className="text-gray-500 text-xs mt-0.5 leading-relaxed">{s.detail}</div>
+                  <div className="text-slate-900 text-xs font-semibold">{s.action}</div>
+                  <div className="text-slate-500 text-xs mt-0.5 leading-relaxed">{s.detail}</div>
                 </div>
               </div>
             ))}
@@ -283,20 +283,20 @@ function ProjectCard({ p }: { p: AirdropProject }) {
       </div>
 
       {/* Footer links */}
-      <div className="border-t border-gray-800/60 px-4 py-2.5 flex gap-3 bg-gray-900/10">
+      <div className="border-t border-slate-100 px-4 py-2.5 flex gap-3 bg-slate-50/30">
         <a href={p.links.site} target="_blank" rel="noreferrer"
-          className="text-xs text-gray-600 hover:text-violet-400 transition-colors">
+          className="text-xs text-slate-400 hover:text-violet-600 transition-colors">
           🌐 Website
         </a>
         {p.links.twitter && (
           <a href={p.links.twitter} target="_blank" rel="noreferrer"
-            className="text-xs text-gray-600 hover:text-sky-400 transition-colors">
+            className="text-xs text-slate-400 hover:text-sky-600 transition-colors">
             𝕏 Twitter
           </a>
         )}
         {p.links.app && (
           <a href={p.links.app} target="_blank" rel="noreferrer"
-            className="text-xs text-gray-600 hover:text-green-400 transition-colors ml-auto font-medium">
+            className="text-xs text-slate-400 hover:text-emerald-600 transition-colors ml-auto font-medium">
             Vào App →
           </a>
         )}
@@ -315,15 +315,15 @@ function SummaryStats({ projects }: { projects: AirdropProject[] }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       {[
-        { label: 'Chưa airdrop',   value: String(projects.length), icon: '🪂', color: 'text-violet-400' },
-        { label: 'Xác suất rất cao', value: String(veryHigh),      icon: '🎯', color: 'text-emerald-400' },
-        { label: 'Xác suất cao',   value: String(high),            icon: '✅', color: 'text-green-400'   },
-        { label: 'Đang hoạt động', value: String(live),            icon: '🟢', color: 'text-blue-400'    },
+        { label: 'Chưa airdrop',   value: String(projects.length), icon: '🪂', color: 'text-violet-600' },
+        { label: 'Xác suất rất cao', value: String(veryHigh),      icon: '🎯', color: 'text-emerald-600' },
+        { label: 'Xác suất cao',   value: String(high),            icon: '✅', color: 'text-emerald-600'   },
+        { label: 'Đang hoạt động', value: String(live),            icon: '🟢', color: 'text-blue-600'    },
       ].map((s) => (
-        <div key={s.label} className="bg-[#0d0e12] border border-gray-800 rounded-2xl p-3 text-center">
+        <div key={s.label} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-3 text-center">
           <div className="text-xl mb-1">{s.icon}</div>
           <div className={`text-lg font-bold ${s.color}`}>{s.value}</div>
-          <div className="text-gray-600 text-xs mt-0.5">{s.label}</div>
+          <div className="text-slate-400 text-xs mt-0.5">{s.label}</div>
         </div>
       ))}
     </div>
@@ -339,24 +339,24 @@ function GraduatedBanner() {
   return (
     <div className={`border rounded-2xl p-4 ${
       newThisRun.length > 0
-        ? 'bg-orange-500/5 border-orange-500/20'
-        : 'bg-gray-900/40 border-gray-800'
+        ? 'bg-orange-50 border-orange-200'
+        : 'bg-slate-50 border-slate-200'
     }`}>
       <button
         onClick={() => setShow((v) => !v)}
-        className="w-full flex items-center justify-between text-xs text-gray-500 hover:text-gray-400 transition-colors"
+        className="w-full flex items-center justify-between text-xs text-slate-500 hover:text-slate-700 transition-colors"
       >
         <div className="flex items-center gap-2 flex-wrap">
           {newThisRun.length > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-orange-500/20 border border-orange-500/30 text-orange-400 font-semibold animate-pulse">
+            <span className="px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-orange-600 font-semibold animate-pulse">
               🔔 {newThisRun.length} dự án vừa phát token!
             </span>
           )}
           <span>✅</span>
           <span className="font-semibold">Đã airdrop / có token ({GRADUATED.length} dự án)</span>
-          <span className="text-gray-700">— không cần farm nữa</span>
+          <span className="text-slate-300">— không cần farm nữa</span>
         </div>
-        <span className={`transition-transform duration-200 shrink-0 ${show ? 'rotate-180' : ''}`}>▼</span>
+        <span className={`transition-transform duration-200 shrink-0 text-slate-400 ${show ? 'rotate-180' : ''}`}>▼</span>
       </button>
 
       {show && (
@@ -367,15 +367,15 @@ function GraduatedBanner() {
               <div key={g.id}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${
                   isNew
-                    ? 'bg-orange-500/10 border-orange-500/30'
-                    : 'bg-gray-800/60 border-gray-700'
+                    ? 'bg-orange-50 border-orange-200'
+                    : 'bg-slate-100 border-slate-200'
                 }`}>
                 <span className="text-sm">{g.logo}</span>
-                <span className={`text-xs font-semibold ${isNew ? 'text-orange-300' : 'text-gray-400'}`}>
+                <span className={`text-xs font-semibold ${isNew ? 'text-orange-600' : 'text-slate-600'}`}>
                   {g.name}
                 </span>
-                <span className="text-gray-700 text-xs">· {g.detectedAt}</span>
-                {isNew && <span className="text-orange-400 text-[10px] font-bold">NEW</span>}
+                <span className="text-slate-400 text-xs">· {g.detectedAt}</span>
+                {isNew && <span className="text-orange-600 text-[10px] font-bold">NEW</span>}
               </div>
             )
           })}
@@ -408,33 +408,33 @@ export default function AirdropPanel() {
     <div className="flex flex-col gap-5">
 
       {/* Banner */}
-      <div className="w-full rounded-2xl bg-gradient-to-r from-violet-900/30 via-blue-900/20 to-violet-900/30 border border-violet-500/20 p-5">
+      <div className="w-full rounded-2xl bg-gradient-to-r from-violet-50 via-indigo-50 to-blue-50 border border-violet-200 p-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <span className="text-2xl">🪂</span>
-              <h2 className="text-white font-bold text-lg">Airdrop Radar</h2>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 font-semibold">
+              <h2 className="text-slate-900 font-bold text-lg">Airdrop Radar</h2>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold">
                 ✗ Chưa phát token
               </span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/15 border border-violet-500/25 text-violet-400 font-medium">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-violet-600 font-medium">
                 {PROJECTS.length} dự án
               </span>
             </div>
-            <p className="text-gray-400 text-sm leading-relaxed max-w-xl">
-              Chỉ liệt kê dự án <strong className="text-white">chưa phát token và chưa airdrop</strong>.
+            <p className="text-slate-500 text-sm leading-relaxed max-w-xl">
+              Chỉ liệt kê dự án <strong className="text-slate-900">chưa phát token và chưa airdrop</strong>.
               Xác minh từ X và các nguồn tin. Cập nhật hàng tuần.
             </p>
           </div>
 
           {/* Update info */}
-          <div className="text-xs bg-gray-900/60 rounded-xl px-3 py-2.5 border border-gray-800 shrink-0 flex flex-col gap-1.5 min-w-[160px]">
-            <div className="flex items-center gap-1.5 text-gray-400">
-              <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+          <div className="text-xs bg-white rounded-xl px-3 py-2.5 border border-slate-200 shrink-0 flex flex-col gap-1.5 min-w-[160px]">
+            <div className="flex items-center gap-1.5 text-slate-500">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
               <span className="font-medium">Tự động cập nhật</span>
             </div>
-            <div className="text-white font-semibold">{updatedDate}</div>
-            <div className="flex items-center gap-1 text-gray-600">
+            <div className="text-slate-900 font-semibold">{updatedDate}</div>
+            <div className="flex items-center gap-1 text-slate-400">
               <span>{UPDATE_LOG?.xApiUsed ? '𝕏 X API ✓' : '𝕏 X API'}</span>
               <span>·</span>
               <span>CryptoRank</span>
@@ -443,7 +443,7 @@ export default function AirdropPanel() {
               href="https://github.com/project4855/arc-spot/actions"
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1 text-violet-400 hover:text-violet-300 transition-colors"
+              className="flex items-center gap-1 text-violet-600 hover:text-violet-700 transition-colors"
             >
               <span>⚙️</span>
               <span>GitHub Actions →</span>
@@ -453,7 +453,7 @@ export default function AirdropPanel() {
       </div>
 
       {/* Data source note */}
-      <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-900/30 rounded-xl px-3 py-2 border border-gray-800">
+      <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 rounded-xl px-3 py-2 border border-slate-200">
         <span>📌</span>
         <span>Nguồn: {DATA_SOURCE}</span>
       </div>
@@ -473,7 +473,7 @@ export default function AirdropPanel() {
             placeholder="Tìm dự án..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="bg-[#0d0e12] border border-gray-800 rounded-xl pl-8 pr-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 w-36"
+            className="bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-400 w-36"
           />
         </div>
 
@@ -485,7 +485,7 @@ export default function AirdropPanel() {
               className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
                 catFilter === c
                   ? 'bg-violet-600 text-white shadow-sm'
-                  : 'bg-[#0d0e12] border border-gray-800 text-gray-400 hover:border-gray-600 hover:text-white'
+                  : 'bg-white border border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-900'
               }`}
             >
               {c}
@@ -501,7 +501,7 @@ export default function AirdropPanel() {
               className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
                 probFilter === p
                   ? 'bg-violet-600 text-white shadow-sm'
-                  : 'bg-[#0d0e12] border border-gray-800 text-gray-400 hover:border-gray-600 hover:text-white'
+                  : 'bg-white border border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-900'
               }`}
             >
               {p === 'Tất cả' ? 'Xác suất' : p}
@@ -511,12 +511,12 @@ export default function AirdropPanel() {
       </div>
 
       {filtered.length !== PROJECTS.length && (
-        <p className="text-gray-600 text-xs">Hiển thị {filtered.length}/{PROJECTS.length} dự án</p>
+        <p className="text-slate-400 text-xs">Hiển thị {filtered.length}/{PROJECTS.length} dự án</p>
       )}
 
       {/* Cards */}
       {filtered.length === 0 ? (
-        <div className="text-center py-16 text-gray-600">
+        <div className="text-center py-16 text-slate-400">
           <div className="text-4xl mb-3">🔍</div>
           <div>Không tìm thấy dự án phù hợp</div>
         </div>
@@ -526,7 +526,7 @@ export default function AirdropPanel() {
         </div>
       )}
 
-      <p className="text-center text-xs text-gray-700 py-2">
+      <p className="text-center text-xs text-slate-400 py-2">
         Thông tin mang tính tham khảo · Không phải lời khuyên tài chính ·
         Luôn kiểm tra trên <a href="https://x.com" target="_blank" rel="noreferrer" className="text-sky-600 hover:text-sky-500">X</a> trước khi tham gia
       </p>

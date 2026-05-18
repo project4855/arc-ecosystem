@@ -12,22 +12,22 @@ export default function StatsBar() {
       {stats.map((s) => (
         <div
           key={s.label}
-          className="bg-[#0d0e12] border border-gray-800 rounded-2xl p-4 text-center"
+          className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 text-center"
         >
-          <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{s.label}</p>
+          <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">{s.label}</p>
           {s.link ? (
             <a
               href={s.link}
               target="_blank"
               rel="noreferrer"
-              className="text-sm font-semibold text-violet-400 hover:text-violet-300"
+              className="text-sm font-semibold text-violet-600 hover:text-violet-700"
             >
               {s.value} ↗
             </a>
           ) : (
             <p
               className={`text-sm font-semibold ${
-                s.highlight ? 'text-green-400' : 'text-white'
+                s.highlight ? 'text-emerald-600' : 'text-slate-900'
               }`}
             >
               {s.value}

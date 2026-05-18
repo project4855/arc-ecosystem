@@ -14,11 +14,11 @@ function fmtUSD(n: number) {
 }
 
 function HealthBadge({ factor }: { factor: number }) {
-  if (!isFinite(factor)) return <span className="text-gray-400 font-mono font-bold text-xl">∞</span>
+  if (!isFinite(factor)) return <span className="text-slate-400 font-mono font-bold text-xl">∞</span>
   const cls =
-    factor >= 2   ? 'text-green-400'  :
-    factor >= 1.5 ? 'text-yellow-400' :
-    factor >= 1   ? 'text-orange-400' : 'text-red-400'
+    factor >= 2   ? 'text-emerald-600'  :
+    factor >= 1.5 ? 'text-amber-600' :
+    factor >= 1   ? 'text-orange-600' : 'text-red-600'
   return <span className={`font-mono font-bold text-xl ${cls}`}>{factor.toFixed(2)}</span>
 }
 
@@ -63,27 +63,27 @@ export default function LendingPanel() {
   // ── Contract not deployed yet ─────────────────────────────────────────────
   if (!isDeployed) {
     return (
-      <div className="bg-[#0d0e12] border border-yellow-500/30 rounded-2xl p-8 text-center flex flex-col items-center gap-4">
+      <div className="bg-white border border-amber-200 rounded-2xl shadow-sm p-8 text-center flex flex-col items-center gap-4">
         <span className="text-4xl">🏗️</span>
-        <h3 className="text-white font-bold text-lg">Contract chưa được deploy</h3>
-        <p className="text-gray-400 text-sm max-w-md leading-relaxed">
-          Smart contract <code className="text-violet-400">ArcLending.sol</code> cần được deploy lên Arc Testnet trước.
+        <h3 className="text-slate-900 font-bold text-lg">Contract chưa được deploy</h3>
+        <p className="text-slate-500 text-sm max-w-md leading-relaxed">
+          Smart contract <code className="text-violet-600">ArcLending.sol</code> cần được deploy lên Arc Testnet trước.
           Chạy lệnh sau trong terminal:
         </p>
-        <div className="bg-black/40 border border-gray-700 rounded-xl px-6 py-4 text-left w-full max-w-lg">
-          <p className="text-gray-500 text-xs mb-2"># 1. Thêm private key vào contracts/.env</p>
-          <code className="text-green-400 text-sm block">PRIVATE_KEY=0x...</code>
-          <p className="text-gray-500 text-xs mt-3 mb-2"># 2. Deploy contract</p>
-          <code className="text-green-400 text-sm block">cd contracts</code>
-          <code className="text-green-400 text-sm block">npx hardhat run scripts/deployLending.ts --network arc_testnet</code>
-          <p className="text-gray-500 text-xs mt-3 mb-2"># 3. Copy địa chỉ vào</p>
-          <code className="text-violet-400 text-sm block">src/config/contracts.ts → LENDING_ADDRESS</code>
+        <div className="bg-slate-50 border border-slate-200 rounded-xl px-6 py-4 text-left w-full max-w-lg">
+          <p className="text-slate-400 text-xs mb-2"># 1. Thêm private key vào contracts/.env</p>
+          <code className="text-emerald-600 text-sm block">PRIVATE_KEY=0x...</code>
+          <p className="text-slate-400 text-xs mt-3 mb-2"># 2. Deploy contract</p>
+          <code className="text-emerald-600 text-sm block">cd contracts</code>
+          <code className="text-emerald-600 text-sm block">npx hardhat run scripts/deployLending.ts --network arc_testnet</code>
+          <p className="text-slate-400 text-xs mt-3 mb-2"># 3. Copy địa chỉ vào</p>
+          <code className="text-violet-600 text-sm block">src/config/contracts.ts → LENDING_ADDRESS</code>
         </div>
         <a
           href="https://faucet.circle.com"
           target="_blank"
           rel="noreferrer"
-          className="text-xs text-green-400 hover:underline"
+          className="text-xs text-emerald-600 hover:underline"
         >
           💧 Lấy testnet USDC để trả phí gas → faucet.circle.com
         </a>
@@ -109,14 +109,14 @@ export default function LendingPanel() {
     <div className="flex flex-col gap-4">
 
       {/* ── On-chain badge ── */}
-      <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-green-500/10 border border-green-500/25">
-        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-        <span className="text-green-400 text-sm font-medium">On-chain · Arc Testnet</span>
+      <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-emerald-50 border border-emerald-200">
+        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+        <span className="text-emerald-700 text-sm font-medium">On-chain · Arc Testnet</span>
         <a
           href={`https://testnet.arcscan.app/address/${LENDING_ADDRESS}`}
           target="_blank"
           rel="noreferrer"
-          className="ml-auto text-xs text-green-400/60 hover:text-green-400 underline underline-offset-2"
+          className="ml-auto text-xs text-emerald-600/60 hover:text-emerald-600 underline underline-offset-2"
         >
           {LENDING_ADDRESS.slice(0, 10)}…{LENDING_ADDRESS.slice(-6)} ↗
         </a>
@@ -124,25 +124,25 @@ export default function LendingPanel() {
 
       {/* ── Stats row ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-[#0d0e12] border border-gray-800 rounded-2xl p-4">
-          <p className="text-gray-500 text-xs mb-1">Your Supply</p>
-          <p className="text-green-400 text-xl font-bold">{fmtUSD(totalSuppliedUSD)}</p>
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+          <p className="text-slate-500 text-xs mb-1">Your Supply</p>
+          <p className="text-emerald-600 text-xl font-bold">{fmtUSD(totalSuppliedUSD)}</p>
         </div>
-        <div className="bg-[#0d0e12] border border-gray-800 rounded-2xl p-4">
-          <p className="text-gray-500 text-xs mb-1">Your Borrow</p>
-          <p className="text-red-400 text-xl font-bold">{fmtUSD(totalBorrowedUSD)}</p>
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+          <p className="text-slate-500 text-xs mb-1">Your Borrow</p>
+          <p className="text-red-600 text-xl font-bold">{fmtUSD(totalBorrowedUSD)}</p>
         </div>
-        <div className="bg-[#0d0e12] border border-gray-800 rounded-2xl p-4">
-          <p className="text-gray-500 text-xs mb-1">Net APY</p>
-          <p className={`text-xl font-bold ${netAPY >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+          <p className="text-slate-500 text-xs mb-1">Net APY</p>
+          <p className={`text-xl font-bold ${netAPY >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
             {netAPY >= 0 ? '+' : ''}{netAPY.toFixed(2)}%
           </p>
         </div>
-        <div className="bg-[#0d0e12] border border-gray-800 rounded-2xl p-4">
-          <p className="text-gray-500 text-xs mb-1">Health Factor</p>
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+          <p className="text-slate-500 text-xs mb-1">Health Factor</p>
           <HealthBadge factor={healthFactor} />
           {isFinite(healthFactor) && healthFactor < 1.2 && (
-            <p className="text-red-400 text-[10px] mt-0.5">⚠ Nguy cơ thanh lý</p>
+            <p className="text-red-600 text-[10px] mt-0.5">⚠ Nguy cơ thanh lý</p>
           )}
         </div>
       </div>
@@ -151,39 +151,39 @@ export default function LendingPanel() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* Supply Markets */}
-        <div className="bg-[#0d0e12] border border-gray-800 rounded-2xl p-4 flex flex-col gap-2">
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-col gap-2">
           <div className="flex items-center justify-between mb-1">
-            <h3 className="text-white font-semibold text-sm">Supply Markets</h3>
-            <span className="text-xs text-gray-500">Gửi token để nhận lãi</span>
+            <h3 className="text-slate-900 font-semibold text-sm">Supply Markets</h3>
+            <span className="text-xs text-slate-500">Gửi token để nhận lãi</span>
           </div>
-          <div className="grid grid-cols-[1fr_60px_80px_auto] text-xs text-gray-600 px-1">
+          <div className="grid grid-cols-[1fr_60px_80px_auto] text-xs text-slate-400 px-1">
             <span>Token</span><span className="text-center">APY</span>
             <span className="text-center">Total</span><span />
           </div>
           {assets.map((asset) => (
-            <div key={asset.symbol} className="grid grid-cols-[1fr_60px_80px_auto] items-center px-1 py-2 rounded-xl hover:bg-white/5 transition-colors gap-1">
+            <div key={asset.symbol} className="grid grid-cols-[1fr_60px_80px_auto] items-center px-1 py-2 rounded-xl hover:bg-slate-50 transition-colors gap-1">
               <div className="flex items-center gap-2">
                 <span className="text-base w-5 text-center">{asset.icon}</span>
                 <div>
-                  <p className="text-white text-xs font-semibold">{asset.symbol}</p>
+                  <p className="text-slate-900 text-xs font-semibold">{asset.symbol}</p>
                   {asset.userSupplied > 0 && (
-                    <p className="text-green-400 text-[10px]">
+                    <p className="text-emerald-600 text-[10px]">
                       {asset.userSupplied.toFixed(4)} · {fmtUSD(asset.userSuppliedUSD)}
                     </p>
                   )}
                 </div>
               </div>
-              <span className="text-green-400 text-xs font-mono text-center">{asset.supplyAPY.toFixed(2)}%</span>
-              <span className="text-gray-400 text-xs font-mono text-center">{fmtUSD(asset.totalSupplied * asset.priceUSD)}</span>
+              <span className="text-emerald-600 text-xs font-mono text-center">{asset.supplyAPY.toFixed(2)}%</span>
+              <span className="text-slate-500 text-xs font-mono text-center">{fmtUSD(asset.totalSupplied * asset.priceUSD)}</span>
               <div className="flex gap-1 justify-end">
                 <button
                   onClick={() => openModal('supply', asset)}
-                  className="px-2.5 py-1 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-xs hover:bg-green-500/20 transition-colors"
+                  className="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs hover:bg-emerald-100 transition-colors"
                 >Supply</button>
                 {asset.userSupplied > 0 && (
                   <button
                     onClick={() => openModal('withdraw', asset)}
-                    className="px-2.5 py-1 rounded-lg bg-gray-700/40 border border-gray-700 text-gray-300 text-xs hover:bg-gray-700 transition-colors"
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 text-xs hover:bg-slate-200 transition-colors"
                   >Withdraw</button>
                 )}
               </div>
@@ -192,32 +192,32 @@ export default function LendingPanel() {
         </div>
 
         {/* Borrow Markets */}
-        <div className="bg-[#0d0e12] border border-gray-800 rounded-2xl p-4 flex flex-col gap-2">
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-col gap-2">
           <div className="flex items-center justify-between mb-1">
-            <h3 className="text-white font-semibold text-sm">Borrow Markets</h3>
-            <span className="text-xs text-gray-500">Vay bằng tài sản thế chấp</span>
+            <h3 className="text-slate-900 font-semibold text-sm">Borrow Markets</h3>
+            <span className="text-xs text-slate-500">Vay bằng tài sản thế chấp</span>
           </div>
-          <div className="grid grid-cols-[1fr_60px_72px_auto] text-xs text-gray-600 px-1">
+          <div className="grid grid-cols-[1fr_60px_72px_auto] text-xs text-slate-400 px-1">
             <span>Token</span><span className="text-center">APY</span>
             <span className="text-center">Util</span><span />
           </div>
           {assets.map((asset) => (
-            <div key={asset.symbol} className="grid grid-cols-[1fr_60px_72px_auto] items-center px-1 py-2 rounded-xl hover:bg-white/5 transition-colors gap-1">
+            <div key={asset.symbol} className="grid grid-cols-[1fr_60px_72px_auto] items-center px-1 py-2 rounded-xl hover:bg-slate-50 transition-colors gap-1">
               <div className="flex items-center gap-2">
                 <span className="text-base w-5 text-center">{asset.icon}</span>
                 <div>
-                  <p className="text-white text-xs font-semibold">{asset.symbol}</p>
+                  <p className="text-slate-900 text-xs font-semibold">{asset.symbol}</p>
                   {asset.userBorrowed > 0 && (
-                    <p className="text-red-400 text-[10px]">
+                    <p className="text-red-600 text-[10px]">
                       {asset.userBorrowed.toFixed(4)} · {fmtUSD(asset.userBorrowedUSD)}
                     </p>
                   )}
                 </div>
               </div>
-              <span className="text-red-400 text-xs font-mono text-center">{asset.borrowAPY.toFixed(2)}%</span>
+              <span className="text-amber-600 text-xs font-mono text-center">{asset.borrowAPY.toFixed(2)}%</span>
               <div className="flex flex-col items-center gap-0.5">
-                <span className="text-gray-400 text-[10px] font-mono">{asset.utilizationPct.toFixed(1)}%</span>
-                <div className="w-full h-1 bg-gray-800 rounded-full">
+                <span className="text-slate-500 text-[10px] font-mono">{asset.utilizationPct.toFixed(1)}%</span>
+                <div className="w-full h-1 bg-slate-200 rounded-full">
                   <div
                     className="h-full rounded-full transition-all"
                     style={{
@@ -234,12 +234,12 @@ export default function LendingPanel() {
                   onClick={() => openModal('borrow', asset)}
                   disabled={totalSuppliedUSD === 0}
                   title={totalSuppliedUSD === 0 ? 'Supply collateral trước' : ''}
-                  className="px-2.5 py-1 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs hover:bg-violet-500/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="px-2.5 py-1 rounded-lg bg-violet-50 border border-violet-200 text-violet-600 text-xs hover:bg-violet-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >Borrow</button>
                 {asset.userBorrowed > 0 && (
                   <button
                     onClick={() => openModal('repay', asset)}
-                    className="px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs hover:bg-orange-500/20 transition-colors"
+                    className="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs hover:bg-amber-100 transition-colors"
                   >Repay</button>
                 )}
               </div>
@@ -250,14 +250,14 @@ export default function LendingPanel() {
 
       {/* ── Connect prompt ── */}
       {!isConnected && (
-        <div className="flex flex-col items-center gap-3 py-4 bg-[#0d0e12] border border-gray-800 rounded-2xl">
-          <p className="text-gray-400 text-sm">Kết nối ví để supply hoặc borrow</p>
+        <div className="flex flex-col items-center gap-3 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
+          <p className="text-slate-500 text-sm">Kết nối ví để supply hoặc borrow</p>
           <ConnectButton label="Connect Wallet" />
         </div>
       )}
 
       {/* ── Info row ── */}
-      <p className="text-xs text-gray-600 px-1">
+      <p className="text-xs text-slate-400 px-1">
         Collateral factors: USDC 90% · EURC 88% · Giao dịch thật trên Arc Testnet · Phí gas thanh toán bằng USDC
       </p>
 
@@ -268,26 +268,26 @@ export default function LendingPanel() {
           onClick={() => { if (!isActing) setModal(null) }}
         >
           <div
-            className="bg-[#0d0e12] border border-gray-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+            className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-sm shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-white font-bold text-lg capitalize">{modal.type}</h3>
-                <p className="text-gray-500 text-sm">{modal.asset.icon} {modal.asset.symbol} · Arc Testnet</p>
+                <h3 className="text-slate-900 font-bold text-lg capitalize">{modal.type}</h3>
+                <p className="text-slate-500 text-sm">{modal.asset.icon} {modal.asset.symbol} · Arc Testnet</p>
               </div>
               {!isActing && (
-                <button onClick={() => setModal(null)} className="text-gray-600 hover:text-gray-400 text-xl">✕</button>
+                <button onClick={() => setModal(null)} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
               )}
             </div>
 
             {/* APY */}
-            <div className="bg-[#111318] rounded-xl p-3 mb-4 flex justify-between text-sm">
-              <span className="text-gray-500">
+            <div className="bg-slate-50 rounded-xl p-3 mb-4 flex justify-between text-sm">
+              <span className="text-slate-500">
                 {modal.type === 'supply' || modal.type === 'withdraw' ? 'Supply APY' : 'Borrow APY'}
               </span>
-              <span className={`font-semibold ${modal.type === 'supply' || modal.type === 'withdraw' ? 'text-green-400' : 'text-red-400'}`}>
+              <span className={`font-semibold ${modal.type === 'supply' || modal.type === 'withdraw' ? 'text-emerald-600' : 'text-red-600'}`}>
                 {modal.type === 'supply' || modal.type === 'withdraw'
                   ? `${modal.asset.supplyAPY.toFixed(2)}%`
                   : `${modal.asset.borrowAPY.toFixed(2)}%`}
@@ -295,7 +295,7 @@ export default function LendingPanel() {
             </div>
 
             {/* Amount input */}
-            <label className="text-gray-400 text-xs block mb-1">Số lượng ({modal.asset.symbol})</label>
+            <label className="text-slate-500 text-xs block mb-1">Số lượng ({modal.asset.symbol})</label>
             <input
               type="number"
               min="0"
@@ -304,17 +304,17 @@ export default function LendingPanel() {
               placeholder="0.00"
               autoFocus
               disabled={isActing}
-              className="w-full bg-[#111318] border border-gray-700 focus:border-violet-500 rounded-xl px-4 py-3 text-white text-xl font-mono outline-none transition-colors mb-1 disabled:opacity-50"
+              className="w-full bg-slate-50 border border-slate-200 focus:border-violet-400 rounded-xl px-4 py-3 text-slate-900 text-xl font-mono outline-none transition-colors mb-1 disabled:opacity-50"
             />
             {amount && parseFloat(amount) > 0 && (
-              <p className="text-gray-600 text-xs mb-3">
+              <p className="text-slate-400 text-xs mb-3">
                 ≈ {fmtUSD(parseFloat(amount) * modal.asset.priceUSD)}
               </p>
             )}
 
             {/* Borrow warning */}
             {modal.type === 'borrow' && (
-              <div className="mb-4 p-2.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-xs text-yellow-400">
+              <div className="mb-4 p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
                 Giữ health factor &gt; 1.0 để tránh bị thanh lý tài sản thế chấp
               </div>
             )}
@@ -323,8 +323,8 @@ export default function LendingPanel() {
             {(isActing || isDone) && (
               <div className={`mb-3 p-2.5 rounded-xl text-sm text-center font-medium border ${
                 isDone
-                  ? 'bg-green-500/10 border-green-500/30 text-green-400'
-                  : 'bg-violet-500/10 border-violet-500/30 text-violet-300'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                  : 'bg-violet-50 border-violet-200 text-violet-700'
               }`}>
                 {stepLabel[txStep]}
                 {txHash && !isDone && (
@@ -332,7 +332,7 @@ export default function LendingPanel() {
                     href={`https://testnet.arcscan.app/tx/${txHash}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="block text-xs text-violet-400/70 hover:text-violet-400 mt-0.5"
+                    className="block text-xs text-violet-600/70 hover:text-violet-600 mt-0.5"
                   >
                     {txHash.slice(0, 16)}… ↗ ArcScan
                   </a>
@@ -342,7 +342,7 @@ export default function LendingPanel() {
 
             {/* Error */}
             {txError && (
-              <div className="mb-3 p-2.5 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-400">
+              <div className="mb-3 p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
                 {txError}
               </div>
             )}
@@ -353,7 +353,7 @@ export default function LendingPanel() {
                 <button
                   onClick={() => setModal(null)}
                   disabled={isActing}
-                  className="flex-1 py-3 rounded-xl bg-gray-800 text-gray-400 text-sm font-medium hover:bg-gray-700 transition-colors disabled:opacity-40"
+                  className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-500 text-sm font-medium hover:bg-slate-200 transition-colors disabled:opacity-40"
                 >Hủy</button>
                 <button
                   onClick={handleConfirm}

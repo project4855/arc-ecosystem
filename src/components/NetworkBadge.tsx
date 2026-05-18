@@ -14,13 +14,13 @@ export default function NetworkBadge() {
       <div
         className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${
           isArc
-            ? 'bg-green-500/10 border-green-500/30 text-green-400'
-            : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+            : 'bg-amber-50 border-amber-200 text-amber-700'
         }`}
       >
         <div
           className={`w-1.5 h-1.5 rounded-full animate-pulse ${
-            isArc ? 'bg-green-400' : 'bg-yellow-400'
+            isArc ? 'bg-emerald-500' : 'bg-amber-500'
           }`}
         />
         {isArc ? 'Arc Testnet' : 'Wrong Network — switch to Arc Testnet'}

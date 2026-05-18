@@ -19,37 +19,37 @@ interface SourceChain {
 const SOURCE_CHAINS: SourceChain[] = [
   {
     id: 'Ethereum_Sepolia', name: 'Ethereum Sepolia', shortName: 'ETH Sepolia',
-    icon: '⟠', color: 'bg-blue-500/10 border-blue-500/30 text-blue-400',
+    icon: '⟠', color: 'bg-blue-50 border-blue-200 text-blue-600',
     nativeToken: 'ETH', faucetUrl: 'https://sepoliafaucet.com',
   },
   {
     id: 'Base_Sepolia', name: 'Base Sepolia', shortName: 'Base Sepolia',
-    icon: '🔵', color: 'bg-blue-600/10 border-blue-600/30 text-blue-300',
+    icon: '🔵', color: 'bg-blue-50 border-blue-200 text-blue-600',
     nativeToken: 'ETH', faucetUrl: 'https://www.alchemy.com/faucets/base-sepolia',
   },
   {
     id: 'Arbitrum_Sepolia', name: 'Arbitrum Sepolia', shortName: 'Arb Sepolia',
-    icon: '🔷', color: 'bg-sky-500/10 border-sky-500/30 text-sky-400',
+    icon: '🔷', color: 'bg-sky-50 border-sky-200 text-sky-600',
     nativeToken: 'ETH', faucetUrl: 'https://www.alchemy.com/faucets/arbitrum-sepolia',
   },
   {
     id: 'Optimism_Sepolia', name: 'OP Sepolia', shortName: 'OP Sepolia',
-    icon: '🔴', color: 'bg-red-500/10 border-red-500/30 text-red-400',
+    icon: '🔴', color: 'bg-red-50 border-red-200 text-red-600',
     nativeToken: 'ETH', faucetUrl: 'https://app.optimism.io/faucet',
   },
   {
     id: 'Polygon_Amoy_Testnet', name: 'Polygon Amoy', shortName: 'Polygon Amoy',
-    icon: '🟣', color: 'bg-purple-500/10 border-purple-500/30 text-purple-400',
+    icon: '🟣', color: 'bg-purple-50 border-purple-200 text-purple-600',
     nativeToken: 'MATIC', faucetUrl: 'https://www.alchemy.com/faucets/polygon-amoy',
   },
   {
     id: 'Avalanche_Fuji', name: 'Avalanche Fuji', shortName: 'Avax Fuji',
-    icon: '🔺', color: 'bg-red-600/10 border-red-600/30 text-red-300',
+    icon: '🔺', color: 'bg-red-50 border-red-200 text-red-600',
     nativeToken: 'AVAX', faucetUrl: 'https://faucet.avax.network',
   },
   {
     id: 'Unichain_Sepolia', name: 'Unichain Sepolia', shortName: 'Unichain',
-    icon: '🦄', color: 'bg-pink-500/10 border-pink-500/30 text-pink-400',
+    icon: '🦄', color: 'bg-pink-50 border-pink-200 text-pink-600',
     nativeToken: 'ETH', faucetUrl: 'https://www.alchemy.com/faucets/unichain-sepolia',
   },
 ]
@@ -78,15 +78,15 @@ interface BridgeRecord {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function stepIcon(state: BridgeStep['state']) {
-  if (state === 'idle')       return <span className="w-4 h-4 rounded-full border border-gray-700 block" />
+  if (state === 'idle')       return <span className="w-4 h-4 rounded-full border border-slate-300 block" />
   if (state === 'processing') return (
-    <svg className="animate-spin w-4 h-4 text-violet-400" viewBox="0 0 24 24" fill="none">
+    <svg className="animate-spin w-4 h-4 text-violet-600" viewBox="0 0 24 24" fill="none">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
     </svg>
   )
-  if (state === 'success')    return <span className="text-green-400 text-sm">✓</span>
-  return                             <span className="text-red-400 text-sm">✗</span>
+  if (state === 'success')    return <span className="text-emerald-600 text-sm">✓</span>
+  return                             <span className="text-red-600 text-sm">✗</span>
 }
 
 function stepLabel(name: string): string {
@@ -256,16 +256,16 @@ export default function BridgePanel() {
     <div className="flex flex-col gap-5 max-w-4xl mx-auto">
 
       {/* CCTP info banner */}
-      <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-violet-500/8 border border-violet-500/20">
+      <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-violet-50 border border-violet-200">
         <span className="text-xl">🌉</span>
         <div className="flex-1 text-left">
-          <p className="text-violet-300 font-semibold text-sm">Powered by Circle CCTP</p>
-          <p className="text-gray-500 text-xs mt-0.5">
+          <p className="text-violet-700 font-semibold text-sm">Powered by Circle CCTP</p>
+          <p className="text-slate-500 text-xs mt-0.5">
             Bridge USDC từ bất kỳ chain nào về Arc Testnet · Tốc độ nhanh ~2 phút
           </p>
         </div>
         <a href="https://docs.arc.io/app-kit/bridge" target="_blank" rel="noreferrer"
-          className="text-violet-500 text-xs hover:text-violet-400 transition-colors whitespace-nowrap">
+          className="text-violet-600 text-xs hover:text-violet-700 transition-colors whitespace-nowrap">
           Tài liệu ↗
         </a>
       </div>
@@ -276,8 +276,8 @@ export default function BridgePanel() {
         <div className="flex flex-col gap-4">
 
           {/* From chain selector */}
-          <div className="bg-[#0d0e12] border border-gray-800 rounded-2xl p-5">
-            <p className="text-gray-500 text-xs font-semibold uppercase tracking-widest mb-3">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+            <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-3">
               Từ Chain
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
@@ -287,32 +287,32 @@ export default function BridgePanel() {
                   onClick={() => { setFromChainId(chain.id); setError(null) }}
                   className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all text-left ${
                     fromChainId === chain.id
-                      ? 'bg-violet-600/20 border-violet-500/60 ring-1 ring-violet-500/30'
-                      : 'bg-gray-900/40 border-gray-800/60 hover:border-gray-700'
+                      ? 'bg-violet-50 border-violet-400 ring-1 ring-violet-200'
+                      : 'bg-slate-50 border-slate-200 hover:border-slate-300'
                   }`}
                 >
                   <span className="text-base leading-none">{chain.icon}</span>
                   <div className="min-w-0">
-                    <p className={`text-xs font-semibold truncate ${fromChainId === chain.id ? 'text-violet-300' : 'text-gray-300'}`}>
+                    <p className={`text-xs font-semibold truncate ${fromChainId === chain.id ? 'text-violet-700' : 'text-slate-700'}`}>
                       {chain.shortName}
                     </p>
-                    <p className="text-[10px] text-gray-600">{chain.nativeToken} gas</p>
+                    <p className="text-[10px] text-slate-400">{chain.nativeToken} gas</p>
                   </div>
                   {fromChainId === chain.id && (
-                    <span className="ml-auto text-violet-400 text-xs">✓</span>
+                    <span className="ml-auto text-violet-600 text-xs">✓</span>
                   )}
                 </button>
               ))}
             </div>
 
             {/* Gas reminder */}
-            <div className="mt-3 flex items-start gap-2 px-3 py-2 rounded-xl bg-amber-500/8 border border-amber-500/20">
-              <span className="text-amber-400 text-sm mt-px">⚠️</span>
-              <p className="text-amber-400/80 text-[11px] leading-relaxed">
+            <div className="mt-3 flex items-start gap-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200">
+              <span className="text-amber-600 text-sm mt-px">⚠️</span>
+              <p className="text-amber-600/80 text-[11px] leading-relaxed">
                 Cần có <strong>{fromChain.nativeToken}</strong> trên {fromChain.shortName} để trả phí gas.{' '}
                 {fromChain.faucetUrl && (
                   <a href={fromChain.faucetUrl} target="_blank" rel="noreferrer"
-                    className="underline hover:text-amber-300 transition-colors">
+                    className="underline hover:text-amber-700 transition-colors">
                     Lấy {fromChain.nativeToken} testnet ↗
                   </a>
                 )}
@@ -321,14 +321,14 @@ export default function BridgePanel() {
           </div>
 
           {/* Amount + Speed */}
-          <div className="bg-[#0d0e12] border border-gray-800 rounded-2xl p-5">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
             {/* Amount input */}
             <div className="mb-4">
-              <label className="text-gray-500 text-xs font-semibold uppercase tracking-widest block mb-2">
+              <label className="text-slate-500 text-xs font-semibold uppercase tracking-widest block mb-2">
                 Số lượng USDC
               </label>
-              <div className="flex items-center gap-3 bg-gray-900/60 border border-gray-700/60 rounded-xl px-4 py-3 focus-within:border-violet-500/60 transition-colors">
-                <span className="text-gray-400 text-lg">💵</span>
+              <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus-within:border-violet-400 transition-colors">
+                <span className="text-slate-400 text-lg">💵</span>
                 <input
                   type="number"
                   min="0.01"
@@ -336,15 +336,15 @@ export default function BridgePanel() {
                   placeholder="0.00"
                   value={amount}
                   onChange={e => { setAmount(e.target.value); setError(null) }}
-                  className="flex-1 bg-transparent text-white text-xl font-bold outline-none placeholder:text-gray-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="flex-1 bg-transparent text-slate-900 text-xl font-bold outline-none placeholder:text-slate-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
-                <span className="text-gray-400 font-semibold text-sm">USDC</span>
+                <span className="text-slate-500 font-semibold text-sm">USDC</span>
               </div>
               {/* Quick amounts */}
               <div className="flex gap-1.5 mt-2">
                 {['1', '5', '10', '50'].map(v => (
                   <button key={v} onClick={() => setAmount(v)}
-                    className="px-2.5 py-1 rounded-lg bg-gray-800/80 text-gray-500 hover:text-white text-xs transition-colors hover:bg-gray-700/80">
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 hover:text-slate-900 text-xs transition-colors hover:bg-slate-200">
                     ${v}
                   </button>
                 ))}
@@ -353,16 +353,16 @@ export default function BridgePanel() {
 
             {/* Speed selector */}
             <div>
-              <label className="text-gray-500 text-xs font-semibold uppercase tracking-widest block mb-2">
+              <label className="text-slate-500 text-xs font-semibold uppercase tracking-widest block mb-2">
                 Tốc độ
               </label>
-              <div className="grid grid-cols-2 gap-2 bg-gray-900/60 p-1 rounded-xl">
+              <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
                 <button
                   onClick={() => setSpeed('fast')}
                   className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                     speed === 'fast'
-                      ? 'bg-violet-600 text-white shadow-md shadow-violet-900/30'
-                      : 'text-gray-500 hover:text-gray-300'
+                      ? 'bg-violet-600 text-white shadow-md'
+                      : 'text-slate-500 hover:text-slate-700'
                   }`}>
                   <span>⚡</span> Nhanh <span className="text-xs opacity-70">(~2 phút)</span>
                 </button>
@@ -370,14 +370,14 @@ export default function BridgePanel() {
                   onClick={() => setSpeed('standard')}
                   className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                     speed === 'standard'
-                      ? 'bg-violet-600 text-white shadow-md shadow-violet-900/30'
-                      : 'text-gray-500 hover:text-gray-300'
+                      ? 'bg-violet-600 text-white shadow-md'
+                      : 'text-slate-500 hover:text-slate-700'
                   }`}>
                   <span>🐌</span> Chuẩn <span className="text-xs opacity-70">(~20 phút)</span>
                 </button>
               </div>
               {speed === 'fast' && (
-                <p className="text-[11px] text-gray-600 mt-1.5 text-center">
+                <p className="text-[11px] text-slate-400 mt-1.5 text-center">
                   Phí CCTP Fast Transfer áp dụng · Phí thấp hơn với Standard
                 </p>
               )}
@@ -385,30 +385,30 @@ export default function BridgePanel() {
           </div>
 
           {/* Route summary */}
-          <div className="bg-[#0d0e12] border border-gray-800 rounded-2xl px-5 py-4">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm px-5 py-4">
             <div className="flex items-center gap-3">
               {/* From */}
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <span className="text-2xl">{fromChain.icon}</span>
                 <div className="min-w-0">
-                  <p className="text-gray-300 font-semibold text-sm truncate">{fromChain.shortName}</p>
-                  <p className="text-gray-600 text-[11px]">{amount ? `${amount} USDC` : '— USDC'}</p>
+                  <p className="text-slate-700 font-semibold text-sm truncate">{fromChain.shortName}</p>
+                  <p className="text-slate-400 text-[11px]">{amount ? `${amount} USDC` : '— USDC'}</p>
                 </div>
               </div>
 
               {/* Arrow */}
               <div className="flex flex-col items-center gap-0.5 px-2">
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/15 border border-violet-500/25">
-                  <span className="text-violet-400 text-[10px] font-bold">CCTP</span>
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200">
+                  <span className="text-violet-600 text-[10px] font-bold">CCTP</span>
                 </div>
-                <span className="text-violet-400 text-lg">→</span>
+                <span className="text-violet-600 text-lg">→</span>
               </div>
 
               {/* To */}
               <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
                 <div className="min-w-0 text-right">
-                  <p className="text-gray-300 font-semibold text-sm">Arc Testnet</p>
-                  <p className="text-green-400 text-[11px]">{amount ? `${amount} USDC` : '— USDC'}</p>
+                  <p className="text-slate-700 font-semibold text-sm">Arc Testnet</p>
+                  <p className="text-emerald-600 text-[11px]">{amount ? `${amount} USDC` : '— USDC'}</p>
                 </div>
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-blue-500 flex items-center justify-center font-bold text-white text-sm">
                   A
@@ -417,23 +417,23 @@ export default function BridgePanel() {
             </div>
 
             {address && (
-              <p className="text-[11px] text-gray-600 mt-2 text-center">
-                Nhận tại: <span className="text-gray-500 font-mono">{address.slice(0, 8)}…{address.slice(-6)}</span>
+              <p className="text-[11px] text-slate-400 mt-2 text-center">
+                Nhận tại: <span className="text-slate-500 font-mono">{address.slice(0, 8)}…{address.slice(-6)}</span>
               </p>
             )}
           </div>
 
           {/* Error */}
           {error && (
-            <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/25">
-              <span className="text-red-400 text-sm mt-px">⚠</span>
-              <p className="text-red-400 text-sm">{error}</p>
+            <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200">
+              <span className="text-red-600 text-sm mt-px">⚠</span>
+              <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
 
           {/* Bridge button */}
           {!isConnected ? (
-            <div className="text-center py-4 text-gray-500 text-sm bg-[#0d0e12] border border-gray-800 rounded-2xl">
+            <div className="text-center py-4 text-slate-500 text-sm bg-white border border-slate-200 rounded-2xl shadow-sm">
               Kết nối ví để bridge
             </div>
           ) : (
@@ -443,7 +443,7 @@ export default function BridgePanel() {
               className={`w-full py-4 rounded-2xl font-bold text-base transition-all ${
                 canBridge
                   ? 'bg-gradient-to-r from-violet-600 to-blue-600 text-white hover:from-violet-500 hover:to-blue-500 shadow-lg shadow-violet-900/30 hover:shadow-violet-900/50 active:scale-[0.99]'
-                  : 'bg-gray-800/60 text-gray-600 cursor-not-allowed'
+                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
               }`}
             >
               {isBridging ? (
@@ -463,17 +463,17 @@ export default function BridgePanel() {
         <div className="flex flex-col gap-4">
 
           {/* Transaction Steps */}
-          <div className="bg-[#0d0e12] border border-gray-800 rounded-2xl p-5">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-bold text-sm">Tiến trình Bridge</h3>
+              <h3 className="text-slate-900 font-bold text-sm">Tiến trình Bridge</h3>
               {isBridging && (
-                <span className="flex items-center gap-1.5 text-[11px] text-violet-400">
-                  <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-pulse" />
+                <span className="flex items-center gap-1.5 text-[11px] text-violet-600">
+                  <span className="w-1.5 h-1.5 bg-violet-600 rounded-full animate-pulse" />
                   Đang xử lý
                 </span>
               )}
               {result && (
-                <span className="text-[11px] text-green-400 font-semibold">✓ Hoàn thành</span>
+                <span className="text-[11px] text-emerald-600 font-semibold">✓ Hoàn thành</span>
               )}
             </div>
 
@@ -490,14 +490,14 @@ export default function BridgePanel() {
                     {/* Connector line */}
                     {i < steps.length - 1 && (
                       <div className={`absolute left-[11px] top-[28px] w-0.5 h-4 rounded-full transition-colors ${
-                        isDone ? 'bg-green-500/40' : 'bg-gray-800'
+                        isDone ? 'bg-emerald-300' : 'bg-slate-200'
                       }`} />
                     )}
 
                     <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                      isActive ? 'bg-violet-500/10 border border-violet-500/25' :
-                      isDone   ? 'bg-green-500/5  border border-green-500/15'   :
-                      isFailed ? 'bg-red-500/10   border border-red-500/20'     :
+                      isActive ? 'bg-violet-50 border border-violet-200' :
+                      isDone   ? 'bg-emerald-50 border border-emerald-100'   :
+                      isFailed ? 'bg-red-50 border border-red-200'     :
                       'border border-transparent'
                     }`}>
                       <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
@@ -506,15 +506,15 @@ export default function BridgePanel() {
 
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium ${
-                          isActive ? 'text-violet-300' :
-                          isDone   ? 'text-green-400'  :
-                          isFailed ? 'text-red-400'    :
-                          isIdle   ? 'text-gray-600'   : 'text-gray-400'
+                          isActive ? 'text-violet-700' :
+                          isDone   ? 'text-emerald-600'  :
+                          isFailed ? 'text-red-600'    :
+                          isIdle   ? 'text-slate-400'   : 'text-slate-500'
                         }`}>
                           {stepLabel(step.name)}
                         </p>
                         {step.txHash && (
-                          <p className="text-gray-600 font-mono text-[10px] mt-0.5">
+                          <p className="text-slate-400 font-mono text-[10px] mt-0.5">
                             {shortHash(step.txHash)}
                           </p>
                         )}
@@ -522,7 +522,7 @@ export default function BridgePanel() {
 
                       {step.txHash && (
                         <a href={url} target="_blank" rel="noreferrer"
-                          className="text-gray-600 hover:text-violet-400 transition-colors text-xs ml-auto flex-shrink-0">
+                          className="text-slate-400 hover:text-violet-600 transition-colors text-xs ml-auto flex-shrink-0">
                           ↗
                         </a>
                       )}
@@ -534,11 +534,11 @@ export default function BridgePanel() {
 
             {/* Success message */}
             {result && (
-              <div className="mt-4 px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/20">
-                <p className="text-green-400 font-semibold text-sm text-center">
+              <div className="mt-4 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                <p className="text-emerald-600 font-semibold text-sm text-center">
                   🎉 Bridge thành công!
                 </p>
-                <p className="text-gray-500 text-[11px] text-center mt-1">
+                <p className="text-slate-500 text-[11px] text-center mt-1">
                   {result.amount} USDC đã đến Arc Testnet
                 </p>
               </div>
@@ -546,15 +546,15 @@ export default function BridgePanel() {
 
             {/* Idle hint */}
             {!isBridging && !result && (
-              <p className="text-gray-700 text-[11px] text-center mt-4">
+              <p className="text-slate-300 text-[11px] text-center mt-4">
                 Nhập số lượng và nhấn Bridge để bắt đầu
               </p>
             )}
           </div>
 
           {/* How it works */}
-          <div className="bg-[#0d0e12] border border-gray-800 rounded-2xl p-5">
-            <h3 className="text-white font-bold text-sm mb-3">Cách hoạt động</h3>
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+            <h3 className="text-slate-900 font-bold text-sm mb-3">Cách hoạt động</h3>
             <div className="flex flex-col gap-3">
               {[
                 { step: '01', title: 'Approve',   desc: 'Ủy quyền cho CCTP contract sử dụng USDC của bạn' },
@@ -567,8 +567,8 @@ export default function BridgePanel() {
                     {item.step}
                   </span>
                   <div>
-                    <span className="text-gray-400 text-xs font-semibold">{item.title} </span>
-                    <span className="text-gray-600 text-xs">— {item.desc}</span>
+                    <span className="text-slate-600 text-xs font-semibold">{item.title} </span>
+                    <span className="text-slate-400 text-xs">— {item.desc}</span>
                   </div>
                 </div>
               ))}
@@ -577,23 +577,23 @@ export default function BridgePanel() {
 
           {/* Bridge history */}
           {history.length > 0 && (
-            <div className="bg-[#0d0e12] border border-gray-800 rounded-2xl p-5">
-              <h3 className="text-white font-bold text-sm mb-3">Lịch sử Bridge</h3>
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+              <h3 className="text-slate-900 font-bold text-sm mb-3">Lịch sử Bridge</h3>
               <div className="flex flex-col gap-2">
                 {history.map(h => (
                   <div key={h.id}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-900/40 border border-gray-800/60">
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${h.status === 'success' ? 'bg-green-400' : 'bg-red-400'}`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-gray-300 text-xs font-semibold truncate">
+                      <p className="text-slate-700 text-xs font-semibold truncate">
                         {h.fromChain} → Arc · {h.amount} USDC
                       </p>
-                      <p className="text-gray-600 text-[10px]">{h.time}</p>
+                      <p className="text-slate-400 text-[10px]">{h.time}</p>
                     </div>
                     {h.txHash && h.txHash !== '—' && (
                       <a href={`https://testnet.arcscan.app/tx/${h.txHash}`}
                         target="_blank" rel="noreferrer"
-                        className="text-gray-600 hover:text-violet-400 transition-colors text-xs flex-shrink-0">
+                        className="text-slate-400 hover:text-violet-600 transition-colors text-xs flex-shrink-0">
                         ↗
                       </a>
                     )}

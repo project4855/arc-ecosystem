@@ -26,14 +26,14 @@ function CustomTooltip({ active, payload, label }: {
   if (!active || !payload?.length) return null
   const d = payload[0].payload
   return (
-    <div className="bg-[#1a1d24] border border-gray-700 rounded-xl p-3 text-xs shadow-xl">
-      <p className="text-gray-400 mb-2">{label}</p>
+    <div className="bg-white border border-slate-200 rounded-xl p-3 text-xs shadow-xl">
+      <p className="text-slate-400 mb-2">{label}</p>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-        <span className="text-gray-500">Open</span><span className="text-white font-mono">{fmtPrice(d.open)}</span>
-        <span className="text-green-400">High</span><span className="text-white font-mono">{fmtPrice(d.high)}</span>
-        <span className="text-red-400">Low</span><span className="text-white font-mono">{fmtPrice(d.low)}</span>
-        <span className="text-gray-500">Close</span><span className="text-white font-mono">{fmtPrice(d.close)}</span>
-        <span className="text-gray-500">Volume</span><span className="text-violet-400 font-mono">{Number(d.volume).toLocaleString()}</span>
+        <span className="text-slate-500">Open</span><span className="text-slate-900 font-mono">{fmtPrice(d.open)}</span>
+        <span className="text-emerald-600">High</span><span className="text-slate-900 font-mono">{fmtPrice(d.high)}</span>
+        <span className="text-red-600">Low</span><span className="text-slate-900 font-mono">{fmtPrice(d.low)}</span>
+        <span className="text-slate-500">Close</span><span className="text-slate-900 font-mono">{fmtPrice(d.close)}</span>
+        <span className="text-slate-500">Volume</span><span className="text-violet-600 font-mono">{Number(d.volume).toLocaleString()}</span>
       </div>
     </div>
   )
@@ -53,16 +53,16 @@ export default function PriceChart({ pair }: Props) {
   const padding = (maxPrice - minPrice) * 0.15
 
   return (
-    <div className="bg-[#0d0e12] border border-gray-800 rounded-2xl p-4 flex flex-col gap-4">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
-          <h3 className="text-white font-semibold text-sm">{pair}</h3>
-          <span className={`text-lg font-bold font-mono ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+          <h3 className="text-slate-900 font-semibold text-sm">{pair}</h3>
+          <span className={`text-lg font-bold font-mono ${isUp ? 'text-emerald-600' : 'text-red-600'}`}>
             {fmtPrice(lastPrice)}
           </span>
           <span className={`text-xs px-2 py-0.5 rounded-full ${
-            isUp ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+            isUp ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
           }`}>
             {isUp ? '+' : ''}{priceChange.toFixed(4)}%
           </span>
@@ -77,7 +77,7 @@ export default function PriceChart({ pair }: Props) {
               className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
                 interval === iv
                   ? 'bg-violet-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:text-white'
+                  : 'bg-slate-100 text-slate-400 hover:text-slate-900'
               }`}
             >
               {iv}
@@ -95,17 +95,17 @@ export default function PriceChart({ pair }: Props) {
               <stop offset="95%" stopColor={isUp ? '#22c55e' : '#ef4444'} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
           <XAxis
             dataKey="time"
-            tick={{ fill: '#4b5563', fontSize: 10 }}
+            tick={{ fill: '#94a3b8', fontSize: 10 }}
             axisLine={false}
             tickLine={false}
             interval="preserveStartEnd"
           />
           <YAxis
             domain={[minPrice - padding, maxPrice + padding]}
-            tick={{ fill: '#4b5563', fontSize: 10 }}
+            tick={{ fill: '#94a3b8', fontSize: 10 }}
             axisLine={false}
             tickLine={false}
             width={72}
@@ -137,7 +137,7 @@ export default function PriceChart({ pair }: Props) {
           />
         ))}
       </div>
-      <p className="text-xs text-gray-600 -mt-2">Volume</p>
+      <p className="text-xs text-slate-400 -mt-2">Volume</p>
     </div>
   )
 }
