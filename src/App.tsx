@@ -26,18 +26,6 @@ function getTabFromHash(): AppTab {
   return VALID_TABS.includes(hash) ? hash : 'trade'
 }
 
-// ── Per-tab metadata ──────────────────────────────────────────────────────────
-
-const TAB_META: Record<AppTab, { icon: string; title: string; sub: string }> = {
-  trade:    { icon: '📊', title: 'Spot Trading',   sub: 'Swap tokens instantly on Arc Testnet'                      },
-  bridge:   { icon: '🌉', title: 'Bridge',          sub: 'Transfer USDC cross-chain via Circle CCTP'                 },
-  lending:  { icon: '🏦', title: 'Lending',         sub: 'Supply assets to earn yield · Borrow against collateral'   },
-  perps:    { icon: '⚡', title: 'Perpetuals',      sub: 'On-chain futures up to 20× leverage · USDC collateral'     },
-  traders:  { icon: '🏆', title: 'Top Traders',     sub: 'Live leaderboard from Hyperliquid Mainnet'                 },
-  airdrops: { icon: '🪂', title: 'Airdrops',        sub: 'High-potential airdrop projects · Track & qualify'         },
-  wallet:   { icon: '👛', title: 'Wallet',          sub: 'Create wallet · Receive tokens · Send USDC / EURC'         },
-}
-
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -64,8 +52,6 @@ export default function App() {
   const handleSwapComplete = useCallback((tx: SwapRecord) => {
     setMyTxs(prev => [tx, ...prev].slice(0, 50))
   }, [])
-
-  const meta = TAB_META[tab]
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -107,18 +93,7 @@ export default function App() {
       </div>
 
       {/* ── Main content ── */}
-      <main className="flex-1 max-w-[1440px] mx-auto w-full px-4 xl:px-6 py-6 flex flex-col gap-6">
-
-        {/* Per-tab compact header (hidden on trade — has its own hero) */}
-        {tab !== 'trade' && (
-          <div className="flex items-center gap-4 px-5 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
-            <span className="text-3xl shrink-0">{meta.icon}</span>
-            <div>
-              <h1 className="text-slate-900 font-bold text-xl leading-tight">{meta.title}</h1>
-              <p className="text-slate-400 text-sm mt-0.5">{meta.sub}</p>
-            </div>
-          </div>
-        )}
+      <main className="flex-1 max-w-[1440px] mx-auto w-full px-4 xl:px-6 py-5 flex flex-col gap-5">
 
         {/* ══════════════════ TRADE ══════════════════ */}
         {tab === 'trade' && (

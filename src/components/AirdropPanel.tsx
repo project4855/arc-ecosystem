@@ -621,7 +621,7 @@ function ExternalAirdropsPanel() {
             <a href="https://dappradar.com/rewards" target="_blank" rel="noreferrer"
               className="ml-auto text-xs text-violet-600 hover:underline">View all →</a>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {EXTERNAL_AIRDROPS.map(a => (
               <div key={a.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col gap-3">
                 <div className="flex items-start gap-3">
@@ -809,7 +809,7 @@ function FundingPanel() {
       </div>
 
       {/* Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {filtered.map(r => (
           <div key={r.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col gap-3">
             <div className="flex items-start gap-3">
@@ -902,7 +902,7 @@ export default function AirdropPanel() {
 
       {/* Banner */}
       <div className="w-full rounded-2xl bg-gradient-to-r from-violet-50 via-indigo-50 to-blue-50 border border-violet-200 p-5">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-start gap-6 flex-wrap">
           <div>
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <span className="text-2xl">🪂</span>
@@ -921,7 +921,7 @@ export default function AirdropPanel() {
           </div>
 
           {/* Update info */}
-          <div className="text-xs bg-white rounded-xl px-3 py-2.5 border border-slate-200 shrink-0 flex flex-col gap-1.5 min-w-[160px]">
+          <div className="text-xs bg-white rounded-xl px-3 py-2.5 border border-slate-200 shrink-0 ml-auto flex flex-col gap-1.5 min-w-[160px]">
             <div className="flex items-center gap-1.5 text-slate-500">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
               <span className="font-medium">Auto-updated daily</span>
@@ -951,7 +951,7 @@ export default function AirdropPanel() {
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
               activeTab === key
                 ? 'bg-violet-600 text-white shadow-sm'
                 : 'text-slate-500 hover:text-slate-900'
@@ -1040,7 +1040,7 @@ export default function AirdropPanel() {
               <div>No matching projects found</div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filtered.map((p) => <ProjectCard key={p.id} p={p} />)}
             </div>
           )}
