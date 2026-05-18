@@ -2,22 +2,27 @@
   "lastUpdated": "2026-05-18",
   "source": "Auto-updated daily via GitHub Actions · X API + CryptoRank + DeFiLlama + DappRadar + AirdropAlert",
   "updateLog": {
-    "graduatedThisRun": [],
+    "graduatedThisRun": [
+      "Aztec Network",
+      "Succinct",
+      "Pharos"
+    ],
     "checkedProjects": 25,
-    "runAt": "2026-05-18T07:00:00.000Z",
+    "runAt": "2026-05-18T11:37:02.137Z",
     "xApiUsed": true,
+    "verificationSources": [
+      "dexscreener",
+      "coinpaprika",
+      "x-api"
+    ],
     "newSuggestionsFromCryptoRank": [],
     "externalFetchCounts": {
-      "defiLlama": 0,
+      "defiLlama": 50,
       "dappRadar": 0,
-      "airdropAlert": 0,
+      "airdropAlert": 10,
       "cryptorank": 0
     }
   },
-  "yields": [],
-  "externalAirdrops": [],
-  "airdropAlertFeed": [],
-  "cryptorankFunding": [],
   "projects": [
     {
       "id": "base",
@@ -33,11 +38,26 @@
       "xSearch": "Base token airdrop Coinbase 2026",
       "desc": "L2 chính thức của Coinbase. JPMorgan ước tính vốn hoá token $12-34 tỷ USD. Có hàng chục triệu user. Nếu phát token sẽ là một trong những airdrop lớn nhất lịch sử.",
       "steps": [
-        { "action": "Bridge ETH sang Base", "detail": "Bridge qua bridge.base.org hoặc MetaMask" },
-        { "action": "Dùng đa dạng dApps", "detail": "Swap Aerodrome, trade Morpho, dùng Paragraph, Zora..." },
-        { "action": "Coinbase Wallet user", "detail": "Dùng Coinbase Wallet kết nối Base tăng cơ hội" },
-        { "action": "Volume và tần suất", "detail": "Giao dịch đều đặn nhiều tuần, không one-time deposit lớn" },
-        { "action": "Dùng Base Name Service", "detail": "Đăng ký .base.eth domain để có on-chain identity" }
+        {
+          "action": "Bridge ETH sang Base",
+          "detail": "Bridge qua bridge.base.org hoặc MetaMask"
+        },
+        {
+          "action": "Dùng đa dạng dApps",
+          "detail": "Swap Aerodrome, trade Morpho, dùng Paragraph, Zora..."
+        },
+        {
+          "action": "Coinbase Wallet user",
+          "detail": "Dùng Coinbase Wallet kết nối Base tăng cơ hội"
+        },
+        {
+          "action": "Volume và tần suất",
+          "detail": "Giao dịch đều đặn nhiều tuần, không one-time deposit lớn"
+        },
+        {
+          "action": "Dùng Base Name Service",
+          "detail": "Đăng ký .base.eth domain để có on-chain identity"
+        }
       ],
       "links": {
         "site": "https://base.org",
@@ -59,11 +79,26 @@
       "xSearch": "MetaMask token airdrop 2026",
       "desc": "Ví crypto lớn nhất thế giới với 30M+ user. Chưa có token. Nếu phát token sẽ là một trong những airdrop lớn nhất lịch sử. Mọi giao dịch qua MetaMask Swap đều có thể tính điểm.",
       "steps": [
-        { "action": "Dùng MetaMask Swap", "detail": "Swap token trực tiếp trong ví MetaMask (không qua dApp)" },
-        { "action": "MetaMask Portfolio", "detail": "Dùng portfolio.metamask.io để bridge, swap, stake" },
-        { "action": "Dùng Linea (Consensys L2)", "detail": "Kết nối và dùng Linea — cùng hệ sinh thái Consensys" },
-        { "action": "MetaMask Card (nếu có)", "detail": "Đăng ký MetaMask Card cho user ở vùng eligible" },
-        { "action": "Dùng thường xuyên", "detail": "Càng nhiều giao dịch qua MetaMask Swap/Bridge càng tốt" }
+        {
+          "action": "Dùng MetaMask Swap",
+          "detail": "Swap token trực tiếp trong ví MetaMask (không qua dApp)"
+        },
+        {
+          "action": "MetaMask Portfolio",
+          "detail": "Dùng portfolio.metamask.io để bridge, swap, stake"
+        },
+        {
+          "action": "Dùng Linea (Consensys L2)",
+          "detail": "Kết nối và dùng Linea — cùng hệ sinh thái Consensys"
+        },
+        {
+          "action": "MetaMask Card (nếu có)",
+          "detail": "Đăng ký MetaMask Card cho user ở vùng eligible"
+        },
+        {
+          "action": "Dùng thường xuyên",
+          "detail": "Càng nhiều giao dịch qua MetaMask Swap/Bridge càng tốt"
+        }
       ],
       "links": {
         "site": "https://metamask.io",
@@ -85,44 +120,32 @@
       "xSearch": "Farcaster token airdrop Warpcast 2026",
       "desc": "Mạng xã hội phi tập trung build trên Ethereum, raise $150M từ a16z và Paradigm. 100K+ daily active users trên Warpcast. Hệ sinh thái Frames bùng nổ. Chưa có token — nếu phát sẽ là airdrop lớn nhất SocialFi.",
       "steps": [
-        { "action": "Tạo tài khoản Warpcast", "detail": "Đăng ký tại warpcast.com, link ví Ethereum để có on-chain identity" },
-        { "action": "Post và tương tác hàng ngày", "detail": "Cast 1-2 lần/ngày, like/recast nội dung, follow ít nhất 50 KOLs" },
-        { "action": "Tham gia Farcaster Frames", "detail": "Tương tác với Frames DeFi và game tích hợp trực tiếp trên feed" },
-        { "action": "Tích lũy Warps", "detail": "Thu thập Warps qua hoạt động platform để được tính điểm khi snapshot" },
-        { "action": "On-chain activity qua Frames", "detail": "Thực hiện giao dịch on-chain qua các Frames tích hợp để build ETH activity" }
+        {
+          "action": "Tạo tài khoản Warpcast",
+          "detail": "Đăng ký tại warpcast.com, link ví Ethereum để có on-chain identity"
+        },
+        {
+          "action": "Post và tương tác hàng ngày",
+          "detail": "Cast 1-2 lần/ngày, like/recast nội dung, follow ít nhất 50 KOLs"
+        },
+        {
+          "action": "Tham gia Farcaster Frames",
+          "detail": "Tương tác với Frames DeFi và game tích hợp trực tiếp trên feed"
+        },
+        {
+          "action": "Tích lũy Warps",
+          "detail": "Thu thập Warps qua hoạt động platform để được tính điểm khi snapshot"
+        },
+        {
+          "action": "On-chain activity qua Frames",
+          "detail": "Thực hiện giao dịch on-chain qua các Frames tích hợp để build ETH activity"
+        }
       ],
       "links": {
         "site": "https://www.farcaster.xyz",
         "twitter": "https://twitter.com/farcaster_xyz",
         "app": "https://warpcast.com"
       }
-    },
-    {
-      "id": "aztec",
-      "name": "Aztec Network",
-      "logo": "🕵️",
-      "category": "L2",
-      "raised": "$87M",
-      "investors": "a16z, Variant, King River Capital",
-      "status": "Testnet",
-      "prob": "Rất cao",
-      "tge": "Q4 2026",
-      "hasToken": false,
-      "xSearch": "Aztec Network token airdrop 2026",
-      "desc": "Privacy L2 trên Ethereum dùng ZK proofs. Raise $87M từ a16z. Sandbox testnet đang active. Là 1 trong những airdrop được mong đợi nhất 2026 vì privacy là use case thực sự.",
-      "steps": [
-        { "action": "Dùng Aztec Sandbox", "detail": "Chạy local node: npx aztec-app → viết và deploy contract thử" },
-        { "action": "Tham gia testnet sớm", "detail": "Đăng ký early access tại aztec.network, testnet sắp ra public" },
-        { "action": "Mint private tokens", "detail": "Thực hiện private transfer trên testnet để tích lịch sử" },
-        { "action": "Discord active", "detail": "Tham gia Discord aztec-network, lấy vai trò developer" },
-        { "action": "GitHub contributions", "detail": "Star, fork, hoặc build với aztec-nr framework trên GitHub" }
-      ],
-      "links": {
-        "site": "https://aztec.network",
-        "twitter": "https://twitter.com/aztecnetwork",
-        "app": "https://aztec.network/sandbox"
-      },
-      "cgSearch": "aztec network"
     },
     {
       "id": "polymarket",
@@ -138,11 +161,26 @@
       "xSearch": "Polymarket POLY token airdrop",
       "desc": "Prediction market lớn nhất thế giới. CMO đã xác nhận token POLY và airdrop trên podcast tháng 10/2025. $70M+ từ Founders Fund. Đặt cược nhiều và đúng càng tăng eligibility.",
       "steps": [
-        { "action": "Tạo tài khoản", "detail": "Đăng ký tại polymarket.com — cần KYC" },
-        { "action": "Đặt cược thị trường", "detail": "Đặt cược vào các sự kiện chính trị, crypto, thể thao..." },
-        { "action": "Volume cao", "detail": "Giao dịch volume cao và đúng dự đoán tăng eligibility" },
-        { "action": "Tần suất đều đặn", "detail": "Đặt cược hàng tuần thay vì một lần lớn" },
-        { "action": "Follow @polymarket", "detail": "Follow để không bỏ lỡ thông báo snapshot date" }
+        {
+          "action": "Tạo tài khoản",
+          "detail": "Đăng ký tại polymarket.com — cần KYC"
+        },
+        {
+          "action": "Đặt cược thị trường",
+          "detail": "Đặt cược vào các sự kiện chính trị, crypto, thể thao..."
+        },
+        {
+          "action": "Volume cao",
+          "detail": "Giao dịch volume cao và đúng dự đoán tăng eligibility"
+        },
+        {
+          "action": "Tần suất đều đặn",
+          "detail": "Đặt cược hàng tuần thay vì một lần lớn"
+        },
+        {
+          "action": "Follow @polymarket",
+          "detail": "Follow để không bỏ lỡ thông báo snapshot date"
+        }
       ],
       "links": {
         "site": "https://polymarket.com",
@@ -165,11 +203,26 @@
       "xSearch": "Unichain airdrop token",
       "desc": "L2 chính thức của Uniswap Labs. Chưa có token riêng. Nếu phát token sẽ reward LP + trader on Unichain. Cực kỳ tiềm năng vì Uniswap là DEX lớn nhất thế giới.",
       "steps": [
-        { "action": "Bridge ETH sang Unichain", "detail": "Bridge ETH qua bridge.unichain.org" },
-        { "action": "Swap trên Uniswap v4", "detail": "Thực hiện swap trên Uniswap v4 deploy trên Unichain" },
-        { "action": "Cung cấp thanh khoản", "detail": "Add LP cho các cặp phổ biến trên Unichain" },
-        { "action": "Volume lớn đều đặn", "detail": "Volume giao dịch cao tăng cơ hội nhận airdrop" },
-        { "action": "Dùng đa dạng dApps", "detail": "Tương tác với nhiều protocols khác nhau trên Unichain" }
+        {
+          "action": "Bridge ETH sang Unichain",
+          "detail": "Bridge ETH qua bridge.unichain.org"
+        },
+        {
+          "action": "Swap trên Uniswap v4",
+          "detail": "Thực hiện swap trên Uniswap v4 deploy trên Unichain"
+        },
+        {
+          "action": "Cung cấp thanh khoản",
+          "detail": "Add LP cho các cặp phổ biến trên Unichain"
+        },
+        {
+          "action": "Volume lớn đều đặn",
+          "detail": "Volume giao dịch cao tăng cơ hội nhận airdrop"
+        },
+        {
+          "action": "Dùng đa dạng dApps",
+          "detail": "Tương tác với nhiều protocols khác nhau trên Unichain"
+        }
       ],
       "links": {
         "site": "https://unichain.org",
@@ -191,11 +244,26 @@
       "xSearch": "INK token airdrop Kraken",
       "desc": "L2 của Kraken trên OP Stack. Ink Foundation đã xác nhận token $INK và airdrop, dự kiến TGE tháng 7-9/2026. Kraken Points drop đã bắt đầu từ 4/2025 — farm đều để tăng tier.",
       "steps": [
-        { "action": "Bridge ETH sang Ink", "detail": "Bridge ETH tại inkonchain.com/bridge" },
-        { "action": "Giao dịch hàng ngày", "detail": "Swap và interact trên dApps Ink Mainnet mỗi ngày" },
-        { "action": "Kraken Pro users được ưu tiên", "detail": "Là user Kraken Pro tăng multiplier eligibility" },
-        { "action": "Mint NFT", "detail": "Mint NFT từ các collection trên Ink Mainnet" },
-        { "action": "Kiếm Ink Points", "detail": "Tiếp tục farm points — First drop đã bắt đầu từ 4/2025" }
+        {
+          "action": "Bridge ETH sang Ink",
+          "detail": "Bridge ETH tại inkonchain.com/bridge"
+        },
+        {
+          "action": "Giao dịch hàng ngày",
+          "detail": "Swap và interact trên dApps Ink Mainnet mỗi ngày"
+        },
+        {
+          "action": "Kraken Pro users được ưu tiên",
+          "detail": "Là user Kraken Pro tăng multiplier eligibility"
+        },
+        {
+          "action": "Mint NFT",
+          "detail": "Mint NFT từ các collection trên Ink Mainnet"
+        },
+        {
+          "action": "Kiếm Ink Points",
+          "detail": "Tiếp tục farm points — First drop đã bắt đầu từ 4/2025"
+        }
       ],
       "links": {
         "site": "https://inkonchain.com",
@@ -219,45 +287,32 @@
       "xSearch": "Soneium airdrop Sony L2 token 2026",
       "desc": "Ethereum L2 do tập đoàn Sony xây dựng trên OP Stack, ra mắt mainnet 1/2025 với 14M+ ví testnet. Soneium Score Season đang tích điểm. Hướng đến giải trí, gaming và NFT — chưa có token native.",
       "steps": [
-        { "action": "Bridge ETH sang Soneium", "detail": "Dùng bridge.soneium.org để bridge ETH từ Ethereum hoặc L2 khác" },
-        { "action": "Tích điểm Soneium Score", "detail": "Thực hiện swap/stake/mint NFT mỗi ngày để tích điểm và badges Season" },
-        { "action": "Dùng DeFi native", "detail": "Swap trên Uniswap Soneium, LP trên Kyo Finance để earn veKYO" },
-        { "action": "Mint NFT và tham gia drop", "detail": "Mint NFT trên Mintstars marketplace, tham gia các drop của Sony" },
-        { "action": "Hoàn thành quests Galxe", "detail": "Làm quests Soneium trên Galxe và Layer3 để nhận bonus điểm" }
+        {
+          "action": "Bridge ETH sang Soneium",
+          "detail": "Dùng bridge.soneium.org để bridge ETH từ Ethereum hoặc L2 khác"
+        },
+        {
+          "action": "Tích điểm Soneium Score",
+          "detail": "Thực hiện swap/stake/mint NFT mỗi ngày để tích điểm và badges Season"
+        },
+        {
+          "action": "Dùng DeFi native",
+          "detail": "Swap trên Uniswap Soneium, LP trên Kyo Finance để earn veKYO"
+        },
+        {
+          "action": "Mint NFT và tham gia drop",
+          "detail": "Mint NFT trên Mintstars marketplace, tham gia các drop của Sony"
+        },
+        {
+          "action": "Hoàn thành quests Galxe",
+          "detail": "Làm quests Soneium trên Galxe và Layer3 để nhận bonus điểm"
+        }
       ],
       "links": {
         "site": "https://soneium.org",
         "twitter": "https://twitter.com/soneium",
         "app": "https://bridge.soneium.org"
       }
-    },
-    {
-      "id": "succinct",
-      "name": "Succinct",
-      "logo": "✅",
-      "category": "Infra",
-      "raised": "$55M",
-      "investors": "Paradigm, Geometry Research",
-      "status": "Points Live",
-      "prob": "Cao",
-      "tge": "TBD 2026",
-      "hasToken": false,
-      "xSearch": "Succinct PROVE token airdrop",
-      "desc": "SP1 zkVM — generate ZK proof cho bất kỳ Rust code. Token $PROVE trong development. Prover Network đang chạy. $55M từ Paradigm — một trong những infra ZK quan trọng nhất hiện tại.",
-      "steps": [
-        { "action": "Dùng SP1 Prover Network", "detail": "Gửi proof generation jobs lên Succinct Prover Network" },
-        { "action": "Tích lũy Succinct Points", "detail": "Mỗi proof được generate = điểm có thể convert $PROVE" },
-        { "action": "GitHub contributions", "detail": "Contribute vào sp1, sp1-project-template trên GitHub" },
-        { "action": "Xây dApp dùng SP1", "detail": "Deploy ứng dụng sử dụng SP1 — developer bonus cao" },
-        { "action": "Discord active", "detail": "Tham gia Discord SuccinctLabs, trả lời câu hỏi kỹ thuật" }
-      ],
-      "links": {
-        "site": "https://succinct.xyz",
-        "twitter": "https://twitter.com/SuccinctLabs",
-        "app": "https://network.succinct.xyz"
-      },
-      "symbol": "PROVE",
-      "cgSearch": "succinct"
     },
     {
       "id": "karak",
@@ -273,11 +328,26 @@
       "xSearch": "Karak KAR token airdrop 2026",
       "desc": "Universal restaking — restake bất kỳ tài sản nào (ETH, stETH, USDC, USDe). Token $KAR đã được công bố nhưng chưa phát. XP system đang chạy. $48M từ Coinbase Ventures và Pantera.",
       "steps": [
-        { "action": "Deposit vào Karak", "detail": "Deposit ETH, stETH, USDC, USDe tại app.karak.network" },
-        { "action": "Stake vào DSS", "detail": "Opt-in vào Distributed Secure Services để kiếm thêm yield" },
-        { "action": "Tích lũy Karak XP", "detail": "Số lượng × thời gian deposit = XP, có thể đổi $KAR" },
-        { "action": "Refer bạn bè", "detail": "Mỗi referral thành công tăng XP multiplier" },
-        { "action": "Dùng K2 (Karak L2)", "detail": "Tương tác trên Karak L2 để nhân đôi điểm" }
+        {
+          "action": "Deposit vào Karak",
+          "detail": "Deposit ETH, stETH, USDC, USDe tại app.karak.network"
+        },
+        {
+          "action": "Stake vào DSS",
+          "detail": "Opt-in vào Distributed Secure Services để kiếm thêm yield"
+        },
+        {
+          "action": "Tích lũy Karak XP",
+          "detail": "Số lượng × thời gian deposit = XP, có thể đổi $KAR"
+        },
+        {
+          "action": "Refer bạn bè",
+          "detail": "Mỗi referral thành công tăng XP multiplier"
+        },
+        {
+          "action": "Dùng K2 (Karak L2)",
+          "detail": "Tương tác trên Karak L2 để nhân đôi điểm"
+        }
       ],
       "links": {
         "site": "https://karak.network",
@@ -301,11 +371,26 @@
       "xSearch": "Symbiotic restaking token airdrop",
       "desc": "Restaking protocol linh hoạt, Paradigm-backed. Đối thủ EigenLayer. Chưa có token. Hệ thống điểm đang chạy. Deposit ETH/stETH vào vault để tích điểm và bảo mật nhiều AVS.",
       "steps": [
-        { "action": "Deposit vào Symbiotic vault", "detail": "Deposit stETH, wBTC, ETH tại app.symbiotic.fi" },
-        { "action": "Opt-in Networks", "detail": "Chọn các AVS (Actively Validated Services) để bảo mật" },
-        { "action": "Mellow Protocol", "detail": "Stake qua Mellow để nhận thêm Symbiotic points" },
-        { "action": "Duy trì lâu dài", "detail": "Số ngày deposit × số lượng = điểm tích lũy" },
-        { "action": "Layer 2 exposure", "detail": "Deposit vào vault của nhiều loại tài sản khác nhau" }
+        {
+          "action": "Deposit vào Symbiotic vault",
+          "detail": "Deposit stETH, wBTC, ETH tại app.symbiotic.fi"
+        },
+        {
+          "action": "Opt-in Networks",
+          "detail": "Chọn các AVS (Actively Validated Services) để bảo mật"
+        },
+        {
+          "action": "Mellow Protocol",
+          "detail": "Stake qua Mellow để nhận thêm Symbiotic points"
+        },
+        {
+          "action": "Duy trì lâu dài",
+          "detail": "Số ngày deposit × số lượng = điểm tích lũy"
+        },
+        {
+          "action": "Layer 2 exposure",
+          "detail": "Deposit vào vault của nhiều loại tài sản khác nhau"
+        }
       ],
       "links": {
         "site": "https://symbiotic.fi",
@@ -327,11 +412,26 @@
       "xSearch": "Ostium RWA perp DEX token airdrop points season",
       "desc": "Perp DEX trên Arbitrum cho phép trade vàng, dầu, S&P 500, forex với USDC collateral. $27M từ General Catalyst + Jump Crypto. $50B+ volume. Points Season 2 đang live — token dự kiến Q3/2026.",
       "steps": [
-        { "action": "Deposit USDC và bắt đầu trade", "detail": "Vào ostium.com, connect ví Arbitrum, deposit USDC và trade XAU/USD, forex để earn Points" },
-        { "action": "Trade RWA hàng ngày", "detail": "Giao dịch gold và forex mỗi ngày — trading volume = điểm chính Season 2" },
-        { "action": "Provide OLP liquidity", "detail": "Deposit vào OLP vault (~53% APY) để earn điểm multiplier cao hơn" },
-        { "action": "Kích hoạt Boost Windows", "detail": "Tham gia Boost Windows — khoảng thời gian điểm nhân hệ số cao" },
-        { "action": "Theo dõi Season 3 và TGE", "detail": "Follow @OstiumLabs để nhận thông tin TGE timeline Q3/2026" }
+        {
+          "action": "Deposit USDC và bắt đầu trade",
+          "detail": "Vào ostium.com, connect ví Arbitrum, deposit USDC và trade XAU/USD, forex để earn Points"
+        },
+        {
+          "action": "Trade RWA hàng ngày",
+          "detail": "Giao dịch gold và forex mỗi ngày — trading volume = điểm chính Season 2"
+        },
+        {
+          "action": "Provide OLP liquidity",
+          "detail": "Deposit vào OLP vault (~53% APY) để earn điểm multiplier cao hơn"
+        },
+        {
+          "action": "Kích hoạt Boost Windows",
+          "detail": "Tham gia Boost Windows — khoảng thời gian điểm nhân hệ số cao"
+        },
+        {
+          "action": "Theo dõi Season 3 và TGE",
+          "detail": "Follow @OstiumLabs để nhận thông tin TGE timeline Q3/2026"
+        }
       ],
       "links": {
         "site": "https://www.ostium.com",
@@ -353,11 +453,26 @@
       "xSearch": "DeBank token airdrop XP points 2026",
       "desc": "Portfolio tracker & mạng xã hội Web3 hàng đầu hỗ trợ 100+ chain. DeBank XP Points tích điểm dựa trên on-chain history — tiền thân token launch. $25M từ Sequoia China và Coinbase Ventures.",
       "steps": [
-        { "action": "Kết nối ví và claim XP", "detail": "Vào debank.com, connect ví EVM và claim XP dựa trên lịch sử giao dịch on-chain" },
-        { "action": "Build DeBank Social profile", "detail": "Hoàn thiện profile trên DeBank Hi, follow người dùng, đăng posts để tăng Social Ranking" },
-        { "action": "Gửi ETH Stream on-chain", "detail": "Gửi ETH stream cho KOLs qua DeBank Stream để nhận Credit bằng on-chain action" },
-        { "action": "Maintain DeFi Credit Score", "detail": "Thường xuyên swap/lend/stake qua các protocol lớn để duy trì Credit Score cao" },
-        { "action": "Mời bạn bè", "detail": "Dùng referral link trong DeBank để invite người mới, tăng điểm cả 2 bên" }
+        {
+          "action": "Kết nối ví và claim XP",
+          "detail": "Vào debank.com, connect ví EVM và claim XP dựa trên lịch sử giao dịch on-chain"
+        },
+        {
+          "action": "Build DeBank Social profile",
+          "detail": "Hoàn thiện profile trên DeBank Hi, follow người dùng, đăng posts để tăng Social Ranking"
+        },
+        {
+          "action": "Gửi ETH Stream on-chain",
+          "detail": "Gửi ETH stream cho KOLs qua DeBank Stream để nhận Credit bằng on-chain action"
+        },
+        {
+          "action": "Maintain DeFi Credit Score",
+          "detail": "Thường xuyên swap/lend/stake qua các protocol lớn để duy trì Credit Score cao"
+        },
+        {
+          "action": "Mời bạn bè",
+          "detail": "Dùng referral link trong DeBank để invite người mới, tăng điểm cả 2 bên"
+        }
       ],
       "links": {
         "site": "https://debank.com",
@@ -379,11 +494,26 @@
       "xSearch": "Ritual network AI compute token testnet 2026",
       "desc": "L1 blockchain đầu tiên chuyên cho AI compute phi tập trung, cho phép smart contract tích hợp trực tiếp với AI inference và LLM. $25M từ Archetype và Multicoin. Testnet public với Infernet node program.",
       "steps": [
-        { "action": "Chạy tasks trên testnet", "detail": "Hoàn thành tasks tại app.ritual.net: deploy AI model, tạo inference request" },
-        { "action": "Run Infernet node", "detail": "Cài Infernet node trên VPS để đóng góp AI compute và nhận rewards" },
-        { "action": "Tham gia Discord Ritual", "detail": "Join Discord, tích cực tham gia để đạt role Ritualist+ hoặc Zealot" },
-        { "action": "Build smart contract dùng Ritual AI", "detail": "Developer: xây contract tích hợp Ritual API, đăng ký ecosystem grants" },
-        { "action": "Theo dõi snapshot", "detail": "Follow @ritual_net để không bỏ lỡ ngày snapshot phân phối token" }
+        {
+          "action": "Chạy tasks trên testnet",
+          "detail": "Hoàn thành tasks tại app.ritual.net: deploy AI model, tạo inference request"
+        },
+        {
+          "action": "Run Infernet node",
+          "detail": "Cài Infernet node trên VPS để đóng góp AI compute và nhận rewards"
+        },
+        {
+          "action": "Tham gia Discord Ritual",
+          "detail": "Join Discord, tích cực tham gia để đạt role Ritualist+ hoặc Zealot"
+        },
+        {
+          "action": "Build smart contract dùng Ritual AI",
+          "detail": "Developer: xây contract tích hợp Ritual API, đăng ký ecosystem grants"
+        },
+        {
+          "action": "Theo dõi snapshot",
+          "detail": "Follow @ritual_net để không bỏ lỡ ngày snapshot phân phối token"
+        }
       ],
       "links": {
         "site": "https://ritual.net",
@@ -405,11 +535,26 @@
       "xSearch": "Nexus zkVM token airdrop 2026",
       "desc": "zkVM mở — prove bất kỳ computation. Mạng lưới proof generation phi tập trung đang testnet. $25M từ Lightspeed và Pantera. NEX Points tích lũy từ đóng góp compute.",
       "steps": [
-        { "action": "Cài Nexus CLI", "detail": "Cài đặt nexus CLI tại docs.nexus.xyz và kết nối Network" },
-        { "action": "Đóng góp compute", "detail": "Chạy prover để generate proof — mỗi proof = NEX Points" },
-        { "action": "Tích lũy NEX Points", "detail": "Points tích lũy có khả năng convert sang token khi TGE" },
-        { "action": "Testnet giao dịch", "detail": "Thực hiện giao dịch hàng ngày trên Nexus testnet" },
-        { "action": "Đăng ký sớm", "detail": "Vào nexus.xyz đăng ký email để nhận whitelist ưu tiên" }
+        {
+          "action": "Cài Nexus CLI",
+          "detail": "Cài đặt nexus CLI tại docs.nexus.xyz và kết nối Network"
+        },
+        {
+          "action": "Đóng góp compute",
+          "detail": "Chạy prover để generate proof — mỗi proof = NEX Points"
+        },
+        {
+          "action": "Tích lũy NEX Points",
+          "detail": "Points tích lũy có khả năng convert sang token khi TGE"
+        },
+        {
+          "action": "Testnet giao dịch",
+          "detail": "Thực hiện giao dịch hàng ngày trên Nexus testnet"
+        },
+        {
+          "action": "Đăng ký sớm",
+          "detail": "Vào nexus.xyz đăng ký email để nhận whitelist ưu tiên"
+        }
       ],
       "links": {
         "site": "https://nexus.xyz",
@@ -431,11 +576,26 @@
       "xSearch": "Morph L2 token airdrop XP points 2026",
       "desc": "ZK-EVM L2 kết hợp optimistic rollup với ZK fault proofs, tập trung consumer apps và payment. Mainnet live. XP Points đang chạy, convert sang token $MORPH trong 2026. $20M từ Dragonfly Capital.",
       "steps": [
-        { "action": "Bridge ETH sang Morph", "detail": "Dùng bridge.morphl2.io để bridge ETH hoặc USDC từ Ethereum" },
-        { "action": "Tích điểm XP hàng ngày", "detail": "Swap, LP, lend và tương tác với dApps trên Morph — mọi action đều tính XP" },
-        { "action": "Dùng Morph DeFi apps", "detail": "Swap Quickswap Morph, deposit lending protocols, farming để tăng XP multiplier" },
-        { "action": "Hoàn thành Morph quests", "detail": "Tham gia campaign trên Galxe của Morph để nhận XP bổ sung" },
-        { "action": "Duy trì balance trên Morph", "detail": "Giữ ETH/USDC trên chain — snapshot thường tính giá trị tài sản" }
+        {
+          "action": "Bridge ETH sang Morph",
+          "detail": "Dùng bridge.morphl2.io để bridge ETH hoặc USDC từ Ethereum"
+        },
+        {
+          "action": "Tích điểm XP hàng ngày",
+          "detail": "Swap, LP, lend và tương tác với dApps trên Morph — mọi action đều tính XP"
+        },
+        {
+          "action": "Dùng Morph DeFi apps",
+          "detail": "Swap Quickswap Morph, deposit lending protocols, farming để tăng XP multiplier"
+        },
+        {
+          "action": "Hoàn thành Morph quests",
+          "detail": "Tham gia campaign trên Galxe của Morph để nhận XP bổ sung"
+        },
+        {
+          "action": "Duy trì balance trên Morph",
+          "detail": "Giữ ETH/USDC trên chain — snapshot thường tính giá trị tài sản"
+        }
       ],
       "links": {
         "site": "https://www.morphl2.io",
@@ -457,11 +617,26 @@
       "xSearch": "World Chain token airdrop 2026",
       "desc": "L2 của World App. Ưu tiên người đã verify World ID. Gas miễn phí cho human verified users. Chưa có token L2 riêng — 10M+ human-verified accounts là lợi thế cực lớn.",
       "steps": [
-        { "action": "Verify World ID", "detail": "Quét iris tại orb hoặc dùng World App để lấy World ID" },
-        { "action": "Bridge sang World Chain", "detail": "Bridge ETH hoặc USDC vào World Chain" },
-        { "action": "Dùng dApps World Chain", "detail": "Tương tác với các dApps có World ID verification" },
-        { "action": "World App activities", "detail": "Hoàn thành các tính năng trong World App hàng tuần" },
-        { "action": "Gas miễn phí", "detail": "User verify nhận gas miễn phí — dùng tối đa để build history" }
+        {
+          "action": "Verify World ID",
+          "detail": "Quét iris tại orb hoặc dùng World App để lấy World ID"
+        },
+        {
+          "action": "Bridge sang World Chain",
+          "detail": "Bridge ETH hoặc USDC vào World Chain"
+        },
+        {
+          "action": "Dùng dApps World Chain",
+          "detail": "Tương tác với các dApps có World ID verification"
+        },
+        {
+          "action": "World App activities",
+          "detail": "Hoàn thành các tính năng trong World App hàng tuần"
+        },
+        {
+          "action": "Gas miễn phí",
+          "detail": "User verify nhận gas miễn phí — dùng tối đa để build history"
+        }
       ],
       "links": {
         "site": "https://world.org",
@@ -483,42 +658,31 @@
       "xSearch": "Rabby Wallet token airdrop points season 2026",
       "desc": "Ví EVM phổ biến nhất trong cộng đồng DeFi với tính năng mô phỏng giao dịch và scan rủi ro. Rabby Points Season đang tích điểm dựa trên lịch sử ví — tiền thân token launch. Hàng triệu users active.",
       "steps": [
-        { "action": "Import ví vào Rabby và claim Points", "detail": "Tải Rabby extension, import ví EVM có balance/lịch sử để nhận initial Points tự động" },
-        { "action": "Dùng Rabby làm ví chính", "detail": "Dùng Rabby cho mọi giao dịch DeFi hàng ngày thay vì MetaMask" },
-        { "action": "Tham gia Rabby Points Season", "detail": "Hoàn thành điều kiện Season hiện tại để nhận bonus points và multiplier" },
-        { "action": "Mời bạn bè", "detail": "Dùng referral link trong Rabby để invite người mới — tăng điểm cả 2 bên" },
-        { "action": "Follow @Rabby_io để nhận thông báo", "detail": "Follow Twitter @Rabby_io và @DeBankDeFi để cập nhật token launch dates" }
+        {
+          "action": "Import ví vào Rabby và claim Points",
+          "detail": "Tải Rabby extension, import ví EVM có balance/lịch sử để nhận initial Points tự động"
+        },
+        {
+          "action": "Dùng Rabby làm ví chính",
+          "detail": "Dùng Rabby cho mọi giao dịch DeFi hàng ngày thay vì MetaMask"
+        },
+        {
+          "action": "Tham gia Rabby Points Season",
+          "detail": "Hoàn thành điều kiện Season hiện tại để nhận bonus points và multiplier"
+        },
+        {
+          "action": "Mời bạn bè",
+          "detail": "Dùng referral link trong Rabby để invite người mới — tăng điểm cả 2 bên"
+        },
+        {
+          "action": "Follow @Rabby_io để nhận thông báo",
+          "detail": "Follow Twitter @Rabby_io và @DeBankDeFi để cập nhật token launch dates"
+        }
       ],
       "links": {
         "site": "https://rabby.io",
         "twitter": "https://twitter.com/Rabby_io",
         "app": "https://rabby.io"
-      }
-    },
-    {
-      "id": "pharos",
-      "name": "Pharos",
-      "logo": "🏛️",
-      "category": "L1",
-      "raised": "$8M",
-      "investors": "Binance Labs, HashKey Capital",
-      "status": "Testnet",
-      "prob": "Cao",
-      "tge": "Q3 2026",
-      "hasToken": false,
-      "xSearch": "Pharos blockchain token airdrop 2026",
-      "desc": "High-performance L1 tập trung RWA (Real World Assets) và TradFi. Binance Labs-backed. Testnet vừa launch. Chưa có token — Q3 2026 TGE dự kiến.",
-      "steps": [
-        { "action": "Tham gia testnet", "detail": "Vào pharosnetwork.xyz → Connect wallet → Nhận faucet testnet tokens" },
-        { "action": "Giao dịch hàng ngày", "detail": "Swap và transfer trên Pharos testnet mỗi ngày" },
-        { "action": "Bridge assets", "detail": "Bridge ETH/USDC sang Pharos testnet qua official bridge" },
-        { "action": "Hoàn thành quests", "detail": "Làm đầy đủ quest trên Galxe và Zealy của Pharos" },
-        { "action": "Đăng ký node", "detail": "Đăng ký chạy light node để tăng eligibility" }
-      ],
-      "links": {
-        "site": "https://pharosnetwork.xyz",
-        "twitter": "https://twitter.com/PharosNetwork",
-        "app": "https://testnet.pharosnetwork.xyz"
       }
     },
     {
@@ -535,11 +699,26 @@
       "xSearch": "Kuru Exchange KURU token airdrop Monad",
       "desc": "CLOB DEX native trên Monad — orderbook on-chain tốc độ cao. $7M từ Dragonfly. Points system đang chạy. Monad ecosystem sẽ tạo ra nhiều airdrop — Kuru là dApp quan trọng nhất.",
       "steps": [
-        { "action": "Bridge sang Monad", "detail": "Bridge ETH sang Monad qua bridge.monad.xyz hoặc official bridge" },
-        { "action": "Swap trên Kuru", "detail": "Trade thường xuyên trên kuru.exchange — càng nhiều volume càng tốt" },
-        { "action": "Tích lũy Kuru Points", "detail": "Mỗi trade = điểm, có thể convert sang token khi TGE" },
-        { "action": "Add thanh khoản", "detail": "Provide liquidity cho các cặp phổ biến trên Kuru" },
-        { "action": "Refer bạn bè", "detail": "Referral link tăng multiplier điểm cho cả 2 người" }
+        {
+          "action": "Bridge sang Monad",
+          "detail": "Bridge ETH sang Monad qua bridge.monad.xyz hoặc official bridge"
+        },
+        {
+          "action": "Swap trên Kuru",
+          "detail": "Trade thường xuyên trên kuru.exchange — càng nhiều volume càng tốt"
+        },
+        {
+          "action": "Tích lũy Kuru Points",
+          "detail": "Mỗi trade = điểm, có thể convert sang token khi TGE"
+        },
+        {
+          "action": "Add thanh khoản",
+          "detail": "Provide liquidity cho các cặp phổ biến trên Kuru"
+        },
+        {
+          "action": "Refer bạn bè",
+          "detail": "Referral link tăng multiplier điểm cho cả 2 người"
+        }
       ],
       "links": {
         "site": "https://kuru.exchange",
@@ -562,11 +741,26 @@
       "xSearch": "HyperEVM dApp token airdrop 2026",
       "desc": "Hyperliquid đã launch $HYPE, nhưng các protocol native trên HyperEVM (HyperSwap, Felix, Hyperlend...) chưa có token riêng. Farm đồng thời nhiều protocol để tối đa cơ hội.",
       "steps": [
-        { "action": "Bridge sang HyperEVM", "detail": "Bridge USDC từ Arbitrum sang HyperEVM qua Hyperliquid bridge" },
-        { "action": "Dùng HyperSwap", "detail": "Swap token trên HyperSwap — DEX native của HyperEVM" },
-        { "action": "Lending trên Hyperlend", "detail": "Supply/borrow trên Hyperlend để earn yield và tích điểm" },
-        { "action": "Mint trên Felix", "detail": "Mint feUSD stablecoin qua Felix Protocol trên HyperEVM" },
-        { "action": "Dùng đa dạng protocol", "detail": "Tương tác với nhiều dApps để build cross-protocol eligibility" }
+        {
+          "action": "Bridge sang HyperEVM",
+          "detail": "Bridge USDC từ Arbitrum sang HyperEVM qua Hyperliquid bridge"
+        },
+        {
+          "action": "Dùng HyperSwap",
+          "detail": "Swap token trên HyperSwap — DEX native của HyperEVM"
+        },
+        {
+          "action": "Lending trên Hyperlend",
+          "detail": "Supply/borrow trên Hyperlend để earn yield và tích điểm"
+        },
+        {
+          "action": "Mint trên Felix",
+          "detail": "Mint feUSD stablecoin qua Felix Protocol trên HyperEVM"
+        },
+        {
+          "action": "Dùng đa dạng protocol",
+          "detail": "Tương tác với nhiều dApps để build cross-protocol eligibility"
+        }
       ],
       "links": {
         "site": "https://hyperliquid.xyz",
@@ -589,11 +783,26 @@
       "xSearch": "Fhenix FHE token testnet encrypted blockchain 2026",
       "desc": "Blockchain đầu tiên dùng Fully Homomorphic Encryption (FHE) để thực thi smart contract trên dữ liệu mã hóa hoàn toàn — giải pháp privacy thực sự on-chain. $22M từ Multicoin. Testnet Redact đang active.",
       "steps": [
-        { "action": "Tham gia testnet Redact", "detail": "Vào testnet.fhenix.zone, connect ví và thực hiện giao dịch để build track record" },
-        { "action": "Deploy encrypted smart contract", "detail": "Dùng Fhenix SDK để deploy contract với FHE operations — developer bonus cao khi TGE" },
-        { "action": "Hoàn thành CoFHE tasks", "detail": "Thực hiện tasks CoFHE (Collaborative FHE) trên testnet để earn testnet points" },
-        { "action": "Tham gia Discord Fhenix", "detail": "Join Discord, báo cáo bugs và nhận community roles — contribution tăng airdrop weight" },
-        { "action": "Làm quests Galxe Fhenix", "detail": "Hoàn thành campaign Galxe để nhận OAT — on-chain proof of participation được tính điểm" }
+        {
+          "action": "Tham gia testnet Redact",
+          "detail": "Vào testnet.fhenix.zone, connect ví và thực hiện giao dịch để build track record"
+        },
+        {
+          "action": "Deploy encrypted smart contract",
+          "detail": "Dùng Fhenix SDK để deploy contract với FHE operations — developer bonus cao khi TGE"
+        },
+        {
+          "action": "Hoàn thành CoFHE tasks",
+          "detail": "Thực hiện tasks CoFHE (Collaborative FHE) trên testnet để earn testnet points"
+        },
+        {
+          "action": "Tham gia Discord Fhenix",
+          "detail": "Join Discord, báo cáo bugs và nhận community roles — contribution tăng airdrop weight"
+        },
+        {
+          "action": "Làm quests Galxe Fhenix",
+          "detail": "Hoàn thành campaign Galxe để nhận OAT — on-chain proof of participation được tính điểm"
+        }
       ],
       "links": {
         "site": "https://www.fhenix.io",
@@ -615,11 +824,26 @@
       "xSearch": "Abstract Chain ABS token XP airdrop Pudgy Penguins",
       "desc": "Ethereum L2 consumer-focused do Igloo Inc. (Pudgy Penguins) xây dựng trên ZK Stack. XP system tích điểm cho mọi hoạt động on-chain. Giữ $PENGU nhận weekly XP multiplier. Token $ABS chưa có TGE.",
       "steps": [
-        { "action": "Bridge ETH sang Abstract Chain", "detail": "Dùng portal.abs.xyz để bridge ETH từ Ethereum hoặc zkSync sang Abstract Chain" },
-        { "action": "Tích XP qua hoạt động daily", "detail": "Trade, play games, vote, mint NFT mỗi ngày — mọi action đều earn XP" },
-        { "action": "Giữ $PENGU để boost XP", "detail": "Mua và giữ $PENGU token trên Abstract để nhận weekly XP multiplier" },
-        { "action": "Play games native trên Abstract", "detail": "Tham gia games Web3 native trên Abstract — consumer L2 ưu tiên gaming activity" },
-        { "action": "Thu thập Badges", "detail": "Hoàn thành milestones đặc biệt để nhận on-chain badges — ảnh hưởng đến tier allocation" }
+        {
+          "action": "Bridge ETH sang Abstract Chain",
+          "detail": "Dùng portal.abs.xyz để bridge ETH từ Ethereum hoặc zkSync sang Abstract Chain"
+        },
+        {
+          "action": "Tích XP qua hoạt động daily",
+          "detail": "Trade, play games, vote, mint NFT mỗi ngày — mọi action đều earn XP"
+        },
+        {
+          "action": "Giữ $PENGU để boost XP",
+          "detail": "Mua và giữ $PENGU token trên Abstract để nhận weekly XP multiplier"
+        },
+        {
+          "action": "Play games native trên Abstract",
+          "detail": "Tham gia games Web3 native trên Abstract — consumer L2 ưu tiên gaming activity"
+        },
+        {
+          "action": "Thu thập Badges",
+          "detail": "Hoàn thành milestones đặc biệt để nhận on-chain badges — ảnh hưởng đến tier allocation"
+        }
       ],
       "links": {
         "site": "https://www.abs.xyz",
@@ -641,11 +865,26 @@
       "xSearch": "Lens Chain protocol airdrop social blockchain Avara 2026",
       "desc": "Ethereum L2 chuyên biệt cho mạng xã hội phi tập trung, do Avara (đội Aave) xây dựng trên ZKsync stack — mainnet ra mắt 4/2025. GHO stablecoin làm gas token. Social activity có thể là cơ sở airdrop tương lai.",
       "steps": [
-        { "action": "Tạo Lens profile và mint handle", "detail": "Tạo profile tại hey.xyz hoặc Orb, mint handle .lens để có social identity" },
-        { "action": "Post và tương tác social", "detail": "Đăng bài, comment và mirror nội dung trên Hey.xyz và Orb hàng ngày" },
-        { "action": "Bridge và dùng GHO gas", "detail": "Bridge tài sản sang Lens Chain, dùng GHO gas — tạo on-chain history" },
-        { "action": "Tham gia DeFi trên Lens Chain", "detail": "Dùng DeFi protocols native để tạo thêm activity footprint đa dạng" },
-        { "action": "Build social following", "detail": "Tích lũy followers trên Lens, tương tác với KOLs — social graph có thể ảnh hưởng allocation" }
+        {
+          "action": "Tạo Lens profile và mint handle",
+          "detail": "Tạo profile tại hey.xyz hoặc Orb, mint handle .lens để có social identity"
+        },
+        {
+          "action": "Post và tương tác social",
+          "detail": "Đăng bài, comment và mirror nội dung trên Hey.xyz và Orb hàng ngày"
+        },
+        {
+          "action": "Bridge và dùng GHO gas",
+          "detail": "Bridge tài sản sang Lens Chain, dùng GHO gas — tạo on-chain history"
+        },
+        {
+          "action": "Tham gia DeFi trên Lens Chain",
+          "detail": "Dùng DeFi protocols native để tạo thêm activity footprint đa dạng"
+        },
+        {
+          "action": "Build social following",
+          "detail": "Tích lũy followers trên Lens, tương tác với KOLs — social graph có thể ảnh hưởng allocation"
+        }
       ],
       "links": {
         "site": "https://lens.xyz",
@@ -667,11 +906,26 @@
       "xSearch": "Privy wallet embedded SDK airdrop developer token",
       "desc": "Infrastructure nhúng ví crypto cho developers — hỗ trợ 75M+ accounts trên 1,000+ teams. $40M từ Paradigm và Sequoia. Stripe mua lại tháng 6/2025, tiếp tục phát triển độc lập. Khả năng airdrop cho developer ecosystem vẫn còn.",
       "steps": [
-        { "action": "Build dApp dùng Privy SDK", "detail": "Tích hợp Privy SDK tại privy.io/docs để tạo embedded wallets, trở thành qualified developer" },
-        { "action": "Tham gia Privy developer program", "detail": "Đăng ký developer account, deploy ứng dụng production để có verified developer status" },
-        { "action": "Dùng apps built trên Privy", "detail": "Tương tác với các ứng dụng dùng Privy (Coinbase, OpenSea) để có user history" },
-        { "action": "Theo dõi Stripe crypto integration", "detail": "Follow @privy_io và Stripe crypto news — acquisition có thể mở rewards cho ecosystem" },
-        { "action": "Tham gia Privy community Discord", "detail": "Join Discord để sớm nhận thông tin về distribution plan hậu Stripe acquisition" }
+        {
+          "action": "Build dApp dùng Privy SDK",
+          "detail": "Tích hợp Privy SDK tại privy.io/docs để tạo embedded wallets, trở thành qualified developer"
+        },
+        {
+          "action": "Tham gia Privy developer program",
+          "detail": "Đăng ký developer account, deploy ứng dụng production để có verified developer status"
+        },
+        {
+          "action": "Dùng apps built trên Privy",
+          "detail": "Tương tác với các ứng dụng dùng Privy (Coinbase, OpenSea) để có user history"
+        },
+        {
+          "action": "Theo dõi Stripe crypto integration",
+          "detail": "Follow @privy_io và Stripe crypto news — acquisition có thể mở rewards cho ecosystem"
+        },
+        {
+          "action": "Tham gia Privy community Discord",
+          "detail": "Join Discord để sớm nhận thông tin về distribution plan hậu Stripe acquisition"
+        }
       ],
       "links": {
         "site": "https://www.privy.io",
@@ -681,6 +935,39 @@
     }
   ],
   "graduated": [
+    {
+      "id": "aztec",
+      "name": "Aztec Network",
+      "logo": "🕵️",
+      "detectedAt": "2026-05-18",
+      "confidence": "high",
+      "source": "dexscreener",
+      "coinSymbol": "AZTEC",
+      "marketCapRank": null,
+      "evidence": []
+    },
+    {
+      "id": "succinct",
+      "name": "Succinct",
+      "logo": "✅",
+      "detectedAt": "2026-05-18",
+      "confidence": "high",
+      "source": "dexscreener+coinpaprika",
+      "coinSymbol": "PROVE",
+      "marketCapRank": null,
+      "evidence": []
+    },
+    {
+      "id": "pharos",
+      "name": "Pharos",
+      "logo": "🏛️",
+      "detectedAt": "2026-05-18",
+      "confidence": "high",
+      "source": "coinpaprika",
+      "coinSymbol": "PROS",
+      "marketCapRank": null,
+      "evidence": []
+    },
     {
       "id": "monad",
       "name": "Monad",
@@ -856,5 +1143,781 @@
       "detectedAt": "2026-02-10",
       "confidence": "high"
     }
-  ]
+  ],
+  "yields": [
+    {
+      "pool": "9c3c95ef-5e04-4c75-b7ec-6a59a9ea904b",
+      "chain": "Base",
+      "project": "uniswap-v3",
+      "symbol": "USDC-CBBTC",
+      "tvlUsd": 9306096,
+      "apy": 25.53,
+      "apyBase": 25.52639,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.136Z"
+    },
+    {
+      "pool": "46ac97f1-cb18-40ad-9ae6-b6c31981684c",
+      "chain": "Ethereum",
+      "project": "uniswap-v4",
+      "symbol": "ETH-LINK",
+      "tvlUsd": 14234179,
+      "apy": 23.55,
+      "apyBase": 23.54535,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "b395019b-ecc9-430d-be47-617f13fa3975",
+      "chain": "Ethereum",
+      "project": "convex-finance",
+      "symbol": "PMUSD-CRVUSD",
+      "tvlUsd": 6344733,
+      "apy": 22.03,
+      "apyBase": 0.01,
+      "apyReward": 22.01645,
+      "stablecoin": true,
+      "ilRisk": "no",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "d32f9c01-47d1-4077-8c73-8b91b08d1e91",
+      "chain": "Base",
+      "project": "aerodrome-v1",
+      "symbol": "USDC-AERO",
+      "tvlUsd": 25871538,
+      "apy": 20.75,
+      "apyBase": null,
+      "apyReward": 20.74915,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "a8782f8d-c32b-4497-a74f-1297d807a96e",
+      "chain": "Ethereum",
+      "project": "uniswap-v3",
+      "symbol": "XAUT-USDT",
+      "tvlUsd": 15200036,
+      "apy": 19.97,
+      "apyBase": 19.97285,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "fe9309a2-1fc3-4cde-880c-629e1f7ee5e2",
+      "chain": "Ethereum",
+      "project": "uniswap-v4",
+      "symbol": "WBTC-USDC",
+      "tvlUsd": 11021057,
+      "apy": 16.78,
+      "apyBase": 16.77714,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "1582b28c-c8b1-43d6-af57-22250dc557de",
+      "chain": "BSC",
+      "project": "uniswap-v4",
+      "symbol": "USDT-DEAI-T",
+      "tvlUsd": 8144331,
+      "apy": 16.03,
+      "apyBase": 16.03045,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "f36b3efe-124c-4261-9b8c-29dd39c2b8e8",
+      "chain": "Arbitrum",
+      "project": "uniswap-v4",
+      "symbol": "ETH-USDC",
+      "tvlUsd": 6142992,
+      "apy": 15.33,
+      "apyBase": 15.33215,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "3f6f3937-1f0c-4cec-8d3b-904434085bfa",
+      "chain": "Ethereum",
+      "project": "convex-finance",
+      "symbol": "CRV-CVXCRV",
+      "tvlUsd": 5149812,
+      "apy": 14.65,
+      "apyBase": 0.1,
+      "apyReward": 14.54571,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "a34c8a80-0001-4fc3-9402-7d6ac3e5234a",
+      "chain": "Aptos",
+      "project": "hyperion",
+      "symbol": "USDT-USDC",
+      "tvlUsd": 5943947,
+      "apy": 14.47,
+      "apyBase": 13.99805,
+      "apyReward": 0.47245,
+      "stablecoin": true,
+      "ilRisk": "no",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "7127db96-afba-4089-8c9d-daa93c116856",
+      "chain": "Arbitrum",
+      "project": "uniswap-v3",
+      "symbol": "WBTC-USDC",
+      "tvlUsd": 8105829,
+      "apy": 14.38,
+      "apyBase": 14.38315,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "ee024c35-c5c3-4a41-9018-75f72ec7ae4a",
+      "chain": "Ethereum",
+      "project": "convex-finance",
+      "symbol": "FRXUSD-MSUSD",
+      "tvlUsd": 6504966,
+      "apy": 14.03,
+      "apyBase": 1.69,
+      "apyReward": 12.34319,
+      "stablecoin": true,
+      "ilRisk": "no",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "35b00f23-d8f5-4a9c-822c-c323fb164215",
+      "chain": "Base",
+      "project": "40-acres",
+      "symbol": "40BASE-USDC-VAULT",
+      "tvlUsd": 8130062,
+      "apy": 13.75,
+      "apyBase": 13.74974,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "fd1b5014-9f4d-4401-be3d-1188da497c6a",
+      "chain": "Ethereum",
+      "project": "stake-dao",
+      "symbol": "FRXUSD-MSUSD",
+      "tvlUsd": 7379394,
+      "apy": 13.65,
+      "apyBase": 0.66,
+      "apyReward": 12.98845,
+      "stablecoin": true,
+      "ilRisk": "no",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "c130b363-10fa-46d9-8221-3b23ed8027b4",
+      "chain": "Ethereum",
+      "project": "convex-finance",
+      "symbol": "MSETH-WETH",
+      "tvlUsd": 7398697,
+      "apy": 12.93,
+      "apyBase": 3.35,
+      "apyReward": 9.58323,
+      "stablecoin": false,
+      "ilRisk": "no",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "2669bac4-c8c1-4436-b00c-0b9287681b3f",
+      "chain": "Base",
+      "project": "aerodrome-v1",
+      "symbol": "VIRTUAL-WETH",
+      "tvlUsd": 5091474,
+      "apy": 12.82,
+      "apyBase": null,
+      "apyReward": 12.81702,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "62ca653d-a58c-4363-9ffb-b6ceea56a712",
+      "chain": "Ethereum",
+      "project": "curve-dex",
+      "symbol": "MSUSD-FRAXBP",
+      "tvlUsd": 6111813,
+      "apy": 12.54,
+      "apyBase": 7.18,
+      "apyReward": 5.36269,
+      "stablecoin": true,
+      "ilRisk": "no",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "ef4c37f1-882e-4290-8c7c-4df59d3c468f",
+      "chain": "Ethereum",
+      "project": "uniswap-v4",
+      "symbol": "WBTC-USDC",
+      "tvlUsd": 5192817,
+      "apy": 12.43,
+      "apyBase": 12.42918,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "eb267ce8-5183-47b6-be35-fbb560757086",
+      "chain": "Base",
+      "project": "uniswap-v3",
+      "symbol": "USDC-MAG7.SSI",
+      "tvlUsd": 5010810,
+      "apy": 10.64,
+      "apyBase": 10.63971,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "76b2b84f-45f1-40e5-9b29-2cb365c4a7f8",
+      "chain": "Arbitrum",
+      "project": "uniswap-v4",
+      "symbol": "WBTC-USDC",
+      "tvlUsd": 7995993,
+      "apy": 10.53,
+      "apyBase": 10.52773,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "bbecbf69-a4f7-43e3-8b72-de180d106e2c",
+      "chain": "Ethereum",
+      "project": "uniswap-v3",
+      "symbol": "WBTC-USDC",
+      "tvlUsd": 29499698,
+      "apy": 10.53,
+      "apyBase": 10.52722,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "b94bc69c-5304-4460-a993-abb62faeded6",
+      "chain": "Ethereum",
+      "project": "uniswap-v4",
+      "symbol": "WBTC-USDT",
+      "tvlUsd": 10963559,
+      "apy": 10.5,
+      "apyBase": 10.49665,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "aae6cc3a-783b-4a76-bea7-c3edccd28d62",
+      "chain": "Base",
+      "project": "aerodrome-slipstream",
+      "symbol": "MSUSD-USDC",
+      "tvlUsd": 24892491,
+      "apy": 10.19,
+      "apyBase": 8.80921,
+      "apyReward": 1.38426,
+      "stablecoin": true,
+      "ilRisk": "no",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "71fa0340-09b5-4635-887b-1ce010e602ad",
+      "chain": "Ethereum",
+      "project": "stake-dao",
+      "symbol": "MSETH-WETH",
+      "tvlUsd": 5740522,
+      "apy": 9.69,
+      "apyBase": 0.67,
+      "apyReward": 9.02325,
+      "stablecoin": false,
+      "ilRisk": "no",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "08e1a166-5366-4f57-bef8-76acb53699f0",
+      "chain": "Base",
+      "project": "aerodrome-slipstream",
+      "symbol": "WETH-MSETH",
+      "tvlUsd": 26419403,
+      "apy": 9.63,
+      "apyBase": 8.33579,
+      "apyReward": 1.29489,
+      "stablecoin": false,
+      "ilRisk": "no",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "38160634-07f7-4dcd-a26e-0e0d27ef5a1b",
+      "chain": "Ethereum",
+      "project": "curve-dex",
+      "symbol": "CRV-CVXCRV",
+      "tvlUsd": 6189034,
+      "apy": 9.53,
+      "apyBase": 0.1,
+      "apyReward": 9.42615,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "ad078c5e-e07c-4a25-97ab-c04d2c9d8908",
+      "chain": "TON",
+      "project": "ston.fi",
+      "symbol": "TON-USD₮",
+      "tvlUsd": 6892712,
+      "apy": 9.5,
+      "apyBase": 9.50412,
+      "apyReward": 0,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "49717ee2-9808-4288-b76d-e658195b7979",
+      "chain": "Ethereum",
+      "project": "uniswap-v3",
+      "symbol": "USDC-WETH",
+      "tvlUsd": 23750939,
+      "apy": 9.47,
+      "apyBase": 9.46703,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "5e2aac09-71c8-4092-ba4f-00f1ac0d04fd",
+      "chain": "Arbitrum",
+      "project": "gmx-v2-perps",
+      "symbol": "ETH-ETH",
+      "tvlUsd": 16092263,
+      "apy": 9.4,
+      "apyBase": 9.39936,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "no",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "58c04b13-6220-4122-9fa9-6845058f1d71",
+      "chain": "Ethereum",
+      "project": "morpho-blue",
+      "symbol": "API3-DCOMP-USDC",
+      "tvlUsd": 6807860,
+      "apy": 9.37,
+      "apyBase": 8.4203,
+      "apyReward": 0.95251,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "4257ff95-e25c-4340-885d-8ad87c41481b",
+      "chain": "Ethereum",
+      "project": "curve-dex",
+      "symbol": "MSETH-WETH",
+      "tvlUsd": 12951953,
+      "apy": 8.73,
+      "apyBase": 3.35,
+      "apyReward": 5.3838,
+      "stablecoin": false,
+      "ilRisk": "no",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "12edc6f3-4926-4b4f-b97c-38ef6a458574",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "symbol": "WSOL-USDC",
+      "tvlUsd": 7504634,
+      "apy": 8.7,
+      "apyBase": 8.7,
+      "apyReward": 0,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "2608e751-41d4-47db-9b9c-4bf3a757fc1b",
+      "chain": "Ethereum",
+      "project": "uniswap-v3",
+      "symbol": "WBTC-USDT",
+      "tvlUsd": 27032380,
+      "apy": 8.59,
+      "apyBase": 8.58908,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "d59a5728-d391-4989-86f6-a94e11e0eb3b",
+      "chain": "Ethereum",
+      "project": "uniswap-v3",
+      "symbol": "WBTC-WETH",
+      "tvlUsd": 52801272,
+      "apy": 8.29,
+      "apyBase": 8.28955,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "54a73b0a-d1f0-4a82-9e9f-2a6520351527",
+      "chain": "Ethereum",
+      "project": "curve-dex",
+      "symbol": "FRXUSD-MSUSD",
+      "tvlUsd": 10591905,
+      "apy": 8.28,
+      "apyBase": 1.69,
+      "apyReward": 6.58606,
+      "stablecoin": true,
+      "ilRisk": "no",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "efa5ce76-dc4f-4d06-a9d4-0e09c4dcd0a1",
+      "chain": "Solana",
+      "project": "raydium-amm",
+      "symbol": "BOME-WSOL",
+      "tvlUsd": 11002843,
+      "apy": 8.18,
+      "apyBase": 8.18,
+      "apyReward": 0,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "4c139e6e-1a29-496e-b916-7edd07069340",
+      "chain": "TON",
+      "project": "ston.fi",
+      "symbol": "TON-USD₮",
+      "tvlUsd": 6007323,
+      "apy": 8.09,
+      "apyBase": 8.09232,
+      "apyReward": 0,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "8a20c472-142c-4442-b724-40f2183c073e",
+      "chain": "Ethereum",
+      "project": "convex-finance",
+      "symbol": "MIM-3CRV",
+      "tvlUsd": 5380120,
+      "apy": 8.06,
+      "apyBase": 0.42,
+      "apyReward": 7.64208,
+      "stablecoin": true,
+      "ilRisk": "no",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "01def518-e633-4f6f-a497-e1e29deedd2b",
+      "chain": "Ethereum",
+      "project": "infinifi",
+      "symbol": "LIUSD-13W",
+      "tvlUsd": 6650888,
+      "apy": 7.96,
+      "apyBase": 7.96025,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "5b8c0691-b9ff-4d82-97e4-19a1247e6dbf",
+      "chain": "Arbitrum",
+      "project": "gmx-v2-perps",
+      "symbol": "WBTC.B-USDC",
+      "tvlUsd": 41439747,
+      "apy": 7.81,
+      "apyBase": 7.80887,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "69800b02-58a9-4838-b19d-d2719950e296",
+      "chain": "Ethereum",
+      "project": "uniswap-v4",
+      "symbol": "USDC-CBBTC",
+      "tvlUsd": 8217123,
+      "apy": 7.62,
+      "apyBase": 7.61544,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "3e889559-f3f0-4f36-93e6-5e7d2b33ed99",
+      "chain": "Ethereum",
+      "project": "curve-dex",
+      "symbol": "WETH-CVX",
+      "tvlUsd": 5038076,
+      "apy": 7.52,
+      "apyBase": 0.69,
+      "apyReward": 6.83478,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "cda362c2-3822-4d0f-bc56-383bdc5ed3fc",
+      "chain": "Ethereum",
+      "project": "infinifi",
+      "symbol": "LIUSD-8W",
+      "tvlUsd": 7304454,
+      "apy": 7.39,
+      "apyBase": 7.39149,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "747005c3-9750-4330-912e-90d023cfac71",
+      "chain": "Ethereum",
+      "project": "curve-dex",
+      "symbol": "CRVUSD-WETH",
+      "tvlUsd": 52225036,
+      "apy": 7.27,
+      "apyBase": 7.27,
+      "apyReward": 0,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "089a0c17-446b-4bbd-97ee-882e30684ad7",
+      "chain": "Ethereum",
+      "project": "sushiswap-v3",
+      "symbol": "DAI-WETH",
+      "tvlUsd": 8475157,
+      "apy": 6.81,
+      "apyBase": 6.81077,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "9841b459-73c8-45b9-9ebd-3499192ca71a",
+      "chain": "Ethereum",
+      "project": "sushiswap-v3",
+      "symbol": "WBTC-WETH",
+      "tvlUsd": 9142149,
+      "apy": 6.59,
+      "apyBase": 6.58943,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "a83398f6-9f44-4046-8e30-12bae393e54d",
+      "chain": "Ethereum",
+      "project": "infinifi",
+      "symbol": "LIUSD-4W",
+      "tvlUsd": 9145331,
+      "apy": 6.54,
+      "apyBase": 6.54396,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "37fb91f9-866e-4fb1-9339-1311c04a8a00",
+      "chain": "Ethereum",
+      "project": "curve-dex",
+      "symbol": "PMUSD-CRVUSD",
+      "tvlUsd": 7112085,
+      "apy": 6.52,
+      "apyBase": 0.01,
+      "apyReward": 6.50829,
+      "stablecoin": true,
+      "ilRisk": "no",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "bc34f03d-95fe-4ed6-a809-09df91d44727",
+      "chain": "Kava",
+      "project": "scrub-invest",
+      "symbol": "TIGER-LION",
+      "tvlUsd": 6740317,
+      "apy": 6.4,
+      "apyBase": 6.40112,
+      "apyReward": null,
+      "stablecoin": false,
+      "ilRisk": "yes",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    },
+    {
+      "pool": "5c4940c7-c193-440d-b95e-9148d017e12c",
+      "chain": "Ethereum",
+      "project": "curve-dex",
+      "symbol": "REUSD-SCRVUSD",
+      "tvlUsd": 5980251,
+      "apy": 6.33,
+      "apyBase": 0.43,
+      "apyReward": 5.90105,
+      "stablecoin": true,
+      "ilRisk": "no",
+      "exposure": "multi",
+      "fetchedAt": "2026-05-18T11:37:02.137Z"
+    }
+  ],
+  "externalAirdrops": [],
+  "airdropAlertFeed": [
+    {
+      "title": "Trading Fundamentals Part 26 : Trade Invalidation",
+      "link": "https://airdropalert.com/blogs/trade-invalidation-guide/",
+      "pubDate": "Sat, 16 May 2026 14:43:44 +0000",
+      "description": "",
+      "fetchedAt": "2026-05-18T11:37:01.324Z"
+    },
+    {
+      "title": "S&#038;P 500 Beginner&#8217;s Guide: What It Is and Why Crypto Traders Should Pay Attention",
+      "link": "https://airdropalert.com/blogs/sp500-beginner-guide/",
+      "pubDate": "Fri, 15 May 2026 15:44:38 +0000",
+      "description": "",
+      "fetchedAt": "2026-05-18T11:37:01.324Z"
+    },
+    {
+      "title": "How to Start Trading Crypto: The Complete Beginner&#8217;s Guide",
+      "link": "https://airdropalert.com/blogs/how-to-start-trading-crypto/",
+      "pubDate": "Wed, 13 May 2026 11:27:00 +0000",
+      "description": "",
+      "fetchedAt": "2026-05-18T11:37:01.324Z"
+    },
+    {
+      "title": "Swatch X AP, Bitcoin Glitches, UFO Files &#038; Airdrop Claims — Weekly Crypto Update",
+      "link": "https://airdropalert.com/blogs/swatch-x-ap-bitcoin-glitches-ufo-files-airdrop-claims-weekly-crypto-update/",
+      "pubDate": "Tue, 12 May 2026 13:25:46 +0000",
+      "description": "",
+      "fetchedAt": "2026-05-18T11:37:01.324Z"
+    },
+    {
+      "title": "Binance is Pumping Memes Again. Here&#8217;s What&#8217;s Going on.",
+      "link": "https://airdropalert.com/blogs/binance-is-pumping-memes-again/",
+      "pubDate": "Mon, 11 May 2026 18:39:21 +0000",
+      "description": "",
+      "fetchedAt": "2026-05-18T11:37:01.324Z"
+    },
+    {
+      "title": "6 Crypto Tokens That Had a Big Week — And Why the Market Is Finally Waking Up",
+      "link": "https://airdropalert.com/blogs/6-crypto-tokens-that-had-a-big-week/",
+      "pubDate": "Mon, 11 May 2026 12:48:31 +0000",
+      "description": "",
+      "fetchedAt": "2026-05-18T11:37:01.324Z"
+    },
+    {
+      "title": "How to Farm MegaETH: The Full Ecosystem Airdrop Guide (2026)",
+      "link": "https://airdropalert.com/blogs/how-to-farm-megaeth-airdrop/",
+      "pubDate": "Sun, 10 May 2026 13:32:46 +0000",
+      "description": "",
+      "fetchedAt": "2026-05-18T11:37:01.324Z"
+    },
+    {
+      "title": "The CLARITY Act: What It Is, Why It Matters, and Why May 14th Could Change Crypto Forever",
+      "link": "https://airdropalert.com/blogs/clarity-act-explained/",
+      "pubDate": "Sat, 09 May 2026 10:57:49 +0000",
+      "description": "",
+      "fetchedAt": "2026-05-18T11:37:01.324Z"
+    },
+    {
+      "title": "Is a ZEC ATH Next? Why Zcash Is Exploding Right Now",
+      "link": "https://airdropalert.com/blogs/zec-ath-in-the-cards/",
+      "pubDate": "Fri, 08 May 2026 11:34:16 +0000",
+      "description": "",
+      "fetchedAt": "2026-05-18T11:37:01.324Z"
+    },
+    {
+      "title": "Best Crypto World Cup Betting Sites in 2026",
+      "link": "https://airdropalert.com/blogs/best-crypto-world-cup-betting-sites/",
+      "pubDate": "Thu, 07 May 2026 16:21:12 +0000",
+      "description": "",
+      "fetchedAt": "2026-05-18T11:37:01.324Z"
+    }
+  ],
+  "cryptorankFunding": []
 }
