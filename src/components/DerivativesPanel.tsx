@@ -1,36 +1,56 @@
 // ── DerivativesPanel.tsx ─────────────────────────────────────────────────────
-// On-chain perpetual futures trading on Arc Testnet via ArcPerps contract
+// On-chain perpetual futures — real-time prices from Hyperliquid + price chart
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import {
-  usePerpMarkets,
+  ResponsiveContainer, AreaChart, BarChart, Area, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip,
+} from 'recharts'
+import {
+  useHLDerivatives,
+  useCandleData,
+} from '../hooks/useHyperliquid'
+import type { HLMarket, CandleInterval } from '../hooks/useHyperliquid'
+import {
   usePerpPositions,
   usePerpTrade,
 } from '../hooks/usePerpsContract'
-import type { PerpMarket, PerpPosition } from '../hooks/usePerpsContract'
+import type { PerpPosition } from '../hooks/usePerpsContract'
 import { PERPS_ADDRESS, PERPS_COINS } from '../config/contracts'
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
 function fmtPrice(n: number): string {
   if (n === 0) return '—'
-  if (n >= 10_000)  return `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
-  if (n >= 1_000)   return `$${n.toLocaleString('en-US', { maximumFractionDigits: 1 })}`
-  if (n >= 1)       return `$${n.toLocaleString('en-US', { maximumFractionDigits: 3 })}`
+  if (n >= 10_000) return `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+  if (n >= 1_000)  return `$${n.toLocaleString('en-US', { maximumFractionDigits: 1 })}`
+  if (n >= 1)      return `$${n.toLocaleString('en-US', { maximumFractionDigits: 3 })}`
   return `$${n.toLocaleString('en-US', { maximumFractionDigits: 5 })}`
 }
 
 function fmtUSD(n: number, sign = false): string {
   const s = sign && n > 0 ? '+' : ''
-  if (Math.abs(n) >= 1_000_000) return `${s}$${(n / 1_000_000).toFixed(2)}M`
-  if (Math.abs(n) >= 1_000)     return `${s}$${(n / 1_000).toFixed(1)}K`
+  if (Math.abs(n) >= 1_000_000_000) return `${s}$${(n / 1_000_000_000).toFixed(2)}B`
+  if (Math.abs(n) >= 1_000_000)     return `${s}$${(n / 1_000_000).toFixed(2)}M`
+  if (Math.abs(n) >= 1_000)         return `${s}$${(n / 1_000).toFixed(1)}K`
   return `${s}$${n.toFixed(2)}`
 }
 
-function fmtPct(n: number): string {
-  const s = n > 0 ? '+' : ''
+function fmtPct(n: number, plus = true): string {
+  const s = plus && n > 0 ? '+' : ''
   return `${s}${n.toFixed(2)}%`
+}
+
+function fmtTime(ms: number, interval: CandleInterval): string {
+  const d = new Date(ms)
+  if (interval === '1D') {
+    return `${d.getMonth() + 1}/${d.getDate()}`
+  }
+  if (interval === '1h' || interval === '4h') {
+    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}h`
+  }
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 // ── Coin icon ─────────────────────────────────────────────────────────────────
@@ -62,10 +82,10 @@ function Spinner({ label = 'Loading…' }: { label?: string }) {
 function TxBadge({ step, hash, error }: { step: string; hash: string | null; error: string | null }) {
   if (step === 'idle') return null
   const config = {
-    approving: { cls: 'bg-amber-50 border-amber-200 text-amber-700',   icon: '⏳', label: 'Approving USDC…' },
-    sending:   { cls: 'bg-violet-50 border-violet-200 text-violet-700', icon: '⏳', label: 'Sending transaction…' },
-    done:      { cls: 'bg-emerald-50 border-emerald-200 text-emerald-700', icon: '✅', label: 'Transaction confirmed!' },
-    error:     { cls: 'bg-red-50 border-red-200 text-red-700',          icon: '⚠',  label: error ?? 'Transaction failed' },
+    approving: { cls: 'bg-amber-50 border-amber-200 text-amber-700',      icon: '⏳', label: 'Approving USDC…' },
+    sending:   { cls: 'bg-violet-50 border-violet-200 text-violet-700',   icon: '⏳', label: 'Sending transaction…' },
+    done:      { cls: 'bg-emerald-50 border-emerald-200 text-emerald-700', icon: '✅', label: 'Confirmed!' },
+    error:     { cls: 'bg-red-50 border-red-200 text-red-700',            icon: '⚠',  label: error ?? 'Transaction failed' },
   }
   const c = config[step as keyof typeof config]
   if (!c) return null
@@ -85,20 +105,167 @@ function TxBadge({ step, hash, error }: { step: string; hash: string | null; err
   )
 }
 
-// ── Market selector ───────────────────────────────────────────────────────────
+// ── Price chart ───────────────────────────────────────────────────────────────
+
+const INTERVALS: CandleInterval[] = ['1m', '5m', '15m', '1h', '4h', '1D']
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function ChartTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null
+  const d = payload[0]?.payload
+  if (!d) return null
+  return (
+    <div className="bg-slate-900 text-white rounded-xl px-3 py-2 text-[11px] shadow-xl border border-slate-700">
+      <p className="text-slate-400 mb-1">{new Date(d.time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}</p>
+      <p className="font-bold">{fmtPrice(d.close)}</p>
+      <p className="text-slate-400">O: {fmtPrice(d.open)} H: {fmtPrice(d.high)}</p>
+      <p className="text-slate-400">L: {fmtPrice(d.low)}  V: {fmtUSD(d.volume)}</p>
+    </div>
+  )
+}
+
+function PerpChart({ coin, livePrice }: { coin: string; livePrice: number }) {
+  const [interval, setInterval] = useState<CandleInterval>('15m')
+  const { candles, loading } = useCandleData(coin, interval)
+
+  const last    = candles[candles.length - 1]
+  const current = livePrice > 0 ? livePrice : last?.close ?? 0
+  const open24  = candles[0]?.open ?? 0
+  const change  = open24 > 0 ? ((current - open24) / open24) * 100 : 0
+  const isUp    = change >= 0
+
+  const chartData = useMemo(() => candles.map(c => ({
+    time:   c.time,
+    open:   c.open,
+    high:   c.high,
+    low:    c.low,
+    close:  c.close,
+    volume: c.volume,
+  })), [candles])
+
+  const [minPrice, maxPrice] = useMemo(() => {
+    if (!candles.length) return [0, 1]
+    const lows  = candles.map(c => c.low)
+    const highs = candles.map(c => c.high)
+    const mn = Math.min(...lows)
+    const mx = Math.max(...highs)
+    const pad = (mx - mn) * 0.05
+    return [mn - pad, mx + pad]
+  }, [candles])
+
+  const strokeColor = isUp ? '#10b981' : '#ef4444'
+  const gradientId  = `grad-${coin}-${isUp ? 'up' : 'dn'}`
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Header row */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <CoinIcon coin={coin} size={9} />
+          <div>
+            <span className="font-bold text-slate-900 text-base">{coin}-PERP</span>
+            <span className={`ml-2 text-sm font-bold ${isUp ? 'text-emerald-600' : 'text-red-500'}`}>
+              {fmtPrice(current)}
+            </span>
+          </div>
+        </div>
+        <span className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${
+          isUp ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+               : 'bg-red-50 border border-red-200 text-red-600'
+        }`}>
+          {isUp ? '▲' : '▼'} {fmtPct(Math.abs(change), false)} (24h)
+        </span>
+
+        {/* Interval selector */}
+        <div className="flex gap-1 ml-auto bg-slate-100 p-0.5 rounded-xl">
+          {INTERVALS.map(iv => (
+            <button key={iv}
+              onClick={() => setInterval(iv)}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                interval === iv
+                  ? 'bg-white text-violet-700 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}>
+              {iv}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Chart area */}
+      {loading && candles.length === 0 ? (
+        <div className="h-[200px] flex items-center justify-center">
+          <Spinner label="Loading chart…" />
+        </div>
+      ) : candles.length === 0 ? (
+        <div className="h-[200px] flex items-center justify-center text-slate-400 text-sm">
+          No chart data available
+        </div>
+      ) : (
+        <>
+          {/* Price area chart */}
+          <ResponsiveContainer width="100%" height={210}>
+            <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor={strokeColor} stopOpacity={0.25} />
+                  <stop offset="95%" stopColor={strokeColor} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="2 4" stroke="#f1f5f9" vertical={false} />
+              <XAxis
+                dataKey="time"
+                tickFormatter={t => fmtTime(t as number, interval)}
+                tick={{ fontSize: 10, fill: '#94a3b8' }}
+                tickLine={false} axisLine={false} minTickGap={50}
+              />
+              <YAxis
+                domain={[minPrice, maxPrice]}
+                tickFormatter={v => fmtPrice(v as number)}
+                tick={{ fontSize: 10, fill: '#94a3b8' }}
+                tickLine={false} axisLine={false}
+                width={64} orientation="right"
+              />
+              <Tooltip content={<ChartTooltip />} />
+              <Area
+                type="monotone" dataKey="close"
+                stroke={strokeColor} strokeWidth={1.5}
+                fill={`url(#${gradientId})`}
+                dot={false} activeDot={{ r: 3, strokeWidth: 0 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+
+          {/* Volume bar chart */}
+          <ResponsiveContainer width="100%" height={48}>
+            <BarChart data={chartData} margin={{ top: 0, right: 4, bottom: 0, left: 0 }}>
+              <XAxis dataKey="time" hide />
+              <YAxis hide />
+              <Tooltip content={() => null} />
+              <Bar dataKey="volume" fill={strokeColor} opacity={0.35} radius={[1, 1, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ── Coin selector ─────────────────────────────────────────────────────────────
 
 function MarketSelector({
   selected, markets, onSelect,
 }: {
   selected: string
-  markets:  PerpMarket[]
+  markets:  HLMarket[]
   onSelect: (c: string) => void
 }) {
   return (
     <div className="flex gap-1.5 flex-wrap">
-      {PERPS_COINS.map(coin => {
+      {(PERPS_COINS as readonly string[]).map(coin => {
         const m   = markets.find(x => x.coin === coin)
         const sel = coin === selected
+        const up  = (m?.change24h ?? 0) >= 0
         return (
           <button
             key={coin}
@@ -110,9 +277,17 @@ function MarketSelector({
             }`}
           >
             <span className={`font-bold ${sel ? 'text-white' : 'text-violet-600'}`}>{coin}</span>
-            {m && m.price > 0 && (
-              <span className={`${sel ? 'text-violet-200' : 'text-slate-400'} text-[10px]`}>
-                {fmtPrice(m.price)}
+            {m && m.markPx > 0 && (
+              <span className="flex flex-col items-end leading-none gap-0.5">
+                <span className={`${sel ? 'text-violet-200' : 'text-slate-500'} text-[10px] font-mono`}>
+                  {fmtPrice(m.markPx)}
+                </span>
+                <span className={`text-[9px] font-semibold ${
+                  sel ? (up ? 'text-emerald-300' : 'text-red-300')
+                      : (up ? 'text-emerald-600' : 'text-red-500')
+                }`}>
+                  {fmtPct(m.change24h)}
+                </span>
               </span>
             )}
           </button>
@@ -125,84 +300,58 @@ function MarketSelector({
 // ── Trade form ────────────────────────────────────────────────────────────────
 
 function TradeForm({
-  coin,
-  market,
-  balanceUSDC,
-  onOpen,
-  txStep,
-  txHash,
-  txError,
-  onReset,
+  coin, market, balanceUSDC, onOpen, txStep, txHash, txError, onReset,
 }: {
-  coin:       string
-  market:     PerpMarket | undefined
+  coin:        string
+  market:      HLMarket | undefined
   balanceUSDC: number
-  onOpen:     (coin: string, isLong: boolean, margin: string, leverage: number) => void
-  txStep:     string
-  txHash:     string | null
-  txError:    string | null
-  onReset:    () => void
+  onOpen:      (coin: string, isLong: boolean, margin: string, leverage: number) => void
+  txStep:      string
+  txHash:      string | null
+  txError:     string | null
+  onReset:     () => void
 }) {
   const [side,     setSide]     = useState<'long' | 'short'>('long')
   const [margin,   setMargin]   = useState('')
   const [leverage, setLeverage] = useState(5)
 
-  const price    = market?.price ?? 0
-  const marginN  = parseFloat(margin) || 0
-  const sizeUsd  = marginN * leverage
-  const fee      = sizeUsd * 0.001   // 0.1%
-  const liqMove  = price * marginN * 0.95 / sizeUsd
+  const price   = market?.markPx ?? 0
+  const marginN = parseFloat(margin) || 0
+  const sizeUsd = marginN * leverage
+  const fee     = sizeUsd * 0.001
+  const liqMove = price > 0 ? price * marginN * 0.95 / sizeUsd : 0
   const liqPrice = side === 'long' ? price - liqMove : price + liqMove
 
   const canTrade = marginN > 0 && marginN <= balanceUSDC && price > 0
 
-  const handleSubmit = () => {
-    if (!canTrade) return
-    onOpen(coin, side === 'long', margin, leverage)
-  }
-
   return (
     <div className="flex flex-col gap-4">
 
-      {/* Long / Short toggle */}
+      {/* Long / Short */}
       <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
-        <button
-          onClick={() => setSide('long')}
-          className={`py-2.5 rounded-lg text-sm font-bold transition-all ${
-            side === 'long'
-              ? 'bg-emerald-500 text-white shadow-md'
-              : 'text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          ▲ Long
-        </button>
-        <button
-          onClick={() => setSide('short')}
-          className={`py-2.5 rounded-lg text-sm font-bold transition-all ${
-            side === 'short'
-              ? 'bg-red-500 text-white shadow-md'
-              : 'text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          ▼ Short
-        </button>
+        {(['long', 'short'] as const).map(s => (
+          <button key={s} onClick={() => setSide(s)}
+            className={`py-2.5 rounded-lg text-sm font-bold transition-all ${
+              side === s
+                ? s === 'long' ? 'bg-emerald-500 text-white shadow-md'
+                               : 'bg-red-500 text-white shadow-md'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}>
+            {s === 'long' ? '▲ Long' : '▼ Short'}
+          </button>
+        ))}
       </div>
 
       {/* Margin input */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Margin (USDC)</label>
-          <span className="text-xs text-slate-400">Balance: {balanceUSDC.toFixed(2)} USDC</span>
+          <span className="text-xs text-slate-400">Bal: <strong>{balanceUSDC.toFixed(2)}</strong></span>
         </div>
-        <div className={`flex items-center gap-2 bg-slate-50 border rounded-xl px-3 py-2.5 focus-within:border-violet-400 transition-colors ${
-          marginN > balanceUSDC ? 'border-red-300' : 'border-slate-200'
-        }`}>
-          <span className="text-slate-400">💵</span>
+        <div className={`flex items-center gap-2 bg-slate-50 border rounded-xl px-3 py-2.5 focus-within:border-violet-400 transition-colors ${marginN > balanceUSDC ? 'border-red-300' : 'border-slate-200'}`}>
+          <span className="text-slate-400 text-sm">💵</span>
           <input
-            type="number"
-            min="0"
-            step="1"
-            placeholder="0.00"
+            type="number" min="0" step="1" placeholder="0.00"
             value={margin}
             onChange={e => { setMargin(e.target.value); onReset() }}
             className="flex-1 bg-transparent text-slate-900 font-bold text-lg outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -223,53 +372,45 @@ function TradeForm({
         </div>
       </div>
 
-      {/* Leverage slider */}
+      {/* Leverage */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Leverage</label>
-          <span className={`text-sm font-bold px-2 py-0.5 rounded-lg ${
-            leverage >= 15 ? 'bg-red-50 text-red-600 border border-red-200' :
-            leverage >= 8  ? 'bg-amber-50 text-amber-600 border border-amber-200' :
-                             'bg-emerald-50 text-emerald-600 border border-emerald-200'
+          <span className={`text-sm font-bold px-2 py-0.5 rounded-lg border ${
+            leverage >= 15 ? 'bg-red-50 text-red-600 border-red-200' :
+            leverage >= 8  ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                             'bg-emerald-50 text-emerald-600 border-emerald-200'
           }`}>{leverage}×</span>
         </div>
-        <input
-          type="range" min="1" max="20" value={leverage}
+        <input type="range" min="1" max="20" value={leverage}
           onChange={e => setLeverage(Number(e.target.value))}
-          className="w-full accent-violet-600"
-        />
+          className="w-full accent-violet-600" />
         <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
-          <span>1×</span><span>5×</span><span>10×</span><span>15×</span><span>20×</span>
+          {['1×', '5×', '10×', '15×', '20×'].map(l => <span key={l}>{l}</span>)}
         </div>
       </div>
 
       {/* Order summary */}
       {marginN > 0 && price > 0 && (
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs flex flex-col gap-2">
-          <div className="flex justify-between">
-            <span className="text-slate-500">Position size</span>
-            <span className="text-slate-900 font-semibold">{fmtUSD(sizeUsd)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Entry price</span>
-            <span className="text-slate-900 font-semibold">{fmtPrice(price)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Liq. price (est.)</span>
-            <span className="text-red-600 font-semibold">{fmtPrice(liqPrice)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Opening fee (0.1%)</span>
-            <span className="text-slate-600">{fmtUSD(fee)}</span>
-          </div>
+          {[
+            { label: 'Position size',    value: fmtUSD(sizeUsd),   cls: 'text-slate-900 font-semibold' },
+            { label: 'Entry price',      value: fmtPrice(price),    cls: 'text-slate-900 font-semibold' },
+            { label: 'Liq. price (est.)', value: fmtPrice(liqPrice), cls: 'text-red-600 font-semibold' },
+            { label: 'Opening fee (0.1%)', value: fmtUSD(fee),      cls: 'text-slate-600' },
+          ].map(r => (
+            <div key={r.label} className="flex justify-between">
+              <span className="text-slate-500">{r.label}</span>
+              <span className={r.cls}>{r.value}</span>
+            </div>
+          ))}
         </div>
       )}
 
       <TxBadge step={txStep} hash={txHash} error={txError} />
 
-      {/* Submit */}
       <button
-        onClick={handleSubmit}
+        onClick={() => canTrade && onOpen(coin, side === 'long', margin, leverage)}
         disabled={!canTrade || txStep === 'approving' || txStep === 'sending'}
         className={`w-full py-3.5 rounded-2xl font-bold text-sm transition-all ${
           !canTrade || txStep === 'approving' || txStep === 'sending'
@@ -289,6 +430,11 @@ function TradeForm({
       {marginN > balanceUSDC && (
         <p className="text-center text-xs text-red-500">Insufficient USDC balance</p>
       )}
+
+      <div className="pt-1 border-t border-slate-100 text-[10px] text-slate-400 space-y-0.5">
+        <p>• 0.1% opening fee · Liquidation at 5% margin ratio</p>
+        <p>• Funding accrues every 8h · Prices from Hyperliquid oracle</p>
+      </div>
     </div>
   )
 }
@@ -296,10 +442,7 @@ function TradeForm({
 // ── Position card ─────────────────────────────────────────────────────────────
 
 function PositionCard({
-  pos,
-  onClose,
-  onAddMargin,
-  isClosing,
+  pos, onClose, onAddMargin, isClosing,
 }: {
   pos:         PerpPosition
   onClose:     (id: bigint) => void
@@ -311,27 +454,19 @@ function PositionCard({
   const pnlPos = pos.unrealisedPnl >= 0
 
   return (
-    <div className={`bg-white border rounded-2xl p-4 shadow-sm flex flex-col gap-3 ${
-      pos.liquidatable ? 'border-red-300 bg-red-50/30' : 'border-slate-200'
-    }`}>
-      {/* Header */}
+    <div className={`bg-white border rounded-2xl p-4 shadow-sm flex flex-col gap-3 ${pos.liquidatable ? 'border-red-300 bg-red-50/30' : 'border-slate-200'}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CoinIcon coin={pos.coin} size={8} />
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-slate-900 text-sm">{pos.coin}-PERP</span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                pos.isLong
-                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                  : 'bg-red-50 text-red-600 border border-red-200'
-              }`}>
-                {pos.isLong ? '▲ LONG' : '▼ SHORT'} {pos.leverage}×
-              </span>
+                pos.isLong ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                           : 'bg-red-50 text-red-600 border border-red-200'
+              }`}>{pos.isLong ? '▲ LONG' : '▼ SHORT'} {pos.leverage}×</span>
               {pos.liquidatable && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-300 animate-pulse">
-                  ⚠ NEAR LIQ
-                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-300 animate-pulse">⚠ NEAR LIQ</span>
               )}
             </div>
             <p className="text-slate-400 text-[10px] mt-0.5">
@@ -339,107 +474,121 @@ function PositionCard({
             </p>
           </div>
         </div>
-
         <div className="text-right">
-          <p className={`font-bold text-base ${pnlPos ? 'text-emerald-600' : 'text-red-500'}`}>
-            {fmtUSD(pos.unrealisedPnl, true)}
-          </p>
-          <p className={`text-[10px] font-semibold ${pnlPos ? 'text-emerald-500' : 'text-red-400'}`}>
-            {fmtPct(pos.roe)}
-          </p>
+          <p className={`font-bold text-base ${pnlPos ? 'text-emerald-600' : 'text-red-500'}`}>{fmtUSD(pos.unrealisedPnl, true)}</p>
+          <p className={`text-[10px] font-semibold ${pnlPos ? 'text-emerald-500' : 'text-red-400'}`}>{fmtPct(pos.roe)}</p>
         </div>
       </div>
 
-      {/* Stats grid */}
       <div className="grid grid-cols-3 gap-2">
         {[
-          { label: 'Margin', value: fmtUSD(pos.margin) },
-          { label: 'Liq. Price', value: fmtPrice(pos.liquidationPrice), red: true },
-          { label: 'PnL / ROE', value: `${fmtUSD(pos.unrealisedPnl, true)} / ${fmtPct(pos.roe)}`, green: pnlPos },
+          { label: 'Margin',     value: fmtUSD(pos.margin),         cls: 'text-slate-700' },
+          { label: 'Liq. Price', value: fmtPrice(pos.liquidationPrice), cls: 'text-red-600' },
+          { label: 'PnL / ROE',  value: `${fmtUSD(pos.unrealisedPnl, true)} / ${fmtPct(pos.roe)}`, cls: pnlPos ? 'text-emerald-600' : 'text-red-500' },
         ].map(s => (
           <div key={s.label} className="bg-slate-50 rounded-xl p-2 text-center">
             <p className="text-slate-400 text-[10px] mb-0.5">{s.label}</p>
-            <p className={`font-bold text-xs ${s.red ? 'text-red-600' : s.green ? 'text-emerald-600' : !pnlPos && s.label === 'PnL / ROE' ? 'text-red-500' : 'text-slate-700'}`}>
-              {s.value}
-            </p>
+            <p className={`font-bold text-xs ${s.cls}`}>{s.value}</p>
           </div>
         ))}
       </div>
 
-      {/* Add margin form */}
       {showAdd && (
         <div className="flex gap-2">
-          <input
-            type="number" min="0" placeholder="USDC amount"
+          <input type="number" min="0" placeholder="USDC to add"
             value={addAmt} onChange={e => setAddAmt(e.target.value)}
-            className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-violet-400"
-          />
-          <button
-            onClick={() => { onAddMargin(pos.id, addAmt); setShowAdd(false); setAddAmt('') }}
+            className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-violet-400" />
+          <button onClick={() => { onAddMargin(pos.id, addAmt); setShowAdd(false); setAddAmt('') }}
             disabled={!addAmt || parseFloat(addAmt) <= 0}
-            className="px-3 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold disabled:opacity-40"
-          >Add</button>
-          <button onClick={() => setShowAdd(false)}
-            className="px-3 py-2 rounded-xl bg-slate-100 text-slate-500 text-xs">Cancel</button>
+            className="px-3 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold disabled:opacity-40">Add</button>
+          <button onClick={() => setShowAdd(false)} className="px-3 py-2 rounded-xl bg-slate-100 text-slate-500 text-xs">✕</button>
         </div>
       )}
 
-      {/* Actions */}
       <div className="flex gap-2">
-        <button
-          onClick={() => setShowAdd(v => !v)}
-          className="flex-1 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold hover:bg-slate-200 transition-colors"
-        >
+        <button onClick={() => setShowAdd(v => !v)}
+          className="flex-1 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold hover:bg-slate-200 transition-colors">
           + Add Margin
         </button>
-        <button
-          onClick={() => onClose(pos.id)}
-          disabled={isClosing}
-          className="flex-1 py-2 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-bold hover:bg-red-100 transition-colors disabled:opacity-40"
-        >
-          {isClosing ? '⏳ Closing…' : '✕ Close Position'}
+        <button onClick={() => onClose(pos.id)} disabled={isClosing}
+          className="flex-1 py-2 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-bold hover:bg-red-100 transition-colors disabled:opacity-40">
+          {isClosing ? '⏳ Closing…' : '✕ Close'}
         </button>
       </div>
     </div>
   )
 }
 
-// ── Market table ──────────────────────────────────────────────────────────────
+// ── Markets table ─────────────────────────────────────────────────────────────
 
-function MarketsTable({ markets, onSelect }: { markets: PerpMarket[]; onSelect: (c: string) => void }) {
+function MarketsTable({
+  markets, updatedAt, onSelect,
+}: {
+  markets:   HLMarket[]
+  updatedAt: number | null
+  onSelect:  (c: string) => void
+}) {
+  const filtered = (PERPS_COINS as readonly string[])
+    .map(coin => markets.find(m => m.coin === coin))
+    .filter(Boolean) as HLMarket[]
+
+  const age = updatedAt ? Math.floor((Date.now() - updatedAt) / 1000) : null
+
   return (
     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-      <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-        <span className="font-bold text-slate-900 text-sm">Markets</span>
-        <span className="text-xs text-slate-400">{markets.length} perpetuals · refreshes every 15s</span>
+      <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+        <span className="font-bold text-slate-900 text-sm">{filtered.length} Perpetual Markets</span>
+        <div className="flex items-center gap-2">
+          {age !== null && (
+            <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              Updated {age}s ago
+            </span>
+          )}
+        </div>
       </div>
-      <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] px-5 py-2 bg-slate-50 border-b border-slate-100 text-[11px] text-slate-500 font-semibold uppercase tracking-wider">
+
+      {/* Table header */}
+      <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] px-5 py-2 bg-slate-50 border-b border-slate-100 text-[11px] text-slate-500 font-semibold uppercase tracking-wider">
         <span>Market</span>
-        <span className="text-right">Mark Price</span>
+        <span className="text-right">Price</span>
+        <span className="text-right">24h %</span>
         <span className="text-right">Open Interest</span>
         <span className="text-right">Funding 8h</span>
         <span />
       </div>
+
       <div className="divide-y divide-slate-50">
-        {markets.map(m => (
-          <div key={m.coin} className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] px-5 py-3 items-center hover:bg-slate-50 transition-colors">
-            <div className="flex items-center gap-2">
-              <CoinIcon coin={m.coin} size={7} />
-              <span className="font-bold text-slate-900 text-xs">{m.coin}-PERP</span>
+        {filtered.map(m => {
+          const up = m.change24h >= 0
+          const fundingUp = m.funding8h >= 0
+          return (
+            <div key={m.coin}
+              className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] px-5 py-3 items-center hover:bg-slate-50 transition-colors cursor-pointer"
+              onClick={() => onSelect(m.coin)}>
+              <div className="flex items-center gap-2">
+                <CoinIcon coin={m.coin} size={7} />
+                <div>
+                  <span className="font-bold text-slate-900 text-xs">{m.coin}-PERP</span>
+                  <p className="text-[10px] text-slate-400">{m.maxLeverage}× max</p>
+                </div>
+              </div>
+              <p className="text-slate-900 font-mono text-xs text-right font-semibold">{fmtPrice(m.markPx)}</p>
+              <p className={`text-xs text-right font-bold ${up ? 'text-emerald-600' : 'text-red-500'}`}>
+                {fmtPct(m.change24h)}
+              </p>
+              <p className="text-slate-600 text-xs text-right font-mono">{fmtUSD(m.openInterest)}</p>
+              <p className={`text-xs text-right font-semibold ${fundingUp ? 'text-red-500' : 'text-emerald-600'}`}>
+                {fundingUp ? '+' : ''}{(m.funding8h * 100).toFixed(4)}%
+              </p>
+              <button
+                onClick={e => { e.stopPropagation(); onSelect(m.coin) }}
+                className="ml-3 px-3 py-1.5 rounded-lg bg-violet-50 border border-violet-200 text-violet-600 text-[11px] font-bold hover:bg-violet-100 transition-colors">
+                Trade
+              </button>
             </div>
-            <p className="text-slate-900 font-mono text-xs text-right">{fmtPrice(m.price)}</p>
-            <p className="text-slate-600 text-xs text-right font-mono">{fmtUSD(m.openInterest)}</p>
-            <p className={`text-xs text-right font-semibold ${m.fundingRate > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
-              {m.fundingRate > 0 ? '+' : ''}{m.fundingRate}bps
-            </p>
-            <button
-              onClick={() => onSelect(m.coin)}
-              className="ml-3 px-3 py-1.5 rounded-lg bg-violet-50 border border-violet-200 text-violet-600 text-[11px] font-bold hover:bg-violet-100 transition-colors"
-            >
-              Trade
-            </button>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
@@ -448,43 +597,39 @@ function MarketsTable({ markets, onSelect }: { markets: PerpMarket[]; onSelect: 
 // ── Main Panel ────────────────────────────────────────────────────────────────
 
 export default function DerivativesPanel() {
-  const [selectedCoin, setSelectedCoin] = useState<string>('BTC')
-  const [view, setView] = useState<'trade' | 'markets' | 'positions'>('trade')
+  const [coin,  setCoin]  = useState('BTC')
+  const [view,  setView]  = useState<'trade' | 'markets' | 'positions'>('trade')
 
-  const { markets }     = usePerpMarkets()
+  // Live data from Hyperliquid (5s)
+  const { markets: liveMarkets, updatedAt, error: mktError } = useHLDerivatives()
+  const selectedMarket = liveMarkets.find(m => m.coin === coin)
+
+  // On-chain positions + trading
   const { positions, loading: loadingPos, refetch: refetchPos } = usePerpPositions()
-  const {
-    openPosition, closePosition, addMargin,
-    txStep, txHash, txError, reset,
-    balanceUSDC, isConnected,
-  } = usePerpTrade()
+  const { openPosition, closePosition, addMargin, txStep, txHash, txError, reset, balanceUSDC, isConnected } = usePerpTrade()
 
-  const selectedMarket = markets.find(m => m.coin === selectedCoin)
-  const openCount      = positions.length
+  const openCount = positions.length
+  const totalPnl  = positions.reduce((s, p) => s + p.unrealisedPnl, 0)
 
-  const handleOpen = useCallback(async (
-    coin: string, isLong: boolean, margin: string, leverage: number
-  ) => {
-    await openPosition(coin, isLong, margin, leverage)
-    setTimeout(refetchPos, 5000)
+  const handleOpen = useCallback(async (c: string, isLong: boolean, margin: string, leverage: number) => {
+    await openPosition(c, isLong, margin, leverage)
+    setTimeout(refetchPos, 5_000)
   }, [openPosition, refetchPos])
 
   const handleClose = useCallback(async (id: bigint) => {
     await closePosition(id)
-    setTimeout(refetchPos, 5000)
+    setTimeout(refetchPos, 5_000)
   }, [closePosition, refetchPos])
 
   const handleAddMargin = useCallback(async (id: bigint, amount: string) => {
     await addMargin(id, amount)
-    setTimeout(refetchPos, 5000)
+    setTimeout(refetchPos, 5_000)
   }, [addMargin, refetchPos])
-
-  const totalPnl = positions.reduce((s, p) => s + p.unrealisedPnl, 0)
 
   return (
     <div className="flex flex-col gap-5">
 
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="flex items-center gap-4 px-5 py-4 rounded-2xl bg-gradient-to-r from-violet-50 via-blue-50 to-indigo-50 border border-violet-200">
         <span className="text-3xl">⚡</span>
         <div className="flex-1">
@@ -492,27 +637,25 @@ export default function DerivativesPanel() {
             <h2 className="text-slate-900 font-bold text-lg">ArcPerps — On-chain Perpetuals</h2>
             <span className="flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-              Live · Arc Testnet
+              Live · Prices refresh every 5s
             </span>
           </div>
           <p className="text-slate-500 text-xs">
-            Prices from Hyperliquid oracle · USDC collateral · Up to 20× leverage · 0.1% fee
+            Real-time prices from Hyperliquid · USDC collateral · Up to 20× leverage · 0.1% fee
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <a href={`https://testnet.arcscan.app/address/${PERPS_ADDRESS}`}
-            target="_blank" rel="noreferrer"
-            className="text-xs text-violet-600 hover:underline hidden sm:block">
-            {PERPS_ADDRESS.slice(0, 10)}…↗
-          </a>
-        </div>
+        <a href={`https://testnet.arcscan.app/address/${PERPS_ADDRESS}`}
+          target="_blank" rel="noreferrer"
+          className="text-xs text-violet-600 hover:underline hidden sm:block shrink-0">
+          Contract ↗
+        </a>
       </div>
 
-      {/* Tab bar */}
+      {/* ── Tab bar ── */}
       <div className="flex gap-2 bg-white border border-slate-200 rounded-2xl p-1.5 shadow-sm">
         {([
-          { key: 'trade',     label: '⚡ Trade'          },
-          { key: 'markets',   label: '📊 Markets'         },
+          { key: 'trade',     label: '⚡ Trade'    },
+          { key: 'markets',   label: '📊 Markets'   },
           { key: 'positions', label: `📋 Positions${openCount > 0 ? ` (${openCount})` : ''}` },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setView(t.key)}
@@ -526,116 +669,113 @@ export default function DerivativesPanel() {
         ))}
       </div>
 
-      {/* ── TRADE TAB ── */}
+      {/* Error banner */}
+      {mktError && (
+        <div className="px-4 py-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
+          <span>⚠</span> {mktError}
+        </div>
+      )}
+
+      {/* ══ TRADE TAB ══ */}
       {view === 'trade' && (
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-5">
+        <div className="flex flex-col gap-4">
 
-          {/* Left: market info */}
-          <div className="flex flex-col gap-4">
-
-            {/* Coin selector */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Select Market</p>
-              <MarketSelector
-                selected={selectedCoin}
-                markets={markets}
-                onSelect={c => { setSelectedCoin(c); reset() }}
-              />
+          {/* Coin selector */}
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Select Market</p>
+              {updatedAt && (
+                <span className="text-[10px] text-slate-400">
+                  Last update: {Math.floor((Date.now() - updatedAt) / 1000)}s ago
+                </span>
+              )}
             </div>
-
-            {/* Selected market stats */}
-            {selectedMarket && (
-              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
-                <div className="flex items-center gap-3 mb-4">
-                  <CoinIcon coin={selectedCoin} size={10} />
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-lg">{selectedCoin}-PERP</h3>
-                    <p className="text-slate-400 text-xs">Arc Testnet Perpetual</p>
-                  </div>
-                  <div className="ml-auto text-right">
-                    <p className="font-bold text-2xl text-slate-900">{fmtPrice(selectedMarket.price)}</p>
-                    <p className="text-xs text-slate-400">Mark Price</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: 'Open Interest', value: fmtUSD(selectedMarket.openInterest) },
-                    { label: 'Funding 8h',    value: `${selectedMarket.fundingRate > 0 ? '+' : ''}${selectedMarket.fundingRate}bps` },
-                    { label: 'Max Leverage',  value: '20×' },
-                  ].map(s => (
-                    <div key={s.label} className="bg-slate-50 rounded-xl p-3 text-center">
-                      <p className="text-slate-400 text-[10px] mb-1">{s.label}</p>
-                      <p className="font-bold text-slate-700 text-sm">{s.value}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Portfolio summary */}
-            {isConnected && positions.length > 0 && (
-              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Your Portfolio</p>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: 'Open Positions', value: String(positions.length), color: 'text-violet-600' },
-                    { label: 'Total PnL',       value: fmtUSD(totalPnl, true), color: totalPnl >= 0 ? 'text-emerald-600' : 'text-red-500' },
-                    { label: 'USDC Balance',    value: `${balanceUSDC.toFixed(2)}`, color: 'text-slate-700' },
-                  ].map(s => (
-                    <div key={s.label} className="bg-slate-50 rounded-xl p-3 text-center">
-                      <p className="text-slate-400 text-[10px] mb-1">{s.label}</p>
-                      <p className={`font-bold text-sm ${s.color}`}>{s.value}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <MarketSelector selected={coin} markets={liveMarkets} onSelect={c => { setCoin(c); reset() }} />
           </div>
 
-          {/* Right: order form */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-slate-900">Open Position</h3>
-              <span className="text-xs text-slate-400">Balance: <strong className="text-slate-700">{balanceUSDC.toFixed(2)} USDC</strong></span>
+          {/* Chart + Order form */}
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-5">
+
+            {/* Left: Chart */}
+            <div className="flex flex-col gap-4">
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+                <PerpChart coin={coin} livePrice={selectedMarket?.markPx ?? 0} />
+              </div>
+
+              {/* Stats row */}
+              {selectedMarket && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Mark Price',     value: fmtPrice(selectedMarket.markPx),                             cls: 'text-slate-900' },
+                    { label: '24h Change',      value: fmtPct(selectedMarket.change24h),                           cls: selectedMarket.change24h >= 0 ? 'text-emerald-600' : 'text-red-500' },
+                    { label: 'Open Interest',  value: fmtUSD(selectedMarket.openInterest),                         cls: 'text-slate-700' },
+                    { label: 'Funding 8h',     value: `${selectedMarket.funding8h >= 0 ? '+' : ''}${(selectedMarket.funding8h * 100).toFixed(4)}%`, cls: selectedMarket.funding8h >= 0 ? 'text-red-500' : 'text-emerald-600' },
+                  ].map(s => (
+                    <div key={s.label} className="bg-white border border-slate-200 rounded-xl p-3 text-center shadow-sm">
+                      <p className="text-slate-400 text-[10px] mb-1">{s.label}</p>
+                      <p className={`font-bold text-sm ${s.cls}`}>{s.value}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Portfolio summary */}
+              {isConnected && positions.length > 0 && (
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Your Portfolio</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { label: 'Open Positions', value: String(positions.length), cls: 'text-violet-600' },
+                      { label: 'Total PnL',       value: fmtUSD(totalPnl, true),   cls: totalPnl >= 0 ? 'text-emerald-600' : 'text-red-500' },
+                      { label: 'USDC Balance',    value: balanceUSDC.toFixed(2),    cls: 'text-slate-700' },
+                    ].map(s => (
+                      <div key={s.label} className="bg-slate-50 rounded-xl p-3 text-center">
+                        <p className="text-slate-400 text-[10px] mb-1">{s.label}</p>
+                        <p className={`font-bold text-sm ${s.cls}`}>{s.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {!isConnected ? (
-              <div className="flex flex-col items-center gap-3 py-8">
-                <p className="text-slate-500 text-sm text-center">Connect your wallet to trade</p>
-                <ConnectButton label="Connect Wallet" />
+            {/* Right: Order form */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-slate-900">Open Position</h3>
+                <span className="text-xs text-slate-400">Bal: <strong className="text-slate-700">{balanceUSDC.toFixed(2)} USDC</strong></span>
               </div>
-            ) : (
-              <TradeForm
-                coin={selectedCoin}
-                market={selectedMarket}
-                balanceUSDC={balanceUSDC}
-                onOpen={handleOpen}
-                txStep={txStep}
-                txHash={txHash}
-                txError={txError}
-                onReset={reset}
-              />
-            )}
 
-            {/* Info */}
-            <div className="mt-4 pt-4 border-t border-slate-100 text-[10px] text-slate-400 space-y-1">
-              <p>• Opening fee: 0.1% of position size (both sides)</p>
-              <p>• Liquidation when margin ratio &lt; 5%</p>
-              <p>• Funding accrues every 8h based on market imbalance</p>
-              <p>• Prices updated every ~5 min by oracle script</p>
+              {!isConnected ? (
+                <div className="flex flex-col items-center gap-3 py-8">
+                  <p className="text-slate-500 text-sm text-center">Connect wallet to trade</p>
+                  <ConnectButton label="Connect Wallet" />
+                </div>
+              ) : (
+                <TradeForm
+                  coin={coin}
+                  market={selectedMarket}
+                  balanceUSDC={balanceUSDC}
+                  onOpen={handleOpen}
+                  txStep={txStep}
+                  txHash={txHash}
+                  txError={txError}
+                  onReset={reset}
+                />
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* ── MARKETS TAB ── */}
+      {/* ══ MARKETS TAB ══ */}
       {view === 'markets' && (
-        markets.length === 0
+        liveMarkets.length === 0
           ? <Spinner label="Loading markets…" />
-          : <MarketsTable markets={markets} onSelect={c => { setSelectedCoin(c); setView('trade') }} />
+          : <MarketsTable markets={liveMarkets} updatedAt={updatedAt} onSelect={c => { setCoin(c); setView('trade') }} />
       )}
 
-      {/* ── POSITIONS TAB ── */}
+      {/* ══ POSITIONS TAB ══ */}
       {view === 'positions' && (
         <div className="flex flex-col gap-4">
           {!isConnected ? (
@@ -669,32 +809,25 @@ export default function DerivativesPanel() {
                   🔄 Refresh
                 </button>
               </div>
-
               {positions.map(pos => (
-                <PositionCard
-                  key={pos.id.toString()}
-                  pos={pos}
-                  onClose={handleClose}
-                  onAddMargin={handleAddMargin}
-                  isClosing={txStep === 'sending'}
-                />
+                <PositionCard key={pos.id.toString()} pos={pos}
+                  onClose={handleClose} onAddMargin={handleAddMargin}
+                  isClosing={txStep === 'sending'} />
               ))}
-
               <TxBadge step={txStep} hash={txHash} error={txError} />
             </>
           )}
         </div>
       )}
 
-      {/* Footer */}
       <p className="text-center text-xs text-slate-400 pb-2">
-        ArcPerps contract:{' '}
+        ArcPerps:{' '}
         <a href={`https://testnet.arcscan.app/address/${PERPS_ADDRESS}`}
           target="_blank" rel="noreferrer"
           className="text-violet-600 hover:underline font-mono text-[10px]">
           {PERPS_ADDRESS}
         </a>
-        {' '}· For testnet use only · Not financial advice
+        {' '}· Testnet only · Not financial advice
       </p>
     </div>
   )

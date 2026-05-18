@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 
 // Dùng Cloudflare proxy để tránh CORS (production)
 // Dev: proxy qua vite.config.ts
@@ -350,9 +350,82 @@ export function useHLDerivatives() {
 
   useEffect(() => {
     load()
-    const id = setInterval(load, 15_000)
+    const id = setInterval(load, 5_000)
     return () => clearInterval(id)
   }, [load])
 
   return { markets, loading, error, updatedAt, refresh: load }
+}
+
+// ── Candle data hook ──────────────────────────────────────────────────────────
+
+export interface Candle {
+  time:   number   // unix ms
+  open:   number
+  high:   number
+  low:    number
+  close:  number
+  volume: number
+}
+
+export type CandleInterval = '1m' | '5m' | '15m' | '1h' | '4h' | '1D'
+
+const MS_PER_INTERVAL: Record<string, number> = {
+  '1m':  60_000,   '5m':  300_000,
+  '15m': 900_000,  '1h':  3_600_000,
+  '4h':  14_400_000, '1D': 86_400_000,
+}
+
+export function useCandleData(coin: string, interval: CandleInterval) {
+  const [candles, setCandles] = useState<Candle[]>([])
+  const [loading, setLoading] = useState(true)
+  const prevKey = useRef('')
+
+  const load = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setLoading(true)
+    try {
+      const endTime   = Date.now()
+      const startTime = endTime - (MS_PER_INTERVAL[interval] ?? 900_000) * 180
+
+      const res = await fetch(`${PROXY}/trades`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'candleSnapshot',
+          req:  { coin, interval, startTime, endTime },
+        }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data: any[] = await res.json()
+
+      if (Array.isArray(data)) {
+        setCandles(data.map(c => ({
+          time:   c.T as number,
+          open:   parseFloat(c.o),
+          high:   parseFloat(c.h),
+          low:    parseFloat(c.l),
+          close:  parseFloat(c.c),
+          volume: parseFloat(c.v),
+        })))
+      }
+    } catch (e) {
+      console.warn('useCandleData:', coin, interval, e)
+    } finally {
+      setLoading(false)
+    }
+  }, [coin, interval])
+
+  useEffect(() => {
+    const key = `${coin}-${interval}`
+    const isNew = key !== prevKey.current
+    prevKey.current = key
+    load(isNew)
+    const id = setInterval(() => load(false), 30_000)
+    return () => clearInterval(id)
+  }, [load, coin, interval])
+
+  // Expose a stable refresh function
+  const refresh = useCallback(() => load(false), [load])
+  return useMemo(() => ({ candles, loading, refresh }), [candles, loading, refresh])
 }
