@@ -917,30 +917,31 @@ const PERIOD_LABELS: Record<PaymentFlow['period'], string> = {
   weekly: 'Every week', monthly: 'Every month',
 }
 
+interface FlowRun { hash: string; at: number; amount: number }
+
 function PaymentFlowsSection() {
-  const [flows,      setFlows]      = useState<PaymentFlow[]>([
-    {
-      id: 'demo1', name: 'Team Payroll', recipient: '0x1234…abcd',
-      amount: 500, period: 'monthly', active: true,
-      nextRun: Date.now() + 12 * 86_400_000, totalSent: 1500,
-    },
-  ])
+  const { address } = useAccount()
+  const publicClient           = usePublicClient()
+  const { writeContractAsync } = useWriteContract()
+
+  const [flows,      setFlows]      = useState<PaymentFlow[]>([])
   const [showCreate, setShowCreate] = useState(false)
+  const [runningId,  setRunningId]  = useState<string | null>(null)
+  const [runHistory, setRunHistory] = useState<Record<string, FlowRun[]>>({})
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [form,       setForm]       = useState({
     name: '', recipient: '', amount: '', period: 'monthly' as PaymentFlow['period'],
   })
 
+  const formValid = form.name.trim() !== '' && isAddress(form.recipient) && parseFloat(form.amount) > 0
+
   const handleCreate = () => {
-    if (!form.name || !isAddress(form.recipient) || !parseFloat(form.amount)) return
+    if (!formValid) return
     const flow: PaymentFlow = {
-      id: newId(),
-      name:      form.name,
-      recipient: form.recipient,
-      amount:    parseFloat(form.amount),
-      period:    form.period,
-      active:    true,
-      nextRun:   Date.now() + periodMs(form.period),
-      totalSent: 0,
+      id: newId(), name: form.name.trim(),
+      recipient: form.recipient, amount: parseFloat(form.amount),
+      period: form.period, active: true,
+      nextRun: Date.now() + periodMs(form.period), totalSent: 0,
     }
     setFlows(prev => [flow, ...prev])
     setForm({ name: '', recipient: '', amount: '', period: 'monthly' })
@@ -948,14 +949,64 @@ function PaymentFlowsSection() {
   }
 
   const toggleFlow = (id: string) =>
-    setFlows(prev => prev.map(f => f.id === id ? { ...f, active: !f.active } : f))
+    setFlows(prev => prev.map(f => f.id === id ? {
+      ...f, active: !f.active,
+      nextRun: !f.active ? Date.now() + periodMs(f.period) : f.nextRun,
+    } : f))
 
-  const deleteFlow = (id: string) =>
+  const deleteFlow = (id: string) => {
     setFlows(prev => prev.filter(f => f.id !== id))
+    setRunHistory(prev => { const n = { ...prev }; delete n[id]; return n })
+  }
+
+  // ── Run Now: sends actual USDC transfer ──────────────────────────────────
+  const handleRunNow = async (flow: PaymentFlow) => {
+    if (!address || runningId) return
+    setRunningId(flow.id)
+    try {
+      const hash = await writeContractAsync({
+        address: TOKEN_ADDRESSES.USDC, abi: TRANSFER_ABI,
+        functionName: 'transfer',
+        args: [flow.recipient as `0x${string}`, parseUnits(flow.amount.toString(), 6)],
+      })
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash })
+      const run: FlowRun = { hash, at: Date.now(), amount: flow.amount }
+      setRunHistory(prev => ({ ...prev, [flow.id]: [run, ...(prev[flow.id] ?? [])].slice(0, 5) }))
+      setFlows(prev => prev.map(f => f.id === flow.id ? {
+        ...f, totalSent: f.totalSent + flow.amount,
+        nextRun: Date.now() + periodMs(f.period),
+      } : f))
+    } catch { /* user rejected */ }
+    setRunningId(null)
+  }
+
+  const CONTRACT_FEATURES = [
+    {
+      icon: '🔐', title: 'Payment Escrow',
+      desc: 'Lock USDC in a smart contract. Release only when a deadline passes, a signature is provided, or an oracle condition is met.',
+      tags: ['DeFi', 'Trustless'],
+    },
+    {
+      icon: '💧', title: 'Streaming Payments',
+      desc: 'Drip USDC per second to a recipient. Ideal for real-time salaries, subscriptions, and rental agreements.',
+      tags: ['Salaries', 'Subscriptions'],
+    },
+    {
+      icon: '👥', title: 'Multi-sig Treasury',
+      desc: 'Require N-of-M wallet signatures before disbursing funds. Perfect for DAOs, company treasuries, and joint accounts.',
+      tags: ['DAO', 'Treasury'],
+    },
+    {
+      icon: '🔀', title: 'Conditional Routing',
+      desc: 'Automatically route USDC to different addresses based on on-chain state, oracle price feeds, or custom logic.',
+      tags: ['Automation', 'Oracle'],
+    },
+  ]
 
   return (
     <div className="flex flex-col gap-4">
 
+      {/* ── Flow list card ── */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
           <div>
@@ -963,14 +1014,18 @@ function PaymentFlowsSection() {
             <p className="text-slate-400 text-xs mt-0.5">Automate recurring USDC distributions</p>
           </div>
           <button onClick={() => setShowCreate(v => !v)}
-            className="px-3 py-1.5 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-500 transition-colors shadow-sm">
-            + New Flow
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shadow-sm ${
+              showCreate
+                ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                : 'bg-violet-600 text-white hover:bg-violet-500'
+            }`}>
+            {showCreate ? '✕ Cancel' : '+ New Flow'}
           </button>
         </div>
 
-        {/* Create form */}
+        {/* ── Create form ── */}
         {showCreate && (
-          <div className="px-5 py-4 bg-violet-50/50 border-b border-violet-100 flex flex-col gap-3">
+          <div className="px-5 py-4 bg-violet-50/60 border-b border-violet-100 flex flex-col gap-3">
             <p className="text-xs font-bold text-violet-700 uppercase tracking-wider">New Payment Flow</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -980,16 +1035,27 @@ function PaymentFlowsSection() {
                   className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-violet-400 transition-colors" />
               </div>
               <div>
-                <label className="text-[11px] text-slate-500 font-semibold mb-1 block">Recipient</label>
-                <input value={form.recipient} onChange={e => setForm(f => ({ ...f, recipient: e.target.value.trim() }))}
-                  placeholder="0x..."
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono outline-none focus:border-violet-400 transition-colors" />
+                <label className="text-[11px] text-slate-500 font-semibold mb-1 block">Recipient Address</label>
+                <div className={`flex items-center gap-2 bg-white border rounded-xl px-3 py-2 focus-within:border-violet-400 transition-colors ${
+                  form.recipient && !isAddress(form.recipient) ? 'border-red-300' : 'border-slate-200'
+                }`}>
+                  <input value={form.recipient} onChange={e => setForm(f => ({ ...f, recipient: e.target.value.trim() }))}
+                    placeholder="0x..."
+                    className="flex-1 bg-transparent text-sm font-mono outline-none min-w-0" />
+                  {isAddress(form.recipient) && <span className="text-emerald-500 text-xs shrink-0">✓</span>}
+                </div>
+                {form.recipient && !isAddress(form.recipient) && (
+                  <p className="text-red-500 text-[11px] mt-1">Invalid address</p>
+                )}
               </div>
               <div>
-                <label className="text-[11px] text-slate-500 font-semibold mb-1 block">Amount (USDC)</label>
-                <input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                  placeholder="0.00"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-violet-400 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                <label className="text-[11px] text-slate-500 font-semibold mb-1 block">Amount per run (USDC)</label>
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 focus-within:border-violet-400 transition-colors">
+                  <input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+                    placeholder="0.00"
+                    className="flex-1 bg-transparent text-sm font-bold outline-none min-w-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                  <span className="text-slate-400 text-xs shrink-0">USDC</span>
+                </div>
               </div>
               <div>
                 <label className="text-[11px] text-slate-500 font-semibold mb-1 block">Frequency</label>
@@ -1002,12 +1068,12 @@ function PaymentFlowsSection() {
                 </select>
               </div>
             </div>
-            <div className="flex gap-2">
-              <button onClick={handleCreate}
-                className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-500 transition-colors shadow-sm">
-                Create Flow
+            <div className="flex gap-2 pt-1">
+              <button onClick={handleCreate} disabled={!formValid}
+                className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-500 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed">
+                ✓ Create Flow
               </button>
-              <button onClick={() => setShowCreate(false)}
+              <button onClick={() => { setShowCreate(false); setForm({ name: '', recipient: '', amount: '', period: 'monthly' }) }}
                 className="px-4 py-2 rounded-xl bg-slate-100 text-slate-500 text-xs hover:bg-slate-200 transition-colors">
                 Cancel
               </button>
@@ -1015,71 +1081,136 @@ function PaymentFlowsSection() {
           </div>
         )}
 
-        {/* Flows list */}
+        {/* ── Flows list ── */}
         {flows.length === 0 ? (
-          <div className="py-12 text-center text-slate-400">
-            <p className="text-3xl mb-2">⚙️</p>
-            <p className="text-sm font-semibold">No payment flows</p>
-            <p className="text-xs mt-1">Create your first automated USDC flow</p>
+          <div className="py-14 text-center text-slate-400">
+            <p className="text-4xl mb-3">⚙️</p>
+            <p className="text-sm font-semibold text-slate-500">No payment flows yet</p>
+            <p className="text-xs mt-1">Create your first automated USDC flow above</p>
+            <button onClick={() => setShowCreate(true)}
+              className="mt-4 px-4 py-2 rounded-xl bg-violet-50 border border-violet-200 text-violet-700 text-xs font-bold hover:bg-violet-100 transition-colors">
+              + Create First Flow
+            </button>
           </div>
         ) : (
           <div className="divide-y divide-slate-50">
-            {flows.map(flow => (
-              <div key={flow.id} className="px-5 py-4 flex items-center gap-3">
-                {/* Toggle */}
-                <button onClick={() => toggleFlow(flow.id)}
-                  className={`w-10 h-5 rounded-full transition-colors relative shrink-0 ${flow.active ? 'bg-emerald-500' : 'bg-slate-300'}`}>
-                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${flow.active ? 'left-5' : 'left-0.5'}`} />
-                </button>
+            {flows.map(flow => {
+              const history  = runHistory[flow.id] ?? []
+              const isRunning = runningId === flow.id
+              const expanded  = expandedId === flow.id
+              return (
+                <div key={flow.id} className="flex flex-col">
+                  <div className="px-5 py-4 flex items-center gap-3">
+                    {/* Toggle switch */}
+                    <button onClick={() => toggleFlow(flow.id)}
+                      className={`w-10 h-5 rounded-full transition-all relative shrink-0 ${flow.active ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                      <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${flow.active ? 'left-5' : 'left-0.5'}`} />
+                    </button>
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-slate-900 text-sm">{flow.name}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                      flow.active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'
-                    }`}>
-                      {flow.active ? '● Active' : '○ Paused'}
-                    </span>
+                    {/* Info — clickable to expand */}
+                    <button className="flex-1 min-w-0 text-left" onClick={() => setExpandedId(expanded ? null : flow.id)}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-slate-900 text-sm">{flow.name}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${
+                          flow.active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'
+                        }`}>
+                          {flow.active ? '● Active' : '○ Paused'}
+                        </span>
+                        {history.length > 0 && (
+                          <span className="text-[10px] text-violet-600 font-semibold">{history.length} run{history.length > 1 ? 's' : ''}</span>
+                        )}
+                      </div>
+                      <p className="text-slate-500 text-[11px] mt-0.5">
+                        {fmtAddr(flow.recipient)} · {PERIOD_LABELS[flow.period]} · {fmtUSDC(flow.amount)} USDC
+                      </p>
+                    </button>
+
+                    {/* Next run + total */}
+                    <div className="text-right shrink-0 hidden sm:block">
+                      <p className="text-slate-400 text-[10px]">{flow.active ? fmtNextRun(flow.nextRun) : 'Paused'}</p>
+                      {flow.totalSent > 0 && (
+                        <p className="text-violet-600 text-[10px] font-semibold">Total: ${fmtUSDC(flow.totalSent)}</p>
+                      )}
+                    </div>
+
+                    {/* Run Now button */}
+                    <button
+                      onClick={() => handleRunNow(flow)}
+                      disabled={!address || !!runningId || !flow.active}
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shrink-0 ${
+                        flow.active && address && !runningId
+                          ? 'bg-emerald-500 text-white hover:bg-emerald-400 active:scale-95 shadow-sm'
+                          : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                      }`}>
+                      {isRunning ? (
+                        <span className="flex items-center gap-1">
+                          <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                          </svg>
+                          Sending…
+                        </span>
+                      ) : '▶ Run Now'}
+                    </button>
+
+                    {/* Delete */}
+                    <button onClick={() => deleteFlow(flow.id)}
+                      className="w-7 h-7 rounded-lg bg-red-50 text-red-400 text-xs hover:bg-red-100 transition-colors flex items-center justify-center shrink-0">
+                      ✕
+                    </button>
                   </div>
-                  <p className="text-slate-500 text-[11px] mt-0.5">
-                    {fmtAddr(flow.recipient)} · {PERIOD_LABELS[flow.period]}
-                  </p>
-                </div>
 
-                {/* Amount + next run */}
-                <div className="text-right shrink-0">
-                  <p className="font-bold text-slate-900 text-sm">{fmtUSDC(flow.amount)} USDC</p>
-                  <p className="text-slate-400 text-[10px]">
-                    {flow.active ? fmtNextRun(flow.nextRun) : 'Paused'}
-                  </p>
-                  <p className="text-violet-600 text-[10px]">Sent: ${fmtUSDC(flow.totalSent)}</p>
+                  {/* Expanded run history */}
+                  {expanded && (
+                    <div className="px-5 pb-4 border-t border-slate-50 bg-slate-50/50">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pt-3 mb-2">Run History</p>
+                      {history.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic">No runs yet — click ▶ Run Now to trigger a payment</p>
+                      ) : (
+                        <div className="flex flex-col gap-1.5">
+                          {history.map((run, i) => (
+                            <div key={i} className="flex items-center justify-between text-xs bg-white border border-slate-100 rounded-lg px-3 py-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-emerald-500">✓</span>
+                                <span className="text-slate-500">{new Date(run.at).toLocaleString()}</span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="font-bold text-slate-700">{fmtUSDC(run.amount)} USDC</span>
+                                <a href={`https://testnet.arcscan.app/tx/${run.hash}`} target="_blank" rel="noreferrer"
+                                  className="text-violet-600 hover:underline font-mono text-[10px]">
+                                  {run.hash.slice(0, 12)}… ↗
+                                </a>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-
-                {/* Delete */}
-                <button onClick={() => deleteFlow(flow.id)}
-                  className="w-7 h-7 rounded-lg bg-red-50 text-red-400 text-xs hover:bg-red-100 transition-colors flex items-center justify-center shrink-0">
-                  ✕
-                </button>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
 
-      {/* Smart contract info */}
-      <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-5 text-white">
-        <h3 className="font-bold text-base mb-3">⚙️ Build with Smart Contracts</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          {[
-            { title: 'Payment Escrow',     desc: 'Lock USDC, release on condition met (deadline, signature, oracle)' },
-            { title: 'Streaming Payments', desc: 'Drip USDC per second. Ideal for salaries, subscriptions, rentals' },
-            { title: 'Multi-sig Treasury', desc: 'Require N-of-M signatures before disbursing funds' },
-            { title: 'Conditional Routing', desc: 'Route USDC to different addresses based on on-chain state' },
-          ].map(c => (
-            <div key={c.title} className="bg-white/10 rounded-xl p-3">
-              <p className="font-semibold text-white text-xs">{c.title}</p>
-              <p className="text-slate-400 text-[11px] mt-1 leading-relaxed">{c.desc}</p>
+      {/* ── Smart Contract features ── */}
+      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 text-white">
+        <h3 className="font-bold text-sm mb-1">⚙️ Advanced: Build with Smart Contracts</h3>
+        <p className="text-slate-400 text-xs mb-4">These patterns go beyond simple transfers — deploy on Arc for trustless automation</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {CONTRACT_FEATURES.map(c => (
+            <div key={c.title} className="bg-white/10 hover:bg-white/15 transition-colors rounded-xl p-3.5 cursor-default group">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-lg">{c.icon}</span>
+                <p className="font-bold text-white text-xs">{c.title}</p>
+              </div>
+              <p className="text-slate-400 text-[11px] leading-relaxed">{c.desc}</p>
+              <div className="flex gap-1.5 mt-2">
+                {c.tags.map(t => (
+                  <span key={t} className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-slate-300 font-semibold">{t}</span>
+                ))}
+              </div>
             </div>
           ))}
         </div>
