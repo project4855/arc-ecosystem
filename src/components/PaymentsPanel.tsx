@@ -10,7 +10,6 @@ import {
   useAccount, useBalance, useWriteContract,
   usePublicClient,
 } from 'wagmi'
-import { useWriteContracts } from 'wagmi/experimental'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { isAddress, parseUnits, encodeFunctionData } from 'viem'
 import { TOKEN_ADDRESSES } from '../config/contracts'
@@ -511,8 +510,42 @@ function QuickSendSection({
 }
 
 // ── 2. Bulk Distribution ──────────────────────────────────────────────────────
+// Strategy: deploy a tiny ArcBatchSend contract once (1 confirmation),
+// then each bulk send = approve(total) + disperseToken = exactly 2 confirmations.
 
-type BulkStep = 'idle' | 'waiting' | 'confirming' | 'done' | 'error'
+const BATCH_BYTECODE = '0x6080604052348015600e575f5ffd5b506102eb8061001c5f395ff3fe608060405234801561000f575f5ffd5b5060043610610029575f3560e01c8063c73a2d601461002d575b5f5ffd5b61004061003b3660046101eb565b610042565b005b5f5b83811015610180575f866001600160a01b03163387878581811061006a5761006a61026b565b905060200201602081019061007f919061027f565b8686868181106100915761009161026b565b6040516001600160a01b0395861660248201529490931660448501525060209091020135606482015260840160408051601f198184030181529181526020820180516001600160e01b03166323b872dd60e01b179052516100f2919061029f565b5f604051808303815f865af19150503d805f811461012b576040519150601f19603f3d011682016040523d82523d5f602084013e610130565b606091505b50509050806101775760405162461bcd60e51b815260206004820152600f60248201526e1d1c985b9cd9995c8819985a5b1959608a1b604482015260640160405180910390fd5b50600101610044565b505050505050565b80356001600160a01b038116811461019e575f5ffd5b919050565b5f5f83601f8401126101b3575f5ffd5b50813567ffffffffffffffff8111156101ca575f5ffd5b6020830191508360208260051b85010111156101e4575f5ffd5b9250929050565b5f5f5f5f5f606086880312156101ff575f5ffd5b61020886610188565b9450602086013567ffffffffffffffff811115610223575f5ffd5b61022f888289016101a3565b909550935050604086013567ffffffffffffffff81111561024e575f5ffd5b61025a888289016101a3565b969995985093965092949392505050565b634e487b7160e01b5f52603260045260245ffd5b5f6020828403121561028f575f5ffd5b61029882610188565b9392505050565b5f82518060208501845e5f92019182525091905056fea2646970667358221220218951501681cb162f4e525d9b1d80253c0ef53a15218a71e6e97d8683ed33f264736f6c63430008230033' as const
+
+const BATCH_ABI = [
+  {
+    name: 'disperseToken', type: 'function' as const,
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'token',      type: 'address'   },
+      { name: 'recipients', type: 'address[]' },
+      { name: 'amounts',    type: 'uint256[]' },
+    ],
+    outputs: [],
+  },
+] as const
+
+const APPROVE_ABI = [
+  {
+    name: 'approve', type: 'function' as const,
+    stateMutability: 'nonpayable',
+    inputs:  [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+] as const
+
+const LS_KEY = 'arc_batch_contract_5042002'
+
+type BulkStep =
+  | 'idle'
+  | 'deploying'   // deploying batch contract (first-time setup)
+  | 'approving'   // waiting for approve() confirmation (#1)
+  | 'sending'     // waiting for disperseToken() confirmation (#2)
+  | 'done'
+  | 'error'
 
 interface BulkResult { addr: string; ok: boolean; hash?: string }
 
@@ -523,20 +556,24 @@ function BulkSendSection({
   balanceUsdc: number
   onTxSent:    (rec: FinalityRecord) => void
 }) {
-  const [rows,    setRows]    = useState<BulkRow[]>([
+  const [rows,        setRows]        = useState<BulkRow[]>([
     { id: newId(), address: '', amount: '', valid: false },
   ])
-  const [step,    setStep]    = useState<BulkStep>('idle')
-  const [results, setResults] = useState<BulkResult[]>([])
-  const [errMsg,  setErrMsg]  = useState('')
+  const [step,        setStep]        = useState<BulkStep>('idle')
+  const [results,     setResults]     = useState<BulkResult[]>([])
+  const [errMsg,      setErrMsg]      = useState('')
+  const [batchAddr,   setBatchAddr]   = useState<`0x${string}` | null>(() => {
+    const saved = localStorage.getItem(LS_KEY)
+    return saved ? saved as `0x${string}` : null
+  })
 
-  const publicClient               = usePublicClient()
-  const { writeContractAsync }     = useWriteContract()
-  const { writeContractsAsync }    = useWriteContracts()
+  const publicClient           = usePublicClient()
+  const { writeContractAsync } = useWriteContract()
 
   const totalAmount = rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
   const validRows   = rows.filter(r => isAddress(r.address) && parseFloat(r.amount) > 0)
-  const canSend     = validRows.length > 0 && totalAmount <= balanceUsdc && step === 'idle'
+  const canSend     = !!batchAddr && validRows.length > 0 && totalAmount <= balanceUsdc && step === 'idle'
+  const canDeploy   = !batchAddr && step === 'idle' && !!address
 
   const addRow    = () => setRows(prev => [...prev, { id: newId(), address: '', amount: '', valid: false }])
   const removeRow = (id: string) => setRows(prev => prev.filter(r => r.id !== id))
@@ -550,113 +587,83 @@ function BulkSendSection({
       }
     ))
 
-  // ── Sequential fallback (one confirmation per tx) ─────────────────────────
-  const sendSequential = async () => {
-    const res: BulkResult[] = []
-    for (const row of validRows) {
-      try {
-        const hash = await writeContractAsync({
-          address: TOKEN_ADDRESSES.USDC, abi: TRANSFER_ABI,
-          functionName: 'transfer',
-          args: [row.address as `0x${string}`, parseUnits(row.amount, 6)],
-        })
-        const sentAt = Date.now()
-        const rec: FinalityRecord = {
-          id: newId(), hash, to: row.address,
-          amount: parseFloat(row.amount),
-          sentAt, confirmedAt: null, finalityMs: null,
-          status: 'pending', fee: null,
-        }
-        onTxSent(rec)
-        if (publicClient) {
-          const receipt     = await publicClient.waitForTransactionReceipt({ hash })
-          const confirmedAt = Date.now()
-          onTxSent({ ...rec, confirmedAt, finalityMs: confirmedAt - sentAt,
-            status: receipt.status === 'success' ? 'confirmed' : 'failed' })
-        }
-        res.push({ addr: row.address, ok: true, hash })
-      } catch {
-        res.push({ addr: row.address, ok: false })
-      }
+  // ── Step 0: Deploy batch contract (one-time) ─────────────────────────────
+  const handleDeploy = async () => {
+    if (!address || !publicClient) return
+    setStep('deploying')
+    setErrMsg('')
+    try {
+      const hash = await writeContractAsync({
+        abi:      [],
+        bytecode: BATCH_BYTECODE,
+        // deploy via sendTransaction trick — use deployContract pattern
+      } as never)
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}` })
+      const deployed = receipt.contractAddress
+      if (!deployed) throw new Error('No contract address in receipt')
+      localStorage.setItem(LS_KEY, deployed)
+      setBatchAddr(deployed)
+      setStep('idle')
+    } catch (e) {
+      setStep('error')
+      setErrMsg(e instanceof Error ? e.message.slice(0, 140) : 'Deploy failed')
+      setTimeout(() => { setStep('idle'); setErrMsg('') }, 5000)
     }
-    return res
   }
 
-  // ── Main handler: try EIP-5792 batch first ────────────────────────────────
+  // ── Step 1+2: Approve + disperseToken (2 confirmations total) ────────────
   const handleSendAll = async () => {
-    if (!address || !canSend) return
-    setStep('waiting')
+    if (!address || !canSend || !batchAddr || !publicClient) return
     setResults([])
     setErrMsg('')
-
-    const sentAt = Date.now()
+    const sentAt     = Date.now()
+    const totalUnits = parseUnits(totalAmount.toFixed(6), 6)
 
     try {
-      // ── EIP-5792: single wallet confirmation for ALL transfers ──
-      setStep('confirming')
-      const batchResult = await writeContractsAsync({
-        contracts: validRows.map(row => ({
-          address:      TOKEN_ADDRESSES.USDC as `0x${string}`,
-          abi:          TRANSFER_ABI,
-          functionName: 'transfer' as const,
-          args:         [row.address as `0x${string}`, parseUnits(row.amount, 6)] as const,
-        })),
+      // ── Confirmation #1: approve batch contract for total amount ──
+      setStep('approving')
+      const approveTx = await writeContractAsync({
+        address:      TOKEN_ADDRESSES.USDC,
+        abi:          APPROVE_ABI,
+        functionName: 'approve',
+        args:         [batchAddr, totalUnits],
       })
-      // EIP-5792 returns { id, capabilities? } — use id as the batch reference
-      const batchRef = typeof batchResult === 'string' ? batchResult : batchResult.id
+      await publicClient.waitForTransactionReceipt({ hash: approveTx })
 
-      // Mark all as pending with batch reference
-      validRows.forEach(row => {
-        const rec: FinalityRecord = {
-          id: newId(), hash: batchRef, to: row.address,
-          amount: parseFloat(row.amount),
-          sentAt, confirmedAt: null, finalityMs: null,
-          status: 'pending', fee: null,
-        }
-        onTxSent(rec)
+      // ── Confirmation #2: disperseToken — sends to ALL recipients at once ──
+      setStep('sending')
+      const dispatchTx = await writeContractAsync({
+        address:      batchAddr,
+        abi:          BATCH_ABI,
+        functionName: 'disperseToken',
+        args: [
+          TOKEN_ADDRESSES.USDC,
+          validRows.map(r => r.address as `0x${string}`),
+          validRows.map(r => parseUnits(r.amount, 6)),
+        ],
       })
-
-      // Arc is sub-second — confirm after brief poll
-      await new Promise(r => setTimeout(r, 1200))
+      const receipt     = await publicClient.waitForTransactionReceipt({ hash: dispatchTx })
       const confirmedAt = Date.now()
       const finalityMs  = confirmedAt - sentAt
+      const ok          = receipt.status === 'success'
 
       const batchResults = validRows.map(row => {
         const rec: FinalityRecord = {
-          id: newId(), hash: batchRef, to: row.address,
+          id: newId(), hash: dispatchTx, to: row.address,
           amount: parseFloat(row.amount),
           sentAt, confirmedAt, finalityMs,
-          status: 'confirmed', fee: null,
+          status: ok ? 'confirmed' : 'failed', fee: null,
         }
         onTxSent(rec)
-        return { addr: row.address, ok: true, hash: batchRef }
+        return { addr: row.address, ok, hash: dispatchTx }
       })
       setResults(batchResults)
       setStep('done')
 
-    } catch (batchErr: unknown) {
-      // ── Fallback: EIP-5792 not supported by this wallet ──
-      const msg = batchErr instanceof Error ? batchErr.message : String(batchErr)
-      const isUnsupported = msg.toLowerCase().includes('unsupported') ||
-                            msg.toLowerCase().includes('not supported') ||
-                            msg.toLowerCase().includes('does not support')
-
-      if (isUnsupported) {
-        setErrMsg('Your wallet does not support batch transactions — falling back to individual confirmations.')
-        try {
-          const res = await sendSequential()
-          setResults(res)
-          setStep('done')
-        } catch {
-          setStep('error')
-          setErrMsg('All transfers failed.')
-        }
-      } else {
-        // User rejected or other error
-        setStep('error')
-        setErrMsg(msg.slice(0, 120))
-        setTimeout(() => { setStep('idle'); setErrMsg('') }, 4000)
-      }
+    } catch (e) {
+      setStep('error')
+      setErrMsg(e instanceof Error ? e.message.slice(0, 140) : 'Transaction failed')
+      setTimeout(() => { setStep('idle'); setErrMsg('') }, 5000)
     }
   }
 
@@ -665,18 +672,81 @@ function BulkSendSection({
   return (
     <div className="flex flex-col gap-4">
 
-      {/* EIP-5792 badge */}
-      <div className="flex items-center gap-2 px-4 py-2.5 bg-violet-50 border border-violet-200 rounded-xl text-xs text-violet-700">
-        <span className="text-base">⚡</span>
-        <span className="font-semibold">Single confirmation</span>
-        <span className="text-violet-500">— all transfers sent in one wallet popup via EIP-5792</span>
+      {/* How it works banner */}
+      <div className="flex items-start gap-3 px-4 py-3 bg-violet-50 border border-violet-200 rounded-xl text-xs text-violet-700">
+        <span className="text-lg shrink-0">⚡</span>
+        <div>
+          <p className="font-bold text-violet-900 mb-1">2 confirmations — no matter how many recipients</p>
+          <div className="flex gap-3 flex-wrap">
+            <span className="flex items-center gap-1">
+              <span className="w-4 h-4 rounded-full bg-violet-600 text-white text-[9px] font-bold flex items-center justify-center shrink-0">1</span>
+              Approve total USDC
+            </span>
+            <span className="text-violet-300">→</span>
+            <span className="flex items-center gap-1">
+              <span className="w-4 h-4 rounded-full bg-violet-600 text-white text-[9px] font-bold flex items-center justify-center shrink-0">2</span>
+              Send to all recipients at once
+            </span>
+          </div>
+        </div>
       </div>
+
+      {/* First-time setup: deploy batch contract */}
+      {!batchAddr && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col gap-3">
+          <div className="flex items-start gap-3">
+            <span className="text-xl">🔧</span>
+            <div className="flex-1">
+              <p className="font-bold text-amber-900 text-sm">One-time setup required</p>
+              <p className="text-amber-700 text-xs mt-0.5">
+                Deploy the <strong>ArcBatchSend</strong> helper contract to your wallet (1 confirmation, once ever).
+                After that, bulk sends only need 2 confirmations for any number of recipients.
+              </p>
+            </div>
+          </div>
+          {step === 'deploying' ? (
+            <div className="flex items-center gap-2 px-4 py-3 bg-amber-100 rounded-xl text-sm text-amber-800 animate-pulse">
+              <svg className="animate-spin h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+              <span className="font-semibold">👛 Confirm deploy in your wallet…</span>
+            </div>
+          ) : (
+            <button
+              onClick={handleDeploy}
+              disabled={!canDeploy}
+              className="w-full py-3 rounded-xl bg-amber-600 text-white text-sm font-bold hover:bg-amber-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
+            >
+              🚀 Deploy Batch Contract (one-time)
+            </button>
+          )}
+          {errMsg && (
+            <p className="text-xs text-red-600 font-medium">⚠ {errMsg}</p>
+          )}
+        </div>
+      )}
+
+      {/* Deployed badge */}
+      {batchAddr && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700">
+          <span>✅</span>
+          <span className="font-semibold">Batch contract deployed:</span>
+          <a href={`https://testnet.arcscan.app/address/${batchAddr}`}
+            target="_blank" rel="noreferrer"
+            className="font-mono hover:underline truncate">{batchAddr.slice(0, 20)}…↗</a>
+          <button onClick={() => { localStorage.removeItem(LS_KEY); setBatchAddr(null) }}
+            className="ml-auto text-emerald-500 hover:text-red-500 transition-colors shrink-0" title="Reset">
+            ✕
+          </button>
+        </div>
+      )}
 
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-bold text-slate-900 text-sm">Bulk USDC Distribution</h3>
-            <p className="text-slate-400 text-xs mt-0.5">Pay multiple addresses with one confirmation</p>
+            <p className="text-slate-400 text-xs mt-0.5">Pay multiple addresses in one transaction</p>
           </div>
           <button onClick={addRow} disabled={step !== 'idle'}
             className="px-3 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-violet-700 text-xs font-bold hover:bg-violet-100 transition-colors disabled:opacity-40">
@@ -727,7 +797,7 @@ function BulkSendSection({
           ))}
         </div>
 
-        {/* Summary */}
+        {/* Summary + actions */}
         <div className="border-t border-slate-100 pt-3 flex flex-col gap-3">
           <div className="flex flex-wrap gap-4 text-sm">
             <span className="text-slate-500">
@@ -741,49 +811,74 @@ function BulkSendSection({
             )}
           </div>
 
-          {/* Status states */}
-          {step === 'waiting' && (
-            <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
-              <svg className="animate-spin h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-              </svg>
-              <span className="font-semibold">Preparing batch transaction…</span>
-            </div>
-          )}
-
-          {step === 'confirming' && (
-            <div className="flex items-center gap-2 px-4 py-3 bg-violet-50 border border-violet-300 rounded-xl text-sm text-violet-700 animate-pulse">
-              <span className="text-lg">👛</span>
-              <div>
-                <p className="font-bold">Confirm in your wallet</p>
-                <p className="text-xs text-violet-500 font-normal">1 confirmation for all {validRows.length} transfers</p>
+          {/* Step indicators */}
+          {(step === 'approving' || step === 'sending') && (
+            <div className="flex flex-col gap-2">
+              {/* Step 1 */}
+              <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm border transition-all ${
+                step === 'approving'
+                  ? 'bg-violet-50 border-violet-300 text-violet-700 animate-pulse'
+                  : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              }`}>
+                {step === 'approving' ? (
+                  <svg className="animate-spin h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                ) : <span className="shrink-0">✅</span>}
+                <span className="font-semibold">
+                  {step === 'approving' ? '👛 Confirmation 1/2 — Approve USDC' : '✓ Approved USDC'}
+                </span>
+              </div>
+              {/* Step 2 */}
+              <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm border transition-all ${
+                step === 'sending'
+                  ? 'bg-violet-50 border-violet-300 text-violet-700 animate-pulse'
+                  : 'bg-slate-50 border-slate-200 text-slate-400'
+              }`}>
+                {step === 'sending' ? (
+                  <svg className="animate-spin h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                ) : <span className="shrink-0">⏳</span>}
+                <span className="font-semibold">
+                  {step === 'sending'
+                    ? `👛 Confirmation 2/2 — Send to all ${validRows.length} recipients`
+                    : `Send to all ${validRows.length} recipients`}
+                </span>
               </div>
             </div>
           )}
 
           {errMsg && (
-            <div className="px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700 font-medium">
+            <div className="px-4 py-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-medium">
               ⚠ {errMsg}
             </div>
           )}
 
           {/* Results */}
           {results.length > 0 && step === 'done' && (
-            <div className="flex flex-col gap-1">
-              <p className="text-xs font-semibold text-slate-500 mb-0.5">
-                ✅ {results.filter(r => r.ok).length}/{results.length} sent successfully
-              </p>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
+                <span className="text-lg">🎉</span>
+                <div className="flex-1">
+                  <p className="text-emerald-800 font-bold text-sm">
+                    All {results.filter(r => r.ok).length} transfers confirmed!
+                  </p>
+                  <a href={`https://testnet.arcscan.app/tx/${results[0]?.hash}`}
+                    target="_blank" rel="noreferrer"
+                    className="text-emerald-600 text-xs hover:underline font-mono">
+                    {results[0]?.hash?.slice(0, 22)}… ↗ ArcScan
+                  </a>
+                </div>
+              </div>
               {results.map((r, i) => (
-                <div key={i} className={`flex items-center justify-between text-xs px-3 py-1.5 rounded-lg ${
-                  r.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'
-                }`}>
+                <div key={i} className="flex items-center justify-between text-xs px-3 py-1 text-slate-500">
                   <span className="font-mono">{fmtAddr(r.addr)}</span>
-                  {r.ok
-                    ? <a href={`https://testnet.arcscan.app/tx/${r.hash}`} target="_blank" rel="noreferrer"
-                        className="text-emerald-600 hover:underline">✓ {r.hash?.slice(0, 12)}… ↗</a>
-                    : <span>✗ Failed</span>
-                  }
+                  <span className={r.ok ? 'text-emerald-600 font-semibold' : 'text-red-500'}>
+                    {r.ok ? '✓ Sent' : '✗ Failed'}
+                  </span>
                 </div>
               ))}
               <button onClick={reset}
@@ -794,7 +889,7 @@ function BulkSendSection({
           )}
 
           {/* Send button */}
-          {step !== 'done' && (
+          {step !== 'done' && step !== 'approving' && step !== 'sending' && (
             <button
               onClick={handleSendAll}
               disabled={!canSend}
@@ -803,9 +898,10 @@ function BulkSendSection({
                   ? 'bg-gradient-to-r from-violet-600 to-blue-600 text-white hover:from-violet-500 hover:to-blue-500 shadow-lg shadow-violet-900/20 active:scale-[0.99]'
                   : 'bg-slate-100 text-slate-400 cursor-not-allowed'
               }`}>
-              {step === 'waiting' || step === 'confirming'
-                ? '⏳ Waiting for confirmation…'
-                : `💸 Send to ${validRows.length} recipients — ${fmtUSDC(totalAmount)} USDC`}
+              💸 Send to {validRows.length} recipients — {fmtUSDC(totalAmount)} USDC
+              {validRows.length > 0 && (
+                <span className="ml-2 text-[11px] opacity-75 font-normal">(2 confirmations)</span>
+              )}
             </button>
           )}
         </div>
