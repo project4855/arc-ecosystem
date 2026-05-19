@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import {
-  useAccount, useBalance, useWriteContract,
+  useAccount, useBalance, useWriteContract, useDeployContract,
   usePublicClient,
 } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
@@ -567,8 +567,9 @@ function BulkSendSection({
     return saved ? saved as `0x${string}` : null
   })
 
-  const publicClient           = usePublicClient()
-  const { writeContractAsync } = useWriteContract()
+  const publicClient              = usePublicClient()
+  const { writeContractAsync }    = useWriteContract()
+  const { deployContractAsync }   = useDeployContract()
 
   const totalAmount = rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
   const validRows   = rows.filter(r => isAddress(r.address) && parseFloat(r.amount) > 0)
@@ -593,12 +594,11 @@ function BulkSendSection({
     setStep('deploying')
     setErrMsg('')
     try {
-      const hash = await writeContractAsync({
-        abi:      [],
+      const hash = await deployContractAsync({
+        abi:      BATCH_ABI,
         bytecode: BATCH_BYTECODE,
-        // deploy via sendTransaction trick — use deployContract pattern
-      } as never)
-      const receipt = await publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}` })
+      })
+      const receipt = await publicClient.waitForTransactionReceipt({ hash })
       const deployed = receipt.contractAddress
       if (!deployed) throw new Error('No contract address in receipt')
       localStorage.setItem(LS_KEY, deployed)
