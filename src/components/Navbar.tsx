@@ -7,6 +7,7 @@ const TABS = [
   { key: 'lending',   label: 'Lending',   icon: '🏦' },
   { key: 'perps',     label: 'Perps',     icon: '⚡' },
   { key: 'traders',   label: 'Traders',   icon: '🏆' },
+  { key: 'payments',  label: 'Payments',  icon: '💸' },
   { key: 'predict',   label: 'Predict',   icon: '🎯' },
   { key: 'portfolio', label: 'Portfolio', icon: '💼' },
   { key: 'airdrops',  label: 'Airdrops',  icon: '🪂' },

@@ -12,14 +12,15 @@ import DerivativesPanel from './components/DerivativesPanel'
 import WalletPanel from './components/WalletPanel'
 import PredictionMarketPanel from './components/PredictionMarketPanel'
 import PortfolioPanel from './components/PortfolioPanel'
+import PaymentsPanel from './components/PaymentsPanel'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 const PAIRS = ['USDC/EURC', 'ETH/USDC', 'SOL/USDC', 'cirBTC/USDC', 'USDC/cirBTC', 'EURC/cirBTC'] as const
 type Pair    = typeof PAIRS[number]
-type AppTab  = 'trade' | 'bridge' | 'lending' | 'perps' | 'traders' | 'airdrops' | 'wallet' | 'predict' | 'portfolio'
+type AppTab  = 'trade' | 'bridge' | 'lending' | 'perps' | 'traders' | 'airdrops' | 'wallet' | 'predict' | 'portfolio' | 'payments'
 
-const VALID_TABS: AppTab[] = ['trade', 'bridge', 'lending', 'perps', 'traders', 'airdrops', 'wallet', 'predict', 'portfolio']
+const VALID_TABS: AppTab[] = ['trade', 'bridge', 'lending', 'perps', 'traders', 'airdrops', 'wallet', 'predict', 'portfolio', 'payments']
 
 // ── Tab persistence via URL hash ─────────────────────────────────────────────
 
@@ -236,6 +237,9 @@ export default function App() {
 
         {/* ══════════════════ PORTFOLIO ══════════════════ */}
         {tab === 'portfolio' && <PortfolioPanel />}
+
+        {/* ══════════════════ PAYMENTS ══════════════════ */}
+        {tab === 'payments' && <PaymentsPanel />}
 
       </main>
 
