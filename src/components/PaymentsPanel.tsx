@@ -969,19 +969,46 @@ const PERIOD_LABELS: Record<PaymentFlow['period'], string> = {
 
 interface FlowRun { hash: string; at: number; amount: number }
 
+const LS_FLOWS   = 'arc_flows_5042002'
+const LS_HISTORY = 'arc_flows_history_5042002'
+
+function loadFlows(): PaymentFlow[] {
+  try { return JSON.parse(localStorage.getItem(LS_FLOWS) ?? '[]') } catch { return [] }
+}
+function loadHistory(): Record<string, FlowRun[]> {
+  try { return JSON.parse(localStorage.getItem(LS_HISTORY) ?? '{}') } catch { return {} }
+}
+
 function PaymentFlowsSection() {
   const { address } = useAccount()
   const publicClient           = usePublicClient()
   const { writeContractAsync } = useWriteContract()
 
-  const [flows,      setFlows]      = useState<PaymentFlow[]>([])
-  const [showCreate, setShowCreate] = useState(false)
-  const [runningId,  setRunningId]  = useState<string | null>(null)
-  const [runHistory, setRunHistory] = useState<Record<string, FlowRun[]>>({})
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [form,       setForm]       = useState({
+  const [flows,        setFlowsRaw]   = useState<PaymentFlow[]>(loadFlows)
+  const [showCreate,   setShowCreate] = useState(false)
+  const [runningId,    setRunningId]  = useState<string | null>(null)
+  const [runHistory,   setHistoryRaw] = useState<Record<string, FlowRun[]>>(loadHistory)
+  const [expandedId,   setExpandedId] = useState<string | null>(null)
+  const [confirmDel,   setConfirmDel] = useState<string | null>(null)  // id awaiting delete confirm
+  const [form,         setForm]       = useState({
     name: '', recipient: '', amount: '', period: 'monthly' as PaymentFlow['period'],
   })
+
+  // Persist whenever flows or history change
+  const setFlows = (updater: PaymentFlow[] | ((p: PaymentFlow[]) => PaymentFlow[])) => {
+    setFlowsRaw(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      localStorage.setItem(LS_FLOWS, JSON.stringify(next))
+      return next
+    })
+  }
+  const setRunHistory = (updater: Record<string, FlowRun[]> | ((p: Record<string, FlowRun[]>) => Record<string, FlowRun[]>)) => {
+    setHistoryRaw(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      localStorage.setItem(LS_HISTORY, JSON.stringify(next))
+      return next
+    })
+  }
 
   const formValid = form.name.trim() !== '' && isAddress(form.recipient) && parseFloat(form.amount) > 0
 
@@ -1007,6 +1034,8 @@ function PaymentFlowsSection() {
   const deleteFlow = (id: string) => {
     setFlows(prev => prev.filter(f => f.id !== id))
     setRunHistory(prev => { const n = { ...prev }; delete n[id]; return n })
+    setConfirmDel(null)
+    if (expandedId === id) setExpandedId(null)
   }
 
   // ── Run Now: sends actual USDC transfer ──────────────────────────────────
@@ -1021,7 +1050,7 @@ function PaymentFlowsSection() {
       })
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash })
       const run: FlowRun = { hash, at: Date.now(), amount: flow.amount }
-      setRunHistory(prev => ({ ...prev, [flow.id]: [run, ...(prev[flow.id] ?? [])].slice(0, 5) }))
+      setRunHistory(prev => ({ ...prev, [flow.id]: [run, ...(prev[flow.id] ?? [])].slice(0, 10) }))
       setFlows(prev => prev.map(f => f.id === flow.id ? {
         ...f, totalSent: f.totalSent + flow.amount,
         nextRun: Date.now() + periodMs(f.period),
@@ -1203,17 +1232,40 @@ function PaymentFlowsSection() {
                       ) : '▶ Run Now'}
                     </button>
 
-                    {/* Delete */}
-                    <button onClick={() => deleteFlow(flow.id)}
-                      className="w-7 h-7 rounded-lg bg-red-50 text-red-400 text-xs hover:bg-red-100 transition-colors flex items-center justify-center shrink-0">
-                      ✕
-                    </button>
+                    {/* Cancel / Delete with confirmation */}
+                    {confirmDel === flow.id ? (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-[10px] text-red-600 font-semibold whitespace-nowrap">Delete?</span>
+                        <button onClick={() => deleteFlow(flow.id)}
+                          className="px-2 py-1 rounded-lg bg-red-500 text-white text-[10px] font-bold hover:bg-red-400 transition-colors">
+                          Yes
+                        </button>
+                        <button onClick={() => setConfirmDel(null)}
+                          className="px-2 py-1 rounded-lg bg-slate-100 text-slate-500 text-[10px] hover:bg-slate-200 transition-colors">
+                          No
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmDel(flow.id)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-red-50 border border-red-200 text-red-500 text-[11px] font-semibold hover:bg-red-100 transition-colors shrink-0">
+                        🗑 Cancel
+                      </button>
+                    )}
                   </div>
 
                   {/* Expanded run history */}
                   {expanded && (
-                    <div className="px-5 pb-4 border-t border-slate-50 bg-slate-50/50">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pt-3 mb-2">Run History</p>
+                    <div className="px-5 pb-4 border-t border-slate-100 bg-slate-50/50">
+                      <div className="flex items-center justify-between pt-3 mb-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Run History ({history.length})
+                        </p>
+                        {flow.totalSent > 0 && (
+                          <p className="text-[10px] font-semibold text-violet-600">
+                            Total sent: ${fmtUSDC(flow.totalSent)} USDC
+                          </p>
+                        )}
+                      </div>
                       {history.length === 0 ? (
                         <p className="text-xs text-slate-400 italic">No runs yet — click ▶ Run Now to trigger a payment</p>
                       ) : (
@@ -1221,7 +1273,7 @@ function PaymentFlowsSection() {
                           {history.map((run, i) => (
                             <div key={i} className="flex items-center justify-between text-xs bg-white border border-slate-100 rounded-lg px-3 py-2">
                               <div className="flex items-center gap-2">
-                                <span className="text-emerald-500">✓</span>
+                                <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
                                 <span className="text-slate-500">{new Date(run.at).toLocaleString()}</span>
                               </div>
                               <div className="flex items-center gap-3">
