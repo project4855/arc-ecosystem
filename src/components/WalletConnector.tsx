@@ -4,6 +4,7 @@
 //   2. MetaMask / External Wallet
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useAccount, useDisconnect, useChainId } from 'wagmi'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { getTurnkeyAddress, clearTurnkeySigner } from '../lib/turnkeySigner'
@@ -332,13 +333,15 @@ export default function WalletConnector({ onNavigateToWallet }: WalletConnectorP
         )}
       </div>
 
-      {/* Full-screen connect popup (nothing connected) */}
-      {showPopup && (
+      {/* Full-screen connect popup — rendered via Portal so it escapes navbar's
+          backdrop-blur stacking context and sits at true viewport center */}
+      {showPopup && createPortal(
         <ConnectPopup
           onConnectMetaMask={handleConnectMetaMask}
           onConnectInfra={handleConnectInfra}
           onClose={() => setShowPopup(false)}
-        />
+        />,
+        document.body
       )}
     </>
   )
