@@ -2,10 +2,10 @@
 // Arc Blueprint Lending — USDC/EURC supply & borrow with sub-second finality
 
 import { useState } from 'react'
-import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useLendingContract } from '../hooks/useLendingContract'
 import type { PoolAsset } from '../hooks/useLendingContract'
+import { useWallet } from '../hooks/useWallet'
 import { LENDING_ADDRESS } from '../config/contracts'
 
 type ActionType = 'supply' | 'withdraw' | 'borrow' | 'repay'
@@ -48,7 +48,7 @@ const COLLATERAL_FACTOR: Record<string, number> = { USDC: 90, EURC: 88 }
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function LendingPanel() {
-  const { isConnected } = useAccount()
+  const { isReady: isConnected } = useWallet()
   const {
     isDeployed, assets, healthFactor,
     totalSuppliedUSD, totalBorrowedUSD, netAPY,
