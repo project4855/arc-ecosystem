@@ -719,6 +719,19 @@ export default function PredictionMarketPanel() {
   return (
     <div className="flex flex-col gap-5">
 
+      {/* ── My Portfolio (top, shown when user has bets) ── */}
+      {myBets.length > 0 && (
+        <MyBetsSection
+          myBets={myBets}
+          markets={markets}
+          totalBetAmount={totalBetAmount}
+          onClear={() => {
+            setMyBets([])
+            localStorage.removeItem(LS_BETS_KEY)
+          }}
+        />
+      )}
+
       {/* ── Header banner ── */}
       <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-blue-600 via-violet-600 to-purple-700 px-6 py-5 shadow-lg">
         <div className="absolute inset-0 opacity-[0.08] pointer-events-none"
@@ -810,19 +823,6 @@ export default function PredictionMarketPanel() {
           </div>
         )}
       </div>
-
-      {/* ── My Bets & History ── */}
-      {myBets.length > 0 && (
-        <MyBetsSection
-          myBets={myBets}
-          markets={markets}
-          totalBetAmount={totalBetAmount}
-          onClear={() => {
-            setMyBets([])
-            localStorage.removeItem(LS_BETS_KEY)
-          }}
-        />
-      )}
 
       {/* Disclaimer */}
       <p className="text-center text-[11px] text-slate-400 pb-1">
