@@ -1,12 +1,11 @@
 import { useState, useCallback } from 'react'
 import {
-  useAccount,
   useReadContract,
   useReadContracts,
-  useWriteContract,
   useWaitForTransactionReceipt,
 } from 'wagmi'
 import { parseUnits, formatUnits, maxUint256 } from 'viem'
+import { useWallet } from './useWallet'
 import {
   LENDING_ADDRESS,
   LENDING_ABI,
@@ -45,7 +44,7 @@ const SYMBOLS = Object.keys(TOKEN_ADDRESSES) // ['USDC', 'EURC']
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useLendingContract() {
-  const { address: userAddress, isConnected } = useAccount()
+  const { address: userAddress, isReady: isConnected, writeContract } = useWallet()
   const isDeployed = LENDING_ADDRESS.length > 2
 
   // ── Read pool data ──────────────────────────────────────────────────────────
@@ -176,8 +175,7 @@ export function useLendingContract() {
     EURC: (allowanceEURC as bigint | undefined) ?? 0n,
   }
 
-  // ── Write ────────────────────────────────────────────────────────────────────
-  const { writeContractAsync } = useWriteContract()
+  // ── Write (unified — works with MetaMask or Turnkey) ─────────────────────────
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>()
   const [txError, setTxError] = useState<string | null>(null)
   const [txStep, setTxStep] = useState<'idle' | 'approving' | 'sending' | 'done'>('idle')
@@ -215,7 +213,7 @@ export function useLendingContract() {
       // Step 1: approve if needed
       if (current < amountBN) {
         setTxStep('approving')
-        const approveHash = await writeContractAsync({
+        const approveHash = await writeContract({
           address:      tokenAddr,
           abi:          ERC20_ABI,
           functionName: 'approve',
@@ -228,7 +226,7 @@ export function useLendingContract() {
 
       // Step 2: execute action
       setTxStep('sending')
-      const hash = await writeContractAsync({
+      const hash = await writeContract({
         address:      LENDING_ADDRESS,
         abi:          LENDING_ABI,
         functionName: action,
@@ -244,7 +242,7 @@ export function useLendingContract() {
       setTxError(msg.includes('User rejected') ? 'Transaction rejected' : msg.slice(0, 120))
       setTxStep('idle')
     }
-  }, [isConnected, userAddress, allowances, writeContractAsync, refetchAll])
+  }, [isConnected, userAddress, allowances, writeContract, refetchAll])
 
   /**
    * Execute withdraw or borrow (no approval needed)
@@ -264,7 +262,7 @@ export function useLendingContract() {
       const tokenAddr = TOKEN_ADDRESSES[symbol]
       const amountBN  = parseUnits(amount, dec)
 
-      const hash = await writeContractAsync({
+      const hash = await writeContract({
         address:      LENDING_ADDRESS,
         abi:          LENDING_ABI,
         functionName: action,
@@ -280,7 +278,7 @@ export function useLendingContract() {
       setTxError(msg.includes('User rejected') ? 'Transaction rejected' : msg.slice(0, 120))
       setTxStep('idle')
     }
-  }, [isConnected, userAddress, writeContractAsync, refetchAll])
+  }, [isConnected, userAddress, writeContract, refetchAll])
 
   return {
     isDeployed,

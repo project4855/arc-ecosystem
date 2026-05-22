@@ -22,40 +22,45 @@ export default function TokenInput({
   const selectedToken = tokens.find((t) => t.symbol === token)
 
   return (
-    <div className="bg-[#111318] rounded-2xl p-4 border border-gray-800 hover:border-gray-700 transition-colors">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">
+    <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 hover:border-violet-300 focus-within:border-violet-400 transition-colors">
+
+      {/* Label + Balance row */}
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
           {label}
         </span>
         {balance !== undefined && (
-          <span className="text-xs text-gray-500">
-            Balance:{' '}
-            <span className="text-gray-300 font-medium">{balance}</span>
+          <span className="text-[11px] text-slate-400">
+            Balance: <span className="text-slate-600 font-semibold">{balance}</span>
           </span>
         )}
       </div>
 
-      <div className="flex items-center gap-3">
-        {/* Token selector */}
-        <div className="relative">
+      {/* Token selector + Amount row */}
+      <div className="flex items-center gap-3 min-w-0">
+
+        {/* Token pill: icon + select */}
+        <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-sm shrink-0">
+          <span className="text-base leading-none">{selectedToken?.icon ?? '🪙'}</span>
           <select
             value={token}
             onChange={(e) => onTokenChange?.(e.target.value)}
             disabled={readonly || !onTokenChange}
-            className="appearance-none bg-[#1a1d24] border border-gray-700 rounded-xl px-3 py-2 pr-8 text-white text-sm font-semibold cursor-pointer hover:border-violet-500 transition-colors disabled:cursor-default focus:outline-none focus:border-violet-500"
+            className="bg-transparent text-slate-800 text-sm font-bold cursor-pointer disabled:cursor-default focus:outline-none appearance-none pr-4"
+            style={{ minWidth: `${Math.max(...tokens.map(t => t.symbol.length)) * 8 + 8}px` }}
           >
             {tokens.map((t) => (
               <option key={t.symbol} value={t.symbol}>
-                {t.icon} {t.symbol}
+                {t.symbol}
               </option>
             ))}
           </select>
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs">
-            ▾
-          </div>
+          {!readonly && onTokenChange && (
+            <span className="text-slate-400 text-[10px] -ml-2 pointer-events-none">▾</span>
+          )}
         </div>
 
-        {/* Amount input */}
+        {/* Amount */}
         <input
           type="number"
           value={amount}
@@ -63,12 +68,13 @@ export default function TokenInput({
           readOnly={readonly}
           placeholder="0.00"
           min="0"
-          className="flex-1 bg-transparent text-right text-2xl font-semibold text-white placeholder-gray-700 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className="min-w-0 flex-1 bg-transparent text-right text-xl font-bold text-slate-900 placeholder-slate-300 focus:outline-none overflow-hidden [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
       </div>
 
+      {/* Token full name */}
       {selectedToken && (
-        <p className="text-xs text-gray-600 mt-2">{selectedToken.name}</p>
+        <p className="text-[11px] text-slate-400 mt-1.5">{selectedToken.name}</p>
       )}
     </div>
   )

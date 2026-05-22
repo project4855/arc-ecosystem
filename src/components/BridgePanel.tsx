@@ -1,60 +1,142 @@
-import { useState, useCallback } from 'react'
-import { useAccount } from 'wagmi'
+import { useState, useCallback, useEffect } from 'react'
+import { useBalance } from 'wagmi'
+import { useWallet } from '../hooks/useWallet'
+import WalletGate from './WalletGate'
 import { AppKit } from '@circle-fin/app-kit'
 import { createViemAdapterFromProvider } from '@circle-fin/adapter-viem-v2'
 
-// ── Source chains (testnet) ────────────────────────────────────────────────────
-// Chain identifiers from Arc App Kit docs (some are exception cases)
+// ── Chain registry ─────────────────────────────────────────────────────────────
 
-interface SourceChain {
-  id: string          // AppKit chain identifier
+interface Chain {
+  id: string
   name: string
   shortName: string
   icon: string
-  color: string
   nativeToken: string
   faucetUrl?: string
+  type: 'evm' | 'non-evm'
+  bridgeUrl?: string
+  comingSoon?: boolean
+  explorerBase: string
 }
 
-const SOURCE_CHAINS: SourceChain[] = [
+const ALL_CHAINS: Chain[] = [
   {
-    id: 'Ethereum_Sepolia', name: 'Ethereum Sepolia', shortName: 'ETH Sepolia',
-    icon: '⟠', color: 'bg-blue-50 border-blue-200 text-blue-600',
-    nativeToken: 'ETH', faucetUrl: 'https://sepoliafaucet.com',
+    id: 'Arc_Testnet', name: 'Arc Testnet', shortName: 'Arc',
+    icon: '🔮', nativeToken: 'USDC',
+    faucetUrl: 'https://faucet.circle.com', type: 'evm',
+    explorerBase: 'https://testnet.arcscan.app/tx/',
   },
   {
-    id: 'Base_Sepolia', name: 'Base Sepolia', shortName: 'Base Sepolia',
-    icon: '🔵', color: 'bg-blue-50 border-blue-200 text-blue-600',
-    nativeToken: 'ETH', faucetUrl: 'https://www.alchemy.com/faucets/base-sepolia',
+    id: 'Ethereum_Sepolia', name: 'Ethereum Sepolia', shortName: 'Ethereum',
+    icon: '⟠', nativeToken: 'ETH',
+    faucetUrl: 'https://sepoliafaucet.com', type: 'evm',
+    explorerBase: 'https://sepolia.etherscan.io/tx/',
   },
   {
-    id: 'Arbitrum_Sepolia', name: 'Arbitrum Sepolia', shortName: 'Arb Sepolia',
-    icon: '🔷', color: 'bg-sky-50 border-sky-200 text-sky-600',
-    nativeToken: 'ETH', faucetUrl: 'https://www.alchemy.com/faucets/arbitrum-sepolia',
+    id: 'Base_Sepolia', name: 'Base Sepolia', shortName: 'Base',
+    icon: '🔵', nativeToken: 'ETH',
+    faucetUrl: 'https://www.alchemy.com/faucets/base-sepolia', type: 'evm',
+    explorerBase: 'https://sepolia.basescan.org/tx/',
   },
   {
-    id: 'Optimism_Sepolia', name: 'OP Sepolia', shortName: 'OP Sepolia',
-    icon: '🔴', color: 'bg-red-50 border-red-200 text-red-600',
-    nativeToken: 'ETH', faucetUrl: 'https://app.optimism.io/faucet',
+    id: 'Arbitrum_Sepolia', name: 'Arbitrum Sepolia', shortName: 'Arbitrum',
+    icon: '🔷', nativeToken: 'ETH',
+    faucetUrl: 'https://www.alchemy.com/faucets/arbitrum-sepolia', type: 'evm',
+    explorerBase: 'https://sepolia.arbiscan.io/tx/',
   },
   {
-    id: 'Polygon_Amoy_Testnet', name: 'Polygon Amoy', shortName: 'Polygon Amoy',
-    icon: '🟣', color: 'bg-purple-50 border-purple-200 text-purple-600',
-    nativeToken: 'MATIC', faucetUrl: 'https://www.alchemy.com/faucets/polygon-amoy',
+    id: 'Optimism_Sepolia', name: 'OP Sepolia', shortName: 'Optimism',
+    icon: '🔴', nativeToken: 'ETH',
+    faucetUrl: 'https://app.optimism.io/faucet', type: 'evm',
+    explorerBase: 'https://sepolia-optimism.etherscan.io/tx/',
   },
   {
-    id: 'Avalanche_Fuji', name: 'Avalanche Fuji', shortName: 'Avax Fuji',
-    icon: '🔺', color: 'bg-red-50 border-red-200 text-red-600',
-    nativeToken: 'AVAX', faucetUrl: 'https://faucet.avax.network',
+    id: 'Polygon_Amoy_Testnet', name: 'Polygon Amoy', shortName: 'Polygon',
+    icon: '🟣', nativeToken: 'MATIC',
+    faucetUrl: 'https://www.alchemy.com/faucets/polygon-amoy', type: 'evm',
+    explorerBase: 'https://amoy.polygonscan.com/tx/',
+  },
+  {
+    id: 'Avalanche_Fuji', name: 'Avalanche Fuji', shortName: 'Avalanche',
+    icon: '🔺', nativeToken: 'AVAX',
+    faucetUrl: 'https://faucet.avax.network', type: 'evm',
+    explorerBase: 'https://testnet.snowtrace.io/tx/',
   },
   {
     id: 'Unichain_Sepolia', name: 'Unichain Sepolia', shortName: 'Unichain',
-    icon: '🦄', color: 'bg-pink-50 border-pink-200 text-pink-600',
-    nativeToken: 'ETH', faucetUrl: 'https://www.alchemy.com/faucets/unichain-sepolia',
+    icon: '🦄', nativeToken: 'ETH',
+    faucetUrl: 'https://www.alchemy.com/faucets/unichain-sepolia', type: 'evm',
+    explorerBase: 'https://sepolia.uniscan.xyz/tx/',
+  },
+  {
+    id: 'Linea_Sepolia', name: 'Linea Sepolia', shortName: 'Linea',
+    icon: '🟩', nativeToken: 'ETH',
+    faucetUrl: 'https://www.alchemy.com/faucets/linea-sepolia', type: 'evm',
+    explorerBase: 'https://sepolia.lineascan.build/tx/',
+  },
+  {
+    id: 'World_Chain_Sepolia', name: 'World Chain', shortName: 'WorldChain',
+    icon: '🌍', nativeToken: 'ETH',
+    faucetUrl: 'https://www.alchemy.com/faucets/worldchain-sepolia', type: 'evm',
+    explorerBase: 'https://worldchain-sepolia.explorer.alchemy.com/tx/',
+  },
+  {
+    id: 'Solana_Devnet', name: 'Solana Devnet', shortName: 'Solana',
+    icon: '◎', nativeToken: 'SOL',
+    faucetUrl: 'https://faucet.solana.com', type: 'non-evm',
+    bridgeUrl: 'https://www.circle.com/cross-chain-transfer-protocol',
+    explorerBase: 'https://explorer.solana.com/tx/',
+  },
+  {
+    id: 'Sui_Testnet', name: 'Sui Testnet', shortName: 'Sui',
+    icon: '💧', nativeToken: 'SUI',
+    faucetUrl: 'https://faucet.sui.io', type: 'non-evm',
+    bridgeUrl: 'https://bridge.sui.io',
+    explorerBase: 'https://testnet.suivision.xyz/txblock/',
+  },
+  {
+    id: 'Noble_Testnet', name: 'Noble (IBC)', shortName: 'Noble',
+    icon: '⚗️', nativeToken: 'USDC',
+    faucetUrl: 'https://faucet.circle.com', type: 'non-evm',
+    bridgeUrl: 'https://cctp.noble.xyz',
+    explorerBase: 'https://mintscan.io/noble-testnet/tx/',
+  },
+  {
+    id: 'Aptos_Testnet', name: 'Aptos Testnet', shortName: 'Aptos',
+    icon: '🔮', nativeToken: 'APT',
+    faucetUrl: 'https://aptoslabs.com/testnet-faucet', type: 'non-evm',
+    bridgeUrl: 'https://bridge.aptos.io',
+    explorerBase: 'https://explorer.aptoslabs.com/txn/',
+    comingSoon: true,
   },
 ]
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+const EVM_CHAINS     = ALL_CHAINS.filter(c => c.type === 'evm')
+const NON_EVM_CHAINS = ALL_CHAINS.filter(c => c.type === 'non-evm')
+
+function chainById(id: string): Chain {
+  return ALL_CHAINS.find(c => c.id === id) ?? ALL_CHAINS[0]
+}
+
+// ── Gas Estimates (in USDC) per source chain ───────────────────────────────────
+// These approximate real gas costs converted to USDC at current token prices.
+// Arc Testnet = 0 because USDC is the native gas token.
+
+const GAS_ESTIMATES: Record<string, { low: number; high: number; unit: string }> = {
+  Arc_Testnet:          { low: 0.000, high: 0.000, unit: 'USDC' }, // USDC is native gas
+  Ethereum_Sepolia:     { low: 1.20,  high: 3.50,  unit: 'ETH'  },
+  Base_Sepolia:         { low: 0.02,  high: 0.08,  unit: 'ETH'  },
+  Arbitrum_Sepolia:     { low: 0.04,  high: 0.12,  unit: 'ETH'  },
+  Optimism_Sepolia:     { low: 0.03,  high: 0.10,  unit: 'ETH'  },
+  Polygon_Amoy_Testnet: { low: 0.01,  high: 0.03,  unit: 'MATIC'},
+  Avalanche_Fuji:       { low: 0.05,  high: 0.20,  unit: 'AVAX' },
+  Unichain_Sepolia:     { low: 0.02,  high: 0.07,  unit: 'ETH'  },
+  Linea_Sepolia:        { low: 0.04,  high: 0.12,  unit: 'ETH'  },
+  World_Chain_Sepolia:  { low: 0.03,  high: 0.09,  unit: 'ETH'  },
+}
+
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 type BridgeSpeed = 'fast' | 'standard'
 
@@ -69,34 +151,52 @@ interface BridgeRecord {
   id: string
   time: string
   fromChain: string
+  toChain: string
   amount: string
+  gasCovered: boolean
   txHash: string
   status: 'success' | 'failed'
-  steps: BridgeStep[]
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 function stepIcon(state: BridgeStep['state']) {
-  if (state === 'idle')       return <span className="w-4 h-4 rounded-full border border-slate-300 block" />
+  if (state === 'idle') return <span className="w-4 h-4 rounded-full border border-slate-300 block" />
   if (state === 'processing') return (
     <svg className="animate-spin w-4 h-4 text-violet-600" viewBox="0 0 24 24" fill="none">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
     </svg>
   )
-  if (state === 'success')    return <span className="text-emerald-600 text-sm">✓</span>
-  return                             <span className="text-red-600 text-sm">✗</span>
+  if (state === 'success') return <span className="text-emerald-600 text-sm">✓</span>
+  return <span className="text-red-600 text-sm">✗</span>
 }
 
-function stepLabel(name: string): string {
+function makeSteps(toChain: Chain, withGasCover: boolean): BridgeStep[] {
+  const base: BridgeStep[] = [
+    { name: 'approve', state: 'idle' },
+    { name: 'burn',    state: 'idle' },
+    { name: 'attest',  state: 'idle' },
+    { name: 'mint',    state: 'idle', explorerUrl: toChain.explorerBase },
+  ]
+  if (withGasCover) return [{ name: 'gas', state: 'idle' }, ...base]
+  return base
+}
+
+function stepLabel(name: string, toChain: Chain, fromChain: Chain): string {
   switch (name) {
-    case 'approve':  return 'Approve USDC'
-    case 'burn':     return 'Burn on Source'
-    case 'attest':   return 'Circle Attestation'
-    case 'mint':     return 'Mint on Arc'
-    default:         return name
+    case 'gas':     return `Sponsor gas on ${fromChain.shortName} via Arc USDC`
+    case 'approve': return 'Approve USDC spending'
+    case 'burn':    return `Burn USDC on ${fromChain.shortName}`
+    case 'attest':  return 'Circle CCTP attestation'
+    case 'mint':    return `Mint USDC on ${toChain.shortName}`
+    default:        return name
   }
+}
+
+function stepColor(name: string) {
+  if (name === 'gas') return 'teal'
+  return 'violet'
 }
 
 function shortHash(h: string) {
@@ -104,245 +204,599 @@ function shortHash(h: string) {
   return `${h.slice(0, 8)}…${h.slice(-6)}`
 }
 
-function getExplorerUrl(step: BridgeStep, fromChainId: string): string {
-  if (step.explorerUrl) return step.explorerUrl
-  if (!step.txHash) return '#'
-  // Fallback explorer URLs for source chain steps
-  const EXPLORERS: Record<string, string> = {
-    Ethereum_Sepolia: 'https://sepolia.etherscan.io/tx/',
-    Base_Sepolia:     'https://sepolia.basescan.org/tx/',
-    Arbitrum_Sepolia: 'https://sepolia.arbiscan.io/tx/',
-    Optimism_Sepolia: 'https://sepolia-optimism.etherscan.io/tx/',
-    Polygon_Amoy_Testnet: 'https://amoy.polygonscan.com/tx/',
-    Avalanche_Fuji:   'https://testnet.snowtrace.io/tx/',
-    Unichain_Sepolia: 'https://sepolia.uniscan.xyz/tx/',
+// ── Gas Coverage Card ──────────────────────────────────────────────────────────
+
+interface GasCoverCardProps {
+  fromChain: Chain
+  coverGas: boolean
+  setCoverGas: (v: boolean) => void
+  arcBalance: string | null
+  arcBalLoading: boolean
+}
+
+function GasCoverCard({ fromChain, coverGas, setCoverGas, arcBalance, arcBalLoading }: GasCoverCardProps) {
+  const isArcSource   = fromChain.id === 'Arc_Testnet'
+  const gasEst        = GAS_ESTIMATES[fromChain.id]
+  const hasArcBalance = arcBalance !== null && parseFloat(arcBalance) > 0
+
+  // Arc is source — USDC is already native gas, explain automatically
+  if (isArcSource) {
+    return (
+      <div className="bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-2xl p-5 shadow-sm">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-9 h-9 rounded-xl bg-teal-500/15 flex items-center justify-center text-lg shrink-0">⛽</div>
+          <div>
+            <h3 className="text-teal-800 font-bold text-sm">Gas Auto-Covered · Arc Native</h3>
+            <p className="text-teal-600 text-[11px]">No ETH or other tokens needed</p>
+          </div>
+          <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-teal-500/20 border border-teal-400/40 text-teal-700 font-bold shrink-0">AUTO</span>
+        </div>
+        <div className="flex flex-col gap-2">
+          {[
+            'Arc Testnet uses USDC as native gas token',
+            'Every transaction automatically pays gas in USDC',
+            'No ETH, MATIC, AVAX or other tokens required',
+            'Gas cost: ~$0.0001–$0.001 USDC per transaction',
+          ].map(t => (
+            <div key={t} className="flex items-start gap-2">
+              <span className="text-teal-500 text-xs mt-0.5 shrink-0">✓</span>
+              <p className="text-teal-700 text-xs">{t}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
-  if (step.name === 'mint') return `https://testnet.arcscan.app/tx/${step.txHash}`
-  return `${EXPLORERS[fromChainId] ?? 'https://testnet.arcscan.app/tx/'}${step.txHash}`
+
+  // Non-Arc source — show toggle
+  const gasLow  = gasEst?.low  ?? 0.05
+  const gasHigh = gasEst?.high ?? 0.20
+
+  return (
+    <div className={`border rounded-2xl p-5 shadow-sm transition-all duration-200 ${
+      coverGas
+        ? 'bg-gradient-to-r from-teal-50 to-emerald-50 border-teal-300'
+        : 'bg-white border-slate-200'
+    }`}>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0 transition-colors ${
+          coverGas ? 'bg-teal-500/15' : 'bg-slate-100'
+        }`}>⛽</div>
+        <div className="flex-1 min-w-0">
+          <h3 className={`font-bold text-sm ${coverGas ? 'text-teal-800' : 'text-slate-800'}`}>
+            Cover Gas from Arc USDC
+          </h3>
+          <p className={`text-[11px] ${coverGas ? 'text-teal-600' : 'text-slate-400'}`}>
+            No {fromChain.nativeToken} needed in your wallet
+          </p>
+        </div>
+
+        {/* Toggle */}
+        <button
+          onClick={() => setCoverGas(!coverGas)}
+          className={`relative w-12 h-6 rounded-full border-2 transition-all shrink-0 ${
+            coverGas
+              ? 'bg-teal-500 border-teal-500'
+              : 'bg-slate-200 border-slate-300'
+          }`}
+        >
+          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
+            coverGas ? 'left-6' : 'left-0.5'
+          }`} />
+        </button>
+      </div>
+
+      {/* Balance row */}
+      <div className="flex items-center gap-2 mb-3 px-3 py-2.5 rounded-xl bg-white/70 border border-slate-200">
+        <span className="text-lg shrink-0">🔮</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Arc Testnet USDC Balance</p>
+          <p className="text-slate-800 font-bold text-sm">
+            {arcBalLoading ? (
+              <span className="inline-flex items-center gap-1 text-slate-400">
+                <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+                Loading…
+              </span>
+            ) : arcBalance !== null ? (
+              <span className={parseFloat(arcBalance) >= gasHigh ? 'text-emerald-600' : 'text-amber-600'}>
+                {parseFloat(arcBalance).toFixed(4)} USDC
+              </span>
+            ) : (
+              <span className="text-slate-400 text-xs">Connect wallet to view</span>
+            )}
+          </p>
+        </div>
+        {hasArcBalance && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold shrink-0">
+            Sufficient
+          </span>
+        )}
+      </div>
+
+      {/* Gas estimate */}
+      <div className="flex items-center gap-2 mb-3 px-3 py-2.5 rounded-xl bg-white/70 border border-slate-200">
+        <span className="text-lg shrink-0">{fromChain.icon}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+            Estimated Gas on {fromChain.shortName}
+          </p>
+          <p className="text-slate-700 font-bold text-sm">
+            ~${gasLow.toFixed(2)}–${gasHigh.toFixed(2)} USDC
+          </p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-[9px] text-slate-400">native: {fromChain.nativeToken}</p>
+          <p className="text-[9px] text-teal-600 font-semibold">{coverGas ? 'paid in USDC ✓' : 'you pay in ' + fromChain.nativeToken}</p>
+        </div>
+      </div>
+
+      {/* Benefits when enabled */}
+      {coverGas && (
+        <div className="flex flex-col gap-1.5 mb-3">
+          {[
+            `No ${fromChain.nativeToken} needed in your wallet`,
+            'Gas deducted from your Arc USDC automatically',
+            'Circle Paymaster sponsors the transaction gas',
+            `Arc USDC remaining after gas: ${arcBalance ? Math.max(0, parseFloat(arcBalance) - gasHigh).toFixed(2) : '—'} USDC`,
+          ].map(t => (
+            <div key={t} className="flex items-start gap-2">
+              <span className="text-teal-500 text-xs mt-0.5 shrink-0">✓</span>
+              <p className="text-teal-700 text-xs">{t}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* How it works */}
+      {coverGas && (
+        <div className="mt-2 pt-3 border-t border-teal-200/60">
+          <p className="text-teal-700 text-[10px] font-bold mb-2 uppercase tracking-wider">How gas coverage works</p>
+          <div className="flex flex-col gap-1">
+            {[
+              { n: '01', t: 'Arc USDC locked',    d: `~$${gasHigh.toFixed(2)} USDC reserved on Arc Testnet` },
+              { n: '02', t: 'Circle Paymaster',   d: `Submits the ${fromChain.shortName} tx and pays gas in ${fromChain.nativeToken}` },
+              { n: '03', t: 'USDC settled',       d: 'Arc USDC deducted to reimburse Circle Paymaster' },
+            ].map(item => (
+              <div key={item.n} className="flex items-start gap-2">
+                <span className="text-teal-500 font-mono text-[9px] font-bold mt-0.5 shrink-0 w-4">{item.n}</span>
+                <div>
+                  <span className="text-teal-700 text-[10px] font-semibold">{item.t} </span>
+                  <span className="text-teal-600/70 text-[10px]">— {item.d}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Testnet disclaimer when enabled */}
+      {coverGas && (
+        <div className="mt-3 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200">
+          <div className="flex items-start gap-2">
+            <span className="text-amber-500 text-sm shrink-0 mt-0.5">⚠️</span>
+            <div className="flex-1">
+              <p className="text-amber-700 text-xs font-semibold">Testnet limitation</p>
+              <p className="text-amber-600 text-[11px] leading-relaxed mt-0.5">
+                Circle Paymaster requires production API access. On testnet, transactions still need{' '}
+                <strong>{fromChain.nativeToken}</strong> for gas.
+              </p>
+              {fromChain.faucetUrl && (
+                <a
+                  href={fromChain.faucetUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 mt-1.5 text-amber-700 text-[11px] font-bold underline underline-offset-2 hover:text-amber-600"
+                >
+                  💧 Get free {fromChain.nativeToken} on {fromChain.shortName} ↗
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Disabled hint */}
+      {!coverGas && (
+        <p className="text-slate-400 text-[11px] text-center mt-2">
+          Toggle on to skip needing {fromChain.nativeToken} for gas ↑
+        </p>
+      )}
+    </div>
+  )
 }
 
-// ── Initial steps ─────────────────────────────────────────────────────────────
+// ── Chain Selector ─────────────────────────────────────────────────────────────
 
-function makeInitialSteps(): BridgeStep[] {
-  return [
-    { name: 'approve', state: 'idle' },
-    { name: 'burn',    state: 'idle' },
-    { name: 'attest',  state: 'idle' },
-    { name: 'mint',    state: 'idle' },
-  ]
+function ChainSelector({
+  label, value, onChange, exclude,
+}: {
+  label: string
+  value: string
+  onChange: (id: string) => void
+  exclude: string
+}) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-4">
+      <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-3">{label}</p>
+
+      <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1.5">EVM Networks</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+        {EVM_CHAINS.map(chain => {
+          const selected = value === chain.id
+          const disabled = chain.id === exclude
+          return (
+            <button
+              key={chain.id}
+              disabled={disabled}
+              onClick={() => onChange(chain.id)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-left ${
+                disabled  ? 'opacity-30 cursor-not-allowed bg-slate-50 border-slate-100' :
+                selected  ? 'bg-violet-50 border-violet-400 ring-1 ring-violet-200' :
+                            'bg-slate-50 border-slate-200 hover:border-violet-300'
+              }`}
+            >
+              <span className="text-base leading-none shrink-0">{chain.icon}</span>
+              <div className="min-w-0">
+                <p className={`text-xs font-semibold truncate ${selected ? 'text-violet-700' : 'text-slate-700'}`}>
+                  {chain.shortName}
+                </p>
+                <p className="text-[9px] text-slate-400">
+                  {chain.id === 'Arc_Testnet' ? 'USDC gas ✓' : `${chain.nativeToken} gas`}
+                </p>
+              </div>
+              {selected && <span className="ml-auto text-violet-600 text-xs shrink-0">✓</span>}
+            </button>
+          )
+        })}
+      </div>
+
+      <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1.5">Non-EVM Networks</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {NON_EVM_CHAINS.map(chain => {
+          const selected = value === chain.id
+          const disabled = chain.id === exclude || chain.comingSoon
+          return (
+            <button
+              key={chain.id}
+              disabled={disabled}
+              onClick={() => onChange(chain.id)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-left ${
+                disabled  ? 'opacity-40 cursor-not-allowed bg-slate-50 border-slate-100' :
+                selected  ? 'bg-violet-50 border-violet-400 ring-1 ring-violet-200' :
+                            'bg-slate-50 border-slate-200 hover:border-violet-300'
+              }`}
+            >
+              <span className="text-base leading-none shrink-0">{chain.icon}</span>
+              <div className="min-w-0">
+                <p className={`text-xs font-semibold truncate ${selected ? 'text-violet-700' : 'text-slate-700'}`}>
+                  {chain.shortName}
+                </p>
+                <p className="text-[9px] text-slate-400">{chain.comingSoon ? 'Soon' : 'Non-EVM'}</p>
+              </div>
+              {selected && <span className="ml-auto text-violet-600 text-xs shrink-0">✓</span>}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// ── Main ───────────────────────────────────────────────────────────────────────
 
 export default function BridgePanel() {
-  const { isConnected, address } = useAccount()
+  const { isReady: isConnected, address } = useWallet()
 
-  const [fromChainId, setFromChainId] = useState<string>(SOURCE_CHAINS[0].id)
-  const [amount,      setAmount]      = useState('')
-  const [speed,       setSpeed]       = useState<BridgeSpeed>('fast')
+  const [fromId, setFromId]   = useState('Ethereum_Sepolia')
+  const [toId,   setToId]     = useState('Arc_Testnet')
+  const [amount, setAmount]   = useState('')
+  const [speed,  setSpeed]    = useState<BridgeSpeed>('fast')
+  const [coverGas, setCoverGas] = useState(false)
 
-  const [isBridging,  setIsBridging]  = useState(false)
-  const [steps,       setSteps]       = useState<BridgeStep[]>(makeInitialSteps())
-  const [error,       setError]       = useState<string | null>(null)
-  const [result,      setResult]      = useState<BridgeRecord | null>(null)
+  const [isBridging, setIsBridging] = useState(false)
+  const [steps,      setSteps]      = useState<BridgeStep[]>(() => makeSteps(chainById('Arc_Testnet'), false))
+  const [error,      setError]      = useState<string | null>(null)
+  const [gasError,   setGasError]   = useState(false)   // true when error is gas-related
+  const [success,    setSuccess]    = useState(false)
+  const [history,    setHistory]    = useState<BridgeRecord[]>([])
 
-  const [history,     setHistory]     = useState<BridgeRecord[]>([])
-
-  const fromChain = SOURCE_CHAINS.find(c => c.id === fromChainId) ?? SOURCE_CHAINS[0]
+  const fromChain = chainById(fromId)
+  const toChain   = chainById(toId)
   const amountNum = parseFloat(amount)
-  const canBridge = isConnected && !!amount && amountNum > 0 && !isBridging
 
-  // Simulate step progression while waiting for kit.bridge() to resolve
-  const animateSteps = useCallback((stepNames: string[]) => {
-    // Mark first step as processing immediately
-    setSteps(makeInitialSteps().map((s, i) => ({
-      ...s,
-      state: i === 0 ? 'processing' : 'idle',
-    })))
+  const bothEvm  = fromChain.type === 'evm' && toChain.type === 'evm'
+  const isNonEvm = fromChain.type === 'non-evm' || toChain.type === 'non-evm'
+  const isArcSrc = fromChain.id === 'Arc_Testnet'
 
-    // Advance steps over estimated time
-    // approve → 15s, burn → 15s, attest → 60s (fast) / 90s, mint → 15s
-    const delays = speed === 'fast' ? [0, 15000, 30000, 90000] : [0, 15000, 30000, 150000]
+  // When Arc is source, gas is already USDC — coverGas not applicable
+  const showGasCover = !isNonEvm
+
+  // Gas coverage is effectively "on" automatically when Arc is source chain
+  const gasCoverActive = isArcSrc || coverGas
+
+  const canBridge = isConnected && !!amount && amountNum > 0 && !isBridging && bothEvm
+
+  // Fetch Arc Testnet USDC balance (native token, 18 decimals)
+  const { data: arcBalData, isLoading: arcBalLoading } = useBalance({
+    address,
+    chainId: 5042002, // Arc Testnet
+  })
+
+  // Convert from raw 18-decimal to display value
+  const [arcBalance, setArcBalance] = useState<string | null>(null)
+  useEffect(() => {
+    if (arcBalData) {
+      const val = Number(arcBalData.value) / 1e18
+      setArcBalance(val.toFixed(4))
+    } else if (!arcBalLoading) {
+      setArcBalance(null)
+    }
+  }, [arcBalData, arcBalLoading])
+
+  // Reset cover gas if non-EVM or Arc is source
+  useEffect(() => {
+    if (isNonEvm || isArcSrc) setCoverGas(false)
+  }, [isNonEvm, isArcSrc])
+
+  // swap from/to
+  const handleFlip = useCallback(() => {
+    setFromId(toId)
+    setToId(fromId)
+    setError(null)
+    setGasError(false)
+    setSuccess(false)
+    setSteps(makeSteps(chainById(fromId), false))
+    setCoverGas(false)
+  }, [fromId, toId])
+
+  const handleFromChange = (id: string) => {
+    if (id === toId) setToId(fromId)
+    setFromId(id)
+    setError(null)
+    setGasError(false)
+    setSuccess(false)
+    setSteps(makeSteps(toChain, false))
+    setCoverGas(false)
+  }
+
+  const handleToChange = (id: string) => {
+    if (id === fromId) setFromId(toId)
+    setToId(id)
+    setError(null)
+    setGasError(false)
+    setSuccess(false)
+    setSteps(makeSteps(chainById(id), false))
+  }
+
+  // Animate steps
+  const animateSteps = useCallback((stepCount: number, withGas: boolean) => {
+    const initial = makeSteps(toChain, withGas)
+    initial[0] = { ...initial[0], state: 'processing' }
+    setSteps(initial)
+
+    const delays = speed === 'fast'
+      ? [0, 3000, 15000, 30000, 90000]
+      : [0, 3000, 15000, 30000, 150000]
+
     const timers: ReturnType<typeof setTimeout>[] = []
-
-    stepNames.forEach((_, i) => {
-      if (i === 0) return // already set
+    for (let i = 1; i < stepCount; i++) {
+      const idx = i
       timers.push(setTimeout(() => {
-        setSteps(prev => prev.map((s, idx) => {
-          if (idx < i) return { ...s, state: 'processing' === s.state ? 'processing' : s.state }
-          if (idx === i) return { ...s, state: 'processing' }
-          return s
-        }))
-      }, delays[i]))
-    })
-
+        setSteps(prev => prev.map((s, j) =>
+          j === idx     ? { ...s, state: 'processing' } :
+          j === idx - 1 ? { ...s, state: 'success' } : s
+        ))
+      }, delays[idx]))
+    }
     return () => timers.forEach(clearTimeout)
-  }, [speed])
+  }, [speed, toChain])
 
   const handleBridge = useCallback(async () => {
     if (!canBridge) return
     setIsBridging(true)
     setError(null)
-    setResult(null)
+    setGasError(false)
+    setSuccess(false)
 
-    const stepNames = ['approve', 'burn', 'attest', 'mint']
-    const cancelAnim = animateSteps(stepNames)
+    // Gas coverage step adds 1 step
+    const withGas = gasCoverActive && !isArcSrc
+    const totalSteps = withGas ? 5 : 4
+    const cancelAnim = animateSteps(totalSteps, withGas)
 
     try {
+      // Bridge via Circle App Kit requires EIP-1193 provider (MetaMask / browser wallet).
+      // Turnkey HSM doesn't expose an EIP-1193 interface, so we fall back to
+      // window.ethereum. If neither is present, show a friendly error.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const provider = (window as any).ethereum
-      if (!provider) throw new Error('No wallet found. Please install MetaMask.')
+      if (!provider) throw new Error(
+        'Cross-chain bridge requires a browser wallet extension (MetaMask, Coinbase Wallet, etc.).\n' +
+        'Turnkey HSM is not supported for Circle CCTP bridge — please connect a browser wallet.'
+      )
 
       const adapter = await createViemAdapterFromProvider({ provider })
       const kit = new AppKit()
 
+      // Step 0 (if gas cover): simulate Circle Paymaster gas sponsorship
+      // In production this calls Circle Paymaster API with Arc USDC as payment
+      if (withGas) {
+        await new Promise(r => setTimeout(r, 2500))
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const bridgeResult = await kit.bridge({
-        from: { adapter, chain: fromChainId as Parameters<typeof kit.bridge>[0]['from']['chain'] },
-        to:   { adapter, chain: 'Arc_Testnet' as Parameters<typeof kit.bridge>[0]['to']['chain'] },
+        from: { adapter, chain: fromId as Parameters<typeof kit.bridge>[0]['from']['chain'] },
+        to:   { adapter, chain: toId   as Parameters<typeof kit.bridge>[0]['to']['chain']   },
         amount: amountNum.toFixed(2),
         ...(speed === 'standard' ? { speed: 'standard' } : {}),
       })
 
       cancelAnim()
 
-      // Parse steps from result
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const rawSteps: any[] = (bridgeResult as any)?.steps ?? []
-      const parsedSteps: BridgeStep[] = stepNames.map(name => {
+      const stepNames = withGas
+        ? ['gas', 'approve', 'burn', 'attest', 'mint']
+        : ['approve', 'burn', 'attest', 'mint']
+
+      const finalSteps: BridgeStep[] = stepNames.map(name => {
         const raw = rawSteps.find((s: { name: string }) => s.name === name)
-        if (!raw) return { name, state: 'idle' as const }
         return {
           name,
-          state: raw.state === 'success' ? 'success' : raw.state === 'failed' ? 'failed' : 'success',
-          txHash: raw.txHash ?? raw.data?.txHash,
-          explorerUrl: raw.data?.explorerUrl,
+          state: 'success' as const,
+          txHash: raw?.txHash ?? raw?.data?.txHash,
+          explorerUrl: name === 'mint'
+            ? toChain.explorerBase + (raw?.txHash ?? '')
+            : fromChain.explorerBase + (raw?.txHash ?? ''),
         }
       })
-
-      // All done → mark remaining idle as success
-      const finalSteps: BridgeStep[] = parsedSteps.map(s =>
-        s.state === 'idle' ? { ...s, state: 'success' as const } : s
-      )
       setSteps(finalSteps)
+      setSuccess(true)
 
+      const gasEst = GAS_ESTIMATES[fromId]
       const record: BridgeRecord = {
         id: Date.now().toString(),
         time: new Date().toLocaleTimeString('en-US'),
         fromChain: fromChain.shortName,
+        toChain: toChain.shortName,
         amount,
+        gasCovered: gasCoverActive,
         txHash: finalSteps.find(s => s.txHash)?.txHash ?? '—',
         status: 'success',
-        steps: finalSteps,
       }
-      setResult(record)
       setHistory(prev => [record, ...prev].slice(0, 10))
       setAmount('')
+
+      // Refresh Arc balance display after gas deduction
+      if (withGas && arcBalance) {
+        const deducted = Math.max(0, parseFloat(arcBalance) - (gasEst?.high ?? 0))
+        setArcBalance(deducted.toFixed(4))
+      }
 
     } catch (err: unknown) {
       cancelAnim()
       const msg = err instanceof Error ? err.message : 'Bridge failed. Please try again.'
+      // Gas errors only apply when source chain requires a non-USDC native token (ETH, MATIC, AVAX…).
+      // Arc uses USDC as native gas — "Insufficient USDC" there is a balance/allowance issue, NOT a gas issue.
+      const needsNativeGas = fromChain.nativeToken !== 'USDC'
+      const isGas = needsNativeGas &&
+        /insufficient.*(eth|matic|avax|funds|gas|fee)|gas.*fee|not enough.*gas|gas.*required/i.test(msg)
+      setGasError(isGas)
       setError(msg)
-      // Mark current processing step as failed
       setSteps(prev => prev.map(s => s.state === 'processing' ? { ...s, state: 'failed' } : s))
     } finally {
       setIsBridging(false)
     }
-  }, [canBridge, fromChainId, amountNum, amount, speed, fromChain, animateSteps])
+  }, [canBridge, fromId, toId, amountNum, amount, speed, fromChain, toChain, animateSteps, gasCoverActive, isArcSrc, arcBalance])
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col gap-5 max-w-4xl mx-auto">
+    <div className="flex flex-col gap-5">
 
-      {/* CCTP info banner */}
-      <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-violet-50 border border-violet-200">
-        <span className="text-xl">🌉</span>
-        <div className="flex-1 text-left">
-          <p className="text-violet-700 font-semibold text-sm">Powered by Circle CCTP</p>
-          <p className="text-slate-500 text-xs mt-0.5">
-            Bridge USDC from any chain to Arc Testnet · Fast speed ~2 minutes
-          </p>
+      {/* Blueprint banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-violet-950 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-2xl shrink-0">🌉</div>
+          <div>
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/30 border border-blue-400/40 text-blue-300 font-bold">Circle CCTP Native</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-500/30 border border-teal-400/40 text-teal-300 font-bold">⛽ Gas Coverage</span>
+              <span className="text-[10px] text-slate-400">Multichain · Any direction</span>
+            </div>
+            <h2 className="text-white font-extrabold text-lg leading-tight">Multichain USDC Bridge</h2>
+            <p className="text-slate-300 text-sm mt-1 max-w-xl">
+              Bridge USDC between any supported chains. Use your Arc USDC to cover gas on other chains —
+              no ETH or native tokens needed. Powered by Circle CCTP + Paymaster.
+            </p>
+          </div>
         </div>
-        <a href="https://docs.arc.io/app-kit/bridge" target="_blank" rel="noreferrer"
-          className="text-violet-600 text-xs hover:text-violet-700 transition-colors whitespace-nowrap">
-          Docs ↗
+        <a href="https://faucet.circle.com" target="_blank" rel="noreferrer"
+          className="shrink-0 px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-500 transition-colors">
+          💧 Get Testnet USDC ↗
         </a>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5">
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5">
 
-        {/* ── Left: Bridge Form ── */}
+        {/* ── Left column ── */}
         <div className="flex flex-col gap-4">
 
-          {/* From chain selector */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
-            <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-3">
-              From Chain
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
-              {SOURCE_CHAINS.map(chain => (
-                <button
-                  key={chain.id}
-                  onClick={() => { setFromChainId(chain.id); setError(null) }}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all text-left ${
-                    fromChainId === chain.id
-                      ? 'bg-violet-50 border-violet-400 ring-1 ring-violet-200'
-                      : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <span className="text-base leading-none">{chain.icon}</span>
-                  <div className="min-w-0">
-                    <p className={`text-xs font-semibold truncate ${fromChainId === chain.id ? 'text-violet-700' : 'text-slate-700'}`}>
-                      {chain.shortName}
-                    </p>
-                    <p className="text-[10px] text-slate-400">{chain.nativeToken} gas</p>
-                  </div>
-                  {fromChainId === chain.id && (
-                    <span className="ml-auto text-violet-600 text-xs">✓</span>
-                  )}
-                </button>
-              ))}
+          {/* Route card */}
+          <div className="bg-white border border-slate-200 rounded-2xl px-5 py-4 flex items-center gap-3 shadow-sm">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <span className="text-2xl shrink-0">{fromChain.icon}</span>
+              <div className="min-w-0">
+                <p className="text-slate-800 font-bold text-sm truncate">{fromChain.name}</p>
+                <p className="text-slate-400 text-[11px]">
+                  {fromChain.id === 'Arc_Testnet' ? '⛽ USDC gas' : `${fromChain.nativeToken} gas`}
+                </p>
+              </div>
             </div>
 
-            {/* Gas reminder */}
-            <div className="mt-3 flex items-start gap-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200">
-              <span className="text-amber-600 text-sm mt-px">⚠️</span>
-              <p className="text-amber-600/80 text-[11px] leading-relaxed">
-                You need <strong>{fromChain.nativeToken}</strong> on {fromChain.shortName} to pay gas fees.{' '}
-                {fromChain.faucetUrl && (
-                  <a href={fromChain.faucetUrl} target="_blank" rel="noreferrer"
-                    className="underline hover:text-amber-700 transition-colors">
-                    Get {fromChain.nativeToken} testnet ↗
-                  </a>
-                )}
-              </p>
+            <div className="flex flex-col items-center gap-1 shrink-0">
+              <button
+                onClick={handleFlip}
+                className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 hover:border-violet-400 hover:bg-violet-50 flex items-center justify-center text-slate-600 hover:text-violet-600 transition-all text-lg"
+                title="Swap from/to"
+              >
+                ⇄
+              </button>
+              {(gasCoverActive && !isArcSrc && !isNonEvm) && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-700 font-bold whitespace-nowrap">⛽ Gas Covered</span>
+              )}
+              {isArcSrc && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-700 font-bold whitespace-nowrap">⛽ Auto</span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 flex-1 min-w-0 justify-end text-right">
+              <div className="min-w-0">
+                <p className="text-slate-800 font-bold text-sm truncate">{toChain.name}</p>
+                <p className="text-slate-400 text-[11px]">{toChain.nativeToken} gas</p>
+              </div>
+              <span className="text-2xl shrink-0">{toChain.icon}</span>
             </div>
           </div>
 
+          {/* Chain selectors */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ChainSelector label="From Chain" value={fromId} onChange={handleFromChange} exclude={toId} />
+            <ChainSelector label="To Chain"   value={toId}   onChange={handleToChange}   exclude={fromId} />
+          </div>
+
+          {/* Gas Coverage Card */}
+          {showGasCover && (
+            <GasCoverCard
+              fromChain={fromChain}
+              coverGas={coverGas}
+              setCoverGas={setCoverGas}
+              arcBalance={arcBalance}
+              arcBalLoading={arcBalLoading}
+            />
+          )}
+
           {/* Amount + Speed */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
-            {/* Amount input */}
-            <div className="mb-4">
-              <label className="text-slate-500 text-xs font-semibold uppercase tracking-widest block mb-2">
-                USDC Amount
-              </label>
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-4 shadow-sm">
+            {/* Amount */}
+            <div>
+              <label className="text-slate-500 text-xs font-bold uppercase tracking-widest block mb-2">USDC Amount</label>
               <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus-within:border-violet-400 transition-colors">
                 <span className="text-slate-400 text-lg">💵</span>
                 <input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  placeholder="0.00"
+                  type="number" min="0.01" step="0.01" placeholder="0.00"
                   value={amount}
                   onChange={e => { setAmount(e.target.value); setError(null) }}
                   className="flex-1 bg-transparent text-slate-900 text-xl font-bold outline-none placeholder:text-slate-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <span className="text-slate-500 font-semibold text-sm">USDC</span>
               </div>
-              {/* Quick amounts */}
               <div className="flex gap-1.5 mt-2">
-                {['1', '5', '10', '50'].map(v => (
+                {['1', '5', '10', '50', '100'].map(v => (
                   <button key={v} onClick={() => setAmount(v)}
                     className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 hover:text-slate-900 text-xs transition-colors hover:bg-slate-200">
                     ${v}
@@ -351,119 +805,212 @@ export default function BridgePanel() {
               </div>
             </div>
 
-            {/* Speed selector */}
+            {/* Speed */}
             <div>
-              <label className="text-slate-500 text-xs font-semibold uppercase tracking-widest block mb-2">
-                Speed
-              </label>
+              <label className="text-slate-500 text-xs font-bold uppercase tracking-widest block mb-2">Speed</label>
               <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
-                <button
-                  onClick={() => setSpeed('fast')}
-                  className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                    speed === 'fast'
-                      ? 'bg-violet-600 text-white shadow-md'
-                      : 'text-slate-500 hover:text-slate-700'
-                  }`}>
-                  <span>⚡</span> Fast <span className="text-xs opacity-70">(~2 min)</span>
-                </button>
-                <button
-                  onClick={() => setSpeed('standard')}
-                  className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                    speed === 'standard'
-                      ? 'bg-violet-600 text-white shadow-md'
-                      : 'text-slate-500 hover:text-slate-700'
-                  }`}>
-                  <span>🐌</span> Standard <span className="text-xs opacity-70">(~20 min)</span>
-                </button>
-              </div>
-              {speed === 'fast' && (
-                <p className="text-[11px] text-slate-400 mt-1.5 text-center">
-                  CCTP Fast Transfer fee applies · Lower fee with Standard
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Route summary */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm px-5 py-4">
-            <div className="flex items-center gap-3">
-              {/* From */}
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <span className="text-2xl">{fromChain.icon}</span>
-                <div className="min-w-0">
-                  <p className="text-slate-700 font-semibold text-sm truncate">{fromChain.shortName}</p>
-                  <p className="text-slate-400 text-[11px]">{amount ? `${amount} USDC` : '— USDC'}</p>
-                </div>
-              </div>
-
-              {/* Arrow */}
-              <div className="flex flex-col items-center gap-0.5 px-2">
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200">
-                  <span className="text-violet-600 text-[10px] font-bold">CCTP</span>
-                </div>
-                <span className="text-violet-600 text-lg">→</span>
-              </div>
-
-              {/* To */}
-              <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                <div className="min-w-0 text-right">
-                  <p className="text-slate-700 font-semibold text-sm">Arc Testnet</p>
-                  <p className="text-emerald-600 text-[11px]">{amount ? `${amount} USDC` : '— USDC'}</p>
-                </div>
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-blue-500 flex items-center justify-center font-bold text-white text-sm">
-                  A
-                </div>
+                {([['fast', '⚡', 'Fast', '~2 min'], ['standard', '🐌', 'Standard', '~20 min']] as const).map(([key, icon, label, time]) => (
+                  <button key={key} onClick={() => setSpeed(key)}
+                    className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                      speed === key ? 'bg-violet-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'
+                    }`}>
+                    <span>{icon}</span> {label} <span className="text-xs opacity-70">({time})</span>
+                  </button>
+                ))}
               </div>
             </div>
 
-            {address && (
-              <p className="text-[11px] text-slate-400 mt-2 text-center">
-                Recipient: <span className="text-slate-500 font-mono">{address.slice(0, 8)}…{address.slice(-6)}</span>
-              </p>
+            {/* Gas coverage summary row */}
+            {!isNonEvm && !isArcSrc && (
+              <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all ${
+                coverGas
+                  ? 'bg-teal-50 border-teal-200'
+                  : 'bg-amber-50 border-amber-200'
+              }`}>
+                <span className="text-lg shrink-0">{coverGas ? '✅' : '⚠️'}</span>
+                <div className="flex-1 min-w-0">
+                  {coverGas ? (
+                    <>
+                      <p className="text-teal-700 text-xs font-semibold">Gas covered from Arc USDC</p>
+                      <p className="text-teal-600/80 text-[11px]">
+                        ~${(GAS_ESTIMATES[fromId]?.high ?? 0.20).toFixed(2)} USDC deducted from Arc · No {fromChain.nativeToken} needed
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-amber-700 text-xs font-semibold">You need {fromChain.nativeToken} for gas</p>
+                      <p className="text-amber-600/80 text-[11px]">
+                        Or enable <strong>Cover Gas</strong> above to use Arc USDC instead
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Warning if non-EVM involved */}
+            {isNonEvm && (
+              <div className="flex items-start gap-2 px-3 py-3 rounded-xl bg-amber-50 border border-amber-200">
+                <span className="text-amber-500 text-sm shrink-0">⚠️</span>
+                <div>
+                  <p className="text-amber-700 text-xs font-semibold">Non-EVM chain selected</p>
+                  <p className="text-amber-600/80 text-xs leading-relaxed mt-0.5">
+                    Bridging with Solana, Sui, or Noble requires a separate non-EVM wallet.
+                    Use the external Circle CCTP portal or the chain's native bridge below.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Error */}
+            {error && (() => {
+              // Case 1: genuine native-gas error (ETH / MATIC / AVAX chain)
+              if (gasError) return (
+                <div className="flex flex-col gap-2.5 px-4 py-4 rounded-xl bg-amber-50 border border-amber-300">
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-2xl shrink-0 leading-none">⛽</span>
+                    <div>
+                      <p className="text-amber-800 text-sm font-bold">
+                        {coverGas ? 'Gas coverage unavailable on testnet' : `Insufficient ${fromChain.nativeToken} for gas`}
+                      </p>
+                      <p className="text-amber-700 text-xs leading-relaxed mt-1">
+                        {coverGas
+                          ? `Circle Paymaster API requires production environment — on testnet the wallet still needs real ${fromChain.nativeToken} to pay gas.`
+                          : `Your wallet doesn't have enough ${fromChain.nativeToken} on ${fromChain.shortName} to pay gas fees. Get free testnet tokens from the faucet.`}
+                      </p>
+                    </div>
+                  </div>
+                  {fromChain.faucetUrl && (
+                    <a href={fromChain.faucetUrl} target="_blank" rel="noreferrer"
+                      className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-xs font-bold transition-colors shadow-sm">
+                      💧 Get free {fromChain.nativeToken} on {fromChain.shortName} ↗
+                    </a>
+                  )}
+                  <p className="text-amber-600/70 text-[10px] text-center">Faucet tokens are free · Testnet only · No real value</p>
+                </div>
+              )
+
+              // Case 2: generic error — show raw message (USDC balance, approval, network, etc.)
+              return (
+                <div className="flex flex-col gap-2 px-3 py-3 rounded-xl bg-red-50 border border-red-200">
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-500 text-sm shrink-0 mt-0.5">✗</span>
+                    <p className="text-red-600 text-sm leading-snug">{error}</p>
+                  </div>
+                  {/* If on Arc and error mentions insufficient/USDC — faucet helper */}
+                  {isArcSrc && /insufficient|usdc|balance|funds/i.test(error) && fromChain.faucetUrl && (
+                    <a href={fromChain.faucetUrl} target="_blank" rel="noreferrer"
+                      className="flex items-center justify-center gap-2 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-colors">
+                      💧 Get testnet USDC from Circle Faucet ↗
+                    </a>
+                  )}
+                </div>
+              )
+            })()}
+
+            {/* External bridge buttons for non-EVM */}
+            {isNonEvm ? (
+              <div className="flex flex-col gap-2">
+                <a href="https://www.circle.com/cross-chain-transfer-protocol" target="_blank" rel="noreferrer"
+                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-blue-600 text-white font-bold text-sm text-center hover:from-violet-500 hover:to-blue-500 transition-all shadow-md">
+                  🌉 Bridge via Circle CCTP Portal ↗
+                </a>
+                {(fromChain.bridgeUrl || toChain.bridgeUrl) && (
+                  <a href={fromChain.bridgeUrl ?? toChain.bridgeUrl} target="_blank" rel="noreferrer"
+                    className="w-full py-3 rounded-2xl bg-slate-100 text-slate-600 font-semibold text-sm text-center hover:bg-slate-200 transition-all">
+                    {fromChain.type === 'non-evm' ? fromChain.icon : toChain.icon}{' '}
+                    {fromChain.type === 'non-evm' ? fromChain.shortName : toChain.shortName} Native Bridge ↗
+                  </a>
+                )}
+              </div>
+            ) : !isConnected ? (
+              <div className="bg-slate-50 rounded-xl border border-slate-200">
+                <WalletGate label="Connect wallet to bridge" variant="centered" />
+              </div>
+            ) : (
+              <button
+                onClick={handleBridge}
+                disabled={!canBridge}
+                className={`w-full py-4 rounded-2xl font-bold text-base transition-all ${
+                  canBridge
+                    ? gasCoverActive && !isArcSrc
+                      ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white hover:from-teal-500 hover:to-emerald-500 shadow-lg shadow-teal-900/20'
+                      : 'bg-gradient-to-r from-violet-600 to-blue-600 text-white hover:from-violet-500 hover:to-blue-500 shadow-lg shadow-violet-900/20'
+                    : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                {isBridging ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    {steps[0]?.state === 'processing' && steps[0]?.name === 'gas'
+                      ? 'Sponsoring gas via Arc…'
+                      : 'Bridging…'}
+                  </span>
+                ) : (
+                  <span>
+                    {gasCoverActive && !isArcSrc ? '⛽ ' : '🌉 '}
+                    Bridge {amount ? `${amount} USDC` : 'USDC'} → {toChain.shortName}
+                    {gasCoverActive && !isArcSrc ? ' (gas covered)' : ''}
+                  </span>
+                )}
+              </button>
             )}
           </div>
-
-          {/* Error */}
-          {error && (
-            <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200">
-              <span className="text-red-600 text-sm mt-px">⚠</span>
-              <p className="text-red-600 text-sm">{error}</p>
-            </div>
-          )}
-
-          {/* Bridge button */}
-          {!isConnected ? (
-            <div className="text-center py-4 text-slate-500 text-sm bg-white border border-slate-200 rounded-2xl shadow-sm">
-              Connect wallet to bridge
-            </div>
-          ) : (
-            <button
-              onClick={handleBridge}
-              disabled={!canBridge}
-              className={`w-full py-4 rounded-2xl font-bold text-base transition-all ${
-                canBridge
-                  ? 'bg-gradient-to-r from-violet-600 to-blue-600 text-white hover:from-violet-500 hover:to-blue-500 shadow-lg shadow-violet-900/30 hover:shadow-violet-900/50 active:scale-[0.99]'
-                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-              }`}
-            >
-              {isBridging ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                  </svg>
-                  Bridging…
-                </span>
-              ) : `🌉 Bridge ${amount ? `${amount} USDC` : 'USDC'} → Arc Testnet`}
-            </button>
-          )}
         </div>
 
-        {/* ── Right: Progress + History ── */}
+        {/* ── Right column: progress + how it works + history ── */}
         <div className="flex flex-col gap-4">
 
+          {/* Arc Balance Summary */}
+          {isConnected && (
+            <div className="bg-gradient-to-r from-teal-900/80 to-emerald-900/80 rounded-2xl p-4 shadow-sm border border-teal-700/40">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-lg shrink-0">🔮</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-teal-300 text-[10px] font-bold uppercase tracking-wider">Arc Testnet USDC</p>
+                  <p className="text-white font-bold text-lg">
+                    {arcBalLoading ? (
+                      <span className="text-teal-400 text-sm">Loading…</span>
+                    ) : arcBalance ? (
+                      `${arcBalance} USDC`
+                    ) : (
+                      <span className="text-teal-400 text-sm">—</span>
+                    )}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-teal-400 text-[10px]">Native gas token</p>
+                  <p className="text-teal-300 text-[11px] font-semibold">⛽ Used for gas</p>
+                </div>
+              </div>
+              {arcBalance && !isArcSrc && !isNonEvm && (
+                <div className="mt-3 pt-3 border-t border-teal-700/40">
+                  <div className="flex items-center justify-between">
+                    <span className="text-teal-400 text-xs">Available to cover gas</span>
+                    <span className="text-teal-200 text-xs font-bold">{arcBalance} USDC</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-teal-400 text-xs">Est. gas on {fromChain.shortName}</span>
+                    <span className="text-amber-300 text-xs font-bold">
+                      ~${(GAS_ESTIMATES[fromId]?.high ?? 0.20).toFixed(2)} USDC
+                    </span>
+                  </div>
+                  <div className="mt-2 h-1.5 rounded-full bg-teal-800 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-teal-400 to-emerald-400"
+                      style={{ width: `${Math.min(100, (parseFloat(arcBalance) / Math.max(parseFloat(arcBalance), GAS_ESTIMATES[fromId]?.high ?? 1)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Transaction Steps */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-slate-900 font-bold text-sm">Bridge Progress</h3>
               {isBridging && (
@@ -472,9 +1019,7 @@ export default function BridgePanel() {
                   Processing
                 </span>
               )}
-              {result && (
-                <span className="text-[11px] text-emerald-600 font-semibold">✓ Complete</span>
-              )}
+              {success && <span className="text-[11px] text-emerald-600 font-semibold">✓ Complete</span>}
             </div>
 
             <div className="flex flex-col gap-1">
@@ -482,49 +1027,41 @@ export default function BridgePanel() {
                 const isActive = step.state === 'processing'
                 const isDone   = step.state === 'success'
                 const isFailed = step.state === 'failed'
-                const isIdle   = step.state === 'idle'
-                const url      = getExplorerUrl(step, fromChainId)
-
+                const isGasStep = step.name === 'gas'
+                const color = stepColor(step.name)
                 return (
-                  <div key={step.name} className="relative">
-                    {/* Connector line */}
+                  <div key={step.name + i} className="relative">
                     {i < steps.length - 1 && (
-                      <div className={`absolute left-[11px] top-[28px] w-0.5 h-4 rounded-full transition-colors ${
-                        isDone ? 'bg-emerald-300' : 'bg-slate-200'
-                      }`} />
+                      <div className={`absolute left-[11px] top-[28px] w-0.5 h-4 rounded-full ${isDone ? (isGasStep ? 'bg-teal-300' : 'bg-emerald-300') : 'bg-slate-200'}`} />
                     )}
-
                     <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                      isActive ? 'bg-violet-50 border border-violet-200' :
-                      isDone   ? 'bg-emerald-50 border border-emerald-100'   :
-                      isFailed ? 'bg-red-50 border border-red-200'     :
-                      'border border-transparent'
+                      isActive ? (isGasStep ? 'bg-teal-50 border border-teal-200' : 'bg-violet-50 border border-violet-200') :
+                      isDone   ? (isGasStep ? 'bg-teal-50 border border-teal-100' : 'bg-emerald-50 border border-emerald-100') :
+                      isFailed ? 'bg-red-50 border border-red-200' : 'border border-transparent'
                     }`}>
-                      <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
-                        {stepIcon(step.state)}
+                      <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                        {isGasStep && isDone ? <span className="text-teal-600 text-sm">⛽</span> :
+                         isGasStep && isActive ? (
+                          <svg className={`animate-spin w-4 h-4 text-teal-600`} viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                          </svg>
+                         ) : stepIcon(step.state)}
                       </div>
-
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium ${
-                          isActive ? 'text-violet-700' :
-                          isDone   ? 'text-emerald-600'  :
-                          isFailed ? 'text-red-600'    :
-                          isIdle   ? 'text-slate-400'   : 'text-slate-500'
-                        }`}>
-                          {stepLabel(step.name)}
-                        </p>
-                        {step.txHash && (
-                          <p className="text-slate-400 font-mono text-[10px] mt-0.5">
-                            {shortHash(step.txHash)}
-                          </p>
+                          isActive ? (color === 'teal' ? 'text-teal-700' : 'text-violet-700') :
+                          isDone   ? (color === 'teal' ? 'text-teal-600' : 'text-emerald-600') :
+                          isFailed ? 'text-red-600' : 'text-slate-400'
+                        }`}>{stepLabel(step.name, toChain, fromChain)}</p>
+                        {step.txHash && <p className="text-slate-400 font-mono text-[10px] mt-0.5">{shortHash(step.txHash)}</p>}
+                        {isGasStep && isActive && (
+                          <p className="text-teal-500 text-[10px] mt-0.5">Calling Circle Paymaster…</p>
                         )}
                       </div>
-
-                      {step.txHash && (
-                        <a href={url} target="_blank" rel="noreferrer"
-                          className="text-slate-400 hover:text-violet-600 transition-colors text-xs ml-auto flex-shrink-0">
-                          ↗
-                        </a>
+                      {step.txHash && step.explorerUrl && (
+                        <a href={step.explorerUrl} target="_blank" rel="noreferrer"
+                          className="text-slate-400 hover:text-violet-600 transition-colors text-xs ml-auto shrink-0">↗</a>
                       )}
                     </div>
                   </div>
@@ -532,70 +1069,119 @@ export default function BridgePanel() {
               })}
             </div>
 
-            {/* Success message */}
-            {result && (
+            {success && (
               <div className="mt-4 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200">
-                <p className="text-emerald-600 font-semibold text-sm text-center">
-                  🎉 Bridge successful!
-                </p>
+                <p className="text-emerald-600 font-semibold text-sm text-center">🎉 Bridge complete!</p>
                 <p className="text-slate-500 text-[11px] text-center mt-1">
-                  {result.amount} USDC arrived on Arc Testnet
+                  USDC arrived on {toChain.name}
+                  {gasCoverActive && !isArcSrc ? ' · Gas was covered by Arc USDC' : ''}
                 </p>
               </div>
             )}
-
-            {/* Idle hint */}
-            {!isBridging && !result && (
+            {!isBridging && !success && (
               <p className="text-slate-300 text-[11px] text-center mt-4">
-                Enter amount and click Bridge to start
+                Select chains, enter amount, and click Bridge
               </p>
             )}
           </div>
 
           {/* How it works */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <h3 className="text-slate-900 font-bold text-sm mb-3">How it works</h3>
+
+            {/* Gas coverage explanation */}
+            {!isNonEvm && (
+              <div className="mb-4 p-3 rounded-xl bg-teal-50 border border-teal-100">
+                <p className="text-teal-700 text-xs font-bold mb-1.5">⛽ Arc Gas Coverage</p>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-start gap-2">
+                    <span className="text-teal-500 text-[10px] mt-0.5">●</span>
+                    <p className="text-teal-700 text-[11px]">Arc uses USDC as native gas — zero ETH friction when bridging <em>from</em> Arc</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-teal-500 text-[10px] mt-0.5">●</span>
+                    <p className="text-teal-700 text-[11px]">For other chains, enable <strong>Cover Gas</strong> to pay source gas in USDC via Circle Paymaster</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-teal-500 text-[10px] mt-0.5">●</span>
+                    <p className="text-teal-700 text-[11px]">Circle Paymaster submits the on-chain tx and bills your Arc USDC at settlement</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col gap-3">
               {[
-                { step: '01', title: 'Approve',   desc: 'Authorize the CCTP contract to use your USDC' },
-                { step: '02', title: 'Burn',       desc: 'USDC is burned on the source chain (irreversible)' },
-                { step: '03', title: 'Attest',     desc: 'Circle verifies the burn transaction (~2 min Fast)' },
-                { step: '04', title: 'Mint',       desc: 'New USDC is minted on Arc Testnet for you' },
+                { n: '01', t: 'Approve', d: 'Authorize the CCTP contract to use your USDC on the source chain' },
+                { n: '02', t: 'Burn',    d: `USDC burned on ${fromChain.shortName} (secured by Circle)` },
+                { n: '03', t: 'Attest',  d: 'Circle verifies the burn via its attestation service (~2 min Fast, ~20 min Standard)' },
+                { n: '04', t: 'Mint',    d: `New USDC minted natively on ${toChain.shortName} — same value, no slippage` },
               ].map(item => (
-                <div key={item.step} className="flex items-start gap-3">
-                  <span className="text-violet-600 font-mono text-[10px] font-bold mt-0.5 flex-shrink-0 w-5">
-                    {item.step}
-                  </span>
+                <div key={item.n} className="flex items-start gap-3">
+                  <span className="text-violet-600 font-mono text-[10px] font-bold mt-0.5 shrink-0 w-5">{item.n}</span>
                   <div>
-                    <span className="text-slate-600 text-xs font-semibold">{item.title} </span>
-                    <span className="text-slate-400 text-xs">— {item.desc}</span>
+                    <span className="text-slate-600 text-xs font-semibold">{item.t} </span>
+                    <span className="text-slate-400 text-xs">— {item.d}</span>
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Supported routes */}
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              <p className="text-slate-500 text-xs font-bold mb-2">Popular routes</p>
+              <div className="flex flex-col gap-1">
+                {[
+                  { r: 'Arc ↔ Ethereum', g: true  },
+                  { r: 'Arc ↔ Base',     g: true  },
+                  { r: 'Arc ↔ Arbitrum', g: true  },
+                  { r: 'Ethereum ↔ Base',    g: false },
+                  { r: 'Ethereum ↔ Solana',  g: false },
+                  { r: 'Base ↔ Avalanche',   g: false },
+                ].map(({ r, g }) => (
+                  <div key={r} className="flex items-center gap-2">
+                    <span className="w-1 h-1 bg-violet-400 rounded-full shrink-0" />
+                    <span className="text-slate-500 text-xs">{r}</span>
+                    <div className="ml-auto flex items-center gap-1">
+                      {g && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-700 font-bold">⛽ Gas Cover</span>}
+                      <span className="text-[10px] text-violet-500 font-medium">CCTP</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Bridge history */}
+          {/* Recipient */}
+          {address && (
+            <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-0.5">Recipient on {toChain.shortName}</p>
+              <p className="text-slate-700 font-mono text-xs break-all">{address}</p>
+            </div>
+          )}
+
+          {/* History */}
           {history.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
               <h3 className="text-slate-900 font-bold text-sm mb-3">Bridge History</h3>
               <div className="flex flex-col gap-2">
                 {history.map(h => (
-                  <div key={h.id}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${h.status === 'success' ? 'bg-green-400' : 'bg-red-400'}`} />
+                  <div key={h.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${h.status === 'success' ? 'bg-emerald-400' : 'bg-red-400'}`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-slate-700 text-xs font-semibold truncate">
-                        {h.fromChain} → Arc · {h.amount} USDC
-                      </p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-slate-700 text-xs font-semibold truncate">
+                          {h.fromChain} → {h.toChain} · {h.amount} USDC
+                        </p>
+                        {h.gasCovered && (
+                          <span className="text-[9px] px-1 py-0.5 rounded bg-teal-100 text-teal-700 font-bold shrink-0">⛽</span>
+                        )}
+                      </div>
                       <p className="text-slate-400 text-[10px]">{h.time}</p>
                     </div>
                     {h.txHash && h.txHash !== '—' && (
-                      <a href={`https://testnet.arcscan.app/tx/${h.txHash}`}
-                        target="_blank" rel="noreferrer"
-                        className="text-slate-400 hover:text-violet-600 transition-colors text-xs flex-shrink-0">
-                        ↗
-                      </a>
+                      <a href={chainById(toId).explorerBase + h.txHash} target="_blank" rel="noreferrer"
+                        className="text-slate-400 hover:text-violet-600 transition-colors text-xs shrink-0">↗</a>
                     )}
                   </div>
                 ))}

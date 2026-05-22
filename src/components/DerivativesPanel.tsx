@@ -2,7 +2,7 @@
 // On-chain perpetual futures — real-time prices from Hyperliquid + price chart
 
 import { useState, useCallback, useMemo } from 'react'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import WalletGate from './WalletGate'
 import {
   ResponsiveContainer, AreaChart, BarChart, Area, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -628,6 +628,9 @@ export default function DerivativesPanel() {
   const { positions, loading: loadingPos, refetch: refetchPos } = usePerpPositions()
   const { openPosition, closePosition, addMargin, txStep, txHash, txError, reset, balanceUSDC, isConnected } = usePerpTrade()
 
+  // Track which position is currently being closed (by id) so only that card shows "Closing…"
+  const [closingId, setClosingId] = useState<bigint | null>(null)
+
   const openCount = positions.length
 
   // Helper: get live mark price for a coin (falls back to entry price)
@@ -648,8 +651,13 @@ export default function DerivativesPanel() {
   }, [openPosition, refetchPos])
 
   const handleClose = useCallback(async (id: bigint) => {
-    await closePosition(id)
-    setTimeout(refetchPos, 5_000)
+    setClosingId(id)
+    try {
+      await closePosition(id)
+      setTimeout(refetchPos, 5_000)
+    } finally {
+      setClosingId(null)
+    }
   }, [closePosition, refetchPos])
 
   const handleAddMargin = useCallback(async (id: bigint, amount: string) => {
@@ -759,10 +767,7 @@ export default function DerivativesPanel() {
               </div>
 
               {!isConnected ? (
-                <div className="flex flex-col items-center gap-3 py-8">
-                  <p className="text-slate-500 text-sm text-center">Connect wallet to trade</p>
-                  <ConnectButton label="Connect Wallet" />
-                </div>
+                <WalletGate label="Connect wallet to trade" variant="centered" />
               ) : (
                 <TradeForm
                   coin={coin}
@@ -819,7 +824,7 @@ export default function DerivativesPanel() {
                     <PositionCard key={pos.id.toString()} pos={pos}
                       livePrice={getLivePrice(pos.coin)}
                       onClose={handleClose} onAddMargin={handleAddMargin}
-                      isClosing={txStep === 'sending'} />
+                      isClosing={closingId === pos.id} />
                   ))}
                   <TxBadge step={txStep} hash={txHash} error={txError} />
                 </>

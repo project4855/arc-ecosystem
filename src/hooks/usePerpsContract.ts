@@ -1,11 +1,10 @@
 import { useState, useCallback, useEffect } from 'react'
 import {
-  useAccount,
   useReadContract,
-  useWriteContract,
   useWaitForTransactionReceipt,
 } from 'wagmi'
 import { parseUnits, formatUnits, maxUint256 } from 'viem'
+import { useWallet } from './useWallet'
 import {
   PERPS_ADDRESS,
   PERPS_ABI,
@@ -79,7 +78,7 @@ export function usePerpPrice(coin: string) {
 // ── User positions hook ───────────────────────────────────────────────────────
 
 export function usePerpPositions() {
-  const { address } = useAccount()
+  const { address } = useWallet()
   const [positions, setPositions] = useState<PerpPosition[]>([])
   const [loading,   setLoading]   = useState(false)
 
@@ -162,12 +161,11 @@ export function usePerpPositions() {
 // ── Trading hook ──────────────────────────────────────────────────────────────
 
 export function usePerpTrade() {
-  const { address, isConnected } = useAccount()
+  const { address, isReady: isConnected, writeContract } = useWallet()
   const [txStep,  setTxStep]  = useState<TxStep>('idle')
   const [txHash,  setTxHash]  = useState<`0x${string}` | null>(null)
   const [txError, setTxError] = useState<string | null>(null)
 
-  const { writeContractAsync } = useWriteContract()
   const { data: receipt } = useWaitForTransactionReceipt({
     hash: txHash ?? undefined,
   })
@@ -191,7 +189,7 @@ export function usePerpTrade() {
     try {
       // Step 1: approve USDC
       setTxStep('approving')
-      const approveTx = await writeContractAsync({
+      const approveTx = await writeContract({
         address:      TOKEN_ADDRESSES.USDC,
         abi:          ERC20_ABI,
         functionName: 'approve',
@@ -207,7 +205,7 @@ export function usePerpTrade() {
 
       // Step 2: open position
       setTxStep('sending')
-      const hash = await writeContractAsync({
+      const hash = await writeContract({
         address:      PERPS_ADDRESS,
         abi:          PERPS_ABI,
         functionName: 'openPosition',
@@ -219,14 +217,14 @@ export function usePerpTrade() {
       setTxStep('error')
       setTxError(e instanceof Error ? e.message.split('\n')[0] : 'Transaction failed')
     }
-  }, [isConnected, address, writeContractAsync])
+  }, [isConnected, address, writeContract])
 
   // ── Close position ─────────────────────────────────────────────────────────
   const closePosition = useCallback(async (positionId: bigint) => {
     if (!isConnected) return
     setTxStep('sending'); setTxError(null); setTxHash(null)
     try {
-      const hash = await writeContractAsync({
+      const hash = await writeContract({
         address:      PERPS_ADDRESS,
         abi:          PERPS_ABI,
         functionName: 'closePosition',
@@ -237,7 +235,8 @@ export function usePerpTrade() {
       setTxStep('error')
       setTxError(e instanceof Error ? e.message.split('\n')[0] : 'Transaction failed')
     }
-  }, [isConnected, writeContractAsync])
+  }, [isConnected, writeContract])
+
 
   // ── Add margin ─────────────────────────────────────────────────────────────
   const addMargin = useCallback(async (positionId: bigint, amount: string) => {
@@ -245,7 +244,7 @@ export function usePerpTrade() {
     setTxStep('approving'); setTxError(null); setTxHash(null)
     try {
       const amountWei = parseUnits(amount, 6)
-      const approveTx = await writeContractAsync({
+      const approveTx = await writeContract({
         address:      TOKEN_ADDRESSES.USDC,
         abi:          ERC20_ABI,
         functionName: 'approve',
@@ -259,7 +258,7 @@ export function usePerpTrade() {
       await client.waitForTransactionReceipt({ hash: approveTx })
 
       setTxStep('sending')
-      const hash = await writeContractAsync({
+      const hash = await writeContract({
         address:      PERPS_ADDRESS,
         abi:          PERPS_ABI,
         functionName: 'addMargin',
@@ -270,7 +269,7 @@ export function usePerpTrade() {
       setTxStep('error')
       setTxError(e instanceof Error ? e.message.split('\n')[0] : 'Transaction failed')
     }
-  }, [isConnected, address, writeContractAsync])
+  }, [isConnected, address, writeContract])
 
   const reset = useCallback(() => {
     setTxStep('idle'); setTxError(null); setTxHash(null)

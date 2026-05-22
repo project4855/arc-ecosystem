@@ -2,8 +2,9 @@
 // Portfolio tracker — real balances + tx history + perps PnL
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useAccount, useBalance } from 'wagmi'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { useBalance } from 'wagmi'
+import { useWallet } from '../hooks/useWallet'
+import WalletGate from './WalletGate'
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
   Tooltip, CartesianGrid,
@@ -237,7 +238,7 @@ function genSparkline(base: number, volatility: number, len = 20): number[] {
 // ── Main Panel ────────────────────────────────────────────────────────────────
 
 export default function PortfolioPanel() {
-  const { address, isConnected } = useAccount()
+  const { address, isReady: isConnected } = useWallet()
 
   // ── Token balances ─────────────────────────────────────────────────────────
   const { data: usdcBal, refetch: refetchUsdc } = useBalance({
@@ -353,7 +354,7 @@ export default function PortfolioPanel() {
             <p className="text-slate-700 font-bold">Connect your wallet</p>
             <p className="text-slate-400 text-sm mt-1">View your balances, transactions, and PnL</p>
           </div>
-          <ConnectButton label="Connect Wallet" />
+          <WalletGate label="Connect your wallet" variant="button-only" />
         </div>
       </div>
     )
@@ -362,13 +363,35 @@ export default function PortfolioPanel() {
   return (
     <div className="flex flex-col gap-5">
 
+      {/* ── Arc Blueprint Banner ── */}
+      <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-teal-950 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-2xl shrink-0">🏛️</div>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 font-bold">Arc Blueprint · Treasury Management</span>
+              <span className="text-[10px] text-slate-400">13.9% CAGR market</span>
+            </div>
+            <h2 className="text-white font-extrabold text-lg leading-tight">Treasury Management on Arc</h2>
+            <p className="text-slate-300 text-sm mt-1 max-w-xl">
+              Deterministic sub-second finality enables real-time cash position updates.
+              Automate multi-entity sweeps, idle cash yield strategies, and 24/7 cross-jurisdiction transfers in USDC and EURC.
+            </p>
+          </div>
+        </div>
+        <a href="https://www.arc.io/blog/how-arc-supports-treasury-management-arc-blueprints" target="_blank" rel="noreferrer"
+          className="shrink-0 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-500 transition-colors">
+          Read Blueprint ↗
+        </a>
+      </div>
+
       {/* ── Header ── */}
       <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-6 py-5 shadow-lg">
         <div className="absolute inset-0 opacity-[0.08] pointer-events-none"
           style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
         <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-extrabold text-white tracking-tight">💼 Portfolio</h1>
+            <h1 className="text-2xl font-extrabold text-white tracking-tight">🏛️ Treasury</h1>
             <p className="text-emerald-100 text-xs mt-1 font-mono">{fmtAddr(address ?? '')}</p>
           </div>
           <div className="text-right">

@@ -1,10 +1,102 @@
 // ── PredictionMarketPanel.tsx ────────────────────────────────────────────────
-// Simulated prediction markets on Arc Testnet · USDC settlement
+// Prediction markets on Arc Testnet · USDC settlement · real on-chain bets
 
-import { useState, useMemo } from 'react'
-import { useAccount } from 'wagmi'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { useState, useMemo, useCallback } from 'react'
+import { parseUnits, maxUint256 } from 'viem'
+import WalletGate from './WalletGate'
+import { useWallet } from '../hooks/useWallet'
 import { usePerpTrade } from '../hooks/usePerpsContract'
+import { TOKEN_ADDRESSES, LENDING_ADDRESS, LENDING_ABI, ERC20_ABI } from '../config/contracts'
+
+// ── Poll for receipt (copied verbatim from useLendingContract.waitForTx) ──────
+async function waitForTx(hash: `0x${string}`, maxWait = 60_000) {
+  const { createPublicClient, http } = await import('viem')
+  const { arcTestnet } = await import('../config/wagmi')
+  const client = createPublicClient({ chain: arcTestnet, transport: http() })
+  const deadline = Date.now() + maxWait
+  while (Date.now() < deadline) {
+    const r = await client.getTransactionReceipt({ hash }).catch(() => null)
+    if (r) return r
+    await new Promise(res => setTimeout(res, 1500))
+  }
+  throw new Error('Tx timeout')
+}
+
+// ── Bet step type ─────────────────────────────────────────────────────────────
+type BetStep = 'idle' | 'approving' | 'sending' | 'confirming' | 'done' | 'error'
+
+// ── Single hook for all on-chain bet logic (one instance per panel) ───────────
+function usePredictBet() {
+  const { isReady: isConnected, writeContract: writeContractAsync } = useWallet()
+
+  const [betStep,   setBetStep]   = useState<BetStep>('idle')
+  const [betTxHash, setBetTxHash] = useState<string | null>(null)
+  const [betError,  setBetError]  = useState<string | null>(null)
+  const [betTarget, setBetTarget] = useState<string | null>(null) // which market card is active
+
+  const placeBet = useCallback(async (
+    marketId: string,
+    amountUsdc: number,
+  ) => {
+    if (!isConnected || amountUsdc <= 0) return
+    setBetStep('approving')
+    setBetError(null)
+    setBetTxHash(null)
+    setBetTarget(marketId)
+
+    try {
+      const raw = parseUnits(amountUsdc.toFixed(6), 6)
+
+      // ── Step 1: Approve USDC ─────────────────────────────────────────────
+      // (first await in the function → MetaMask fires immediately, no async before it)
+      const aHash = await writeContractAsync({
+        address:      TOKEN_ADDRESSES.USDC,
+        abi:          ERC20_ABI,
+        functionName: 'approve',
+        args:         [LENDING_ADDRESS, maxUint256],
+      })
+      setBetTxHash(aHash)
+      setBetStep('confirming')
+      await waitForTx(aHash)
+
+      // ── Step 2: Supply USDC (the actual bet escrow) ──────────────────────
+      setBetStep('sending')
+      const hash = await writeContractAsync({
+        address:      LENDING_ADDRESS,
+        abi:          LENDING_ABI,
+        functionName: 'supply',
+        args:         [TOKEN_ADDRESSES.USDC, raw],
+      })
+      setBetTxHash(hash)
+      setBetStep('confirming')
+      await waitForTx(hash)
+
+      setBetStep('done')
+      return hash as `0x${string}`
+
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message.split('\n')[0] : 'Transaction failed'
+      setBetError(msg.includes('rejected') ? 'Rejected in wallet' : msg.slice(0, 140))
+      setBetStep('error')
+      console.error('[predict:placeBet]', e)
+      return null
+    }
+  }, [isConnected, writeContractAsync])
+
+
+  const reset = useCallback(() => {
+    setBetStep('idle'); setBetError(null); setBetTxHash(null); setBetTarget(null)
+  }, [])
+
+  return { placeBet, betStep, betTxHash, betError, betTarget, reset, isConnected }
+}
+
+// ── localStorage key ──────────────────────────────────────────────────────────
+const LS_BETS_KEY = 'arc_predict_bets_5042002'
+
+function loadBets(): MyBet[] {
+  try { return JSON.parse(localStorage.getItem(LS_BETS_KEY) ?? '[]') } catch { return [] }
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -27,6 +119,7 @@ interface MyBet {
   amount:   number
   odds:     number   // % at time of bet
   time:     number
+  txHash?:  string
 }
 
 // ── Mock markets data ─────────────────────────────────────────────────────────
@@ -142,30 +235,38 @@ const CAT_META: Record<Category, { label: string; icon: string; color: string }>
 // ── Market Card ───────────────────────────────────────────────────────────────
 
 function MarketCard({
-  market, myBet, isConnected, onBet,
+  market, myBet, hook, onBet,
 }: {
-  market:      Market
-  myBet:       MyBet | undefined
-  isConnected: boolean
-  onBet:       (id: string, side: 'yes' | 'no', amount: number) => void
+  market:  Market
+  myBet:   MyBet | undefined
+  hook:    ReturnType<typeof usePredictBet>
+  onBet:   (id: string, side: 'yes' | 'no', amount: number, txHash: string) => void
 }) {
-  const [open,        setOpen]        = useState(false)
-  const [side,        setSide]        = useState<'yes' | 'no'>('yes')
-  const [amount,      setAmount]      = useState('')
-  const [confirmed,   setConfirmed]   = useState(false)
+  const [open,   setOpen]   = useState(false)
+  const [side,   setSide]   = useState<'yes' | 'no'>('yes')
+  const [amount, setAmount] = useState('')
+
+  // This card is "active" when the hook is targeting this market
+  const isActive   = hook.betTarget === market.id
+  const betStep    = isActive ? hook.betStep   : 'idle'
+  const txHash     = isActive ? hook.betTxHash : null
+  const betError   = isActive ? hook.betError  : null
+  const isConnected = hook.isConnected
 
   const odds       = getOdds(market.yesPool, market.noPool)
+  const cat        = CAT_META[market.category]
   const amountN    = parseFloat(amount) || 0
   const returnOdds = side === 'yes' ? odds.yes : odds.no
   const payout     = amountN > 0 && returnOdds > 0 ? (amountN / returnOdds) * 100 : 0
-  const cat        = CAT_META[market.category]
 
-  function handleConfirm() {
-    if (amountN <= 0) return
-    onBet(market.id, side, amountN)
-    setAmount('')
-    setConfirmed(true)
-    setTimeout(() => { setConfirmed(false); setOpen(false) }, 1800)
+  async function handleConfirm() {
+    if (amountN <= 0 || !isConnected) return
+    const hash = await hook.placeBet(market.id, amountN)
+    if (hash) {
+      onBet(market.id, side, amountN, hash)
+      setAmount('')
+      setTimeout(() => { hook.reset(); setOpen(false) }, 3000)
+    }
   }
 
   return (
@@ -221,22 +322,50 @@ function MarketCard({
 
         {/* ── Bet UI ── */}
         {!open ? (
-          /* Place Bet button — always clickable, opens form for everyone */
+          /* Place Bet button */
           <button
-            onClick={() => setOpen(true)}
+            onClick={() => { setOpen(true); hook.reset() }}
             className="mt-auto w-full py-2.5 rounded-xl text-xs font-bold transition-all bg-violet-600 text-white hover:bg-violet-500 active:scale-95 shadow-sm"
           >
             🎯 Place Bet
           </button>
-        ) : confirmed ? (
-          /* Success flash */
-          <div className="mt-auto flex flex-col items-center gap-1.5 py-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+        ) : betStep === 'done' ? (
+          /* ── Success state ── */
+          <div className="mt-auto flex flex-col items-center gap-2 py-3 bg-emerald-50 border border-emerald-200 rounded-xl px-3">
             <span className="text-2xl">🎉</span>
-            <p className="text-emerald-700 font-bold text-sm">Bet placed!</p>
-            <p className="text-emerald-600 text-[11px]">{side.toUpperCase()} · ${amountN > 0 ? amountN.toFixed(2) : '—'}</p>
+            <p className="text-emerald-700 font-bold text-sm">Bet confirmed on-chain!</p>
+            <p className="text-emerald-600 text-[11px]">{side.toUpperCase()} · ${amountN > 0 ? amountN.toFixed(2) : '—'} USDC</p>
+            {txHash && (
+              <a
+                href={`https://testnet.arcscan.app/tx/${txHash}`}
+                target="_blank" rel="noreferrer"
+                className="text-[11px] text-violet-600 hover:text-violet-700 underline"
+              >
+                View on ArcScan ↗
+              </a>
+            )}
+          </div>
+        ) : betStep === 'sending' || betStep === 'confirming' ? (
+          /* ── Pending state ── */
+          <div className="mt-auto flex flex-col items-center gap-2 py-3 bg-violet-50 border border-violet-200 rounded-xl px-3">
+            <svg className="animate-spin h-5 w-5 text-violet-600 mt-1" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+            </svg>
+            <p className="text-violet-700 font-semibold text-sm text-center">
+              {betStep === 'sending' ? '🦊 Confirm in MetaMask…' : '⏳ Waiting for confirmation…'}
+            </p>
+            {txHash && betStep === 'confirming' && (
+              <p className="text-[10px] text-violet-500 text-center">
+                Tx: {txHash.slice(0, 8)}…{txHash.slice(-6)}
+              </p>
+            )}
+            <p className="text-[10px] text-slate-400 text-center">
+              2 wallet confirmations: Approve USDC → Lock bet
+            </p>
           </div>
         ) : (
-          /* Expanded bet form */
+          /* ── Expanded bet form ── */
           <div className="flex flex-col gap-2.5 border-t border-slate-100 pt-3 mt-auto">
 
             {/* YES / NO toggle */}
@@ -266,7 +395,7 @@ function MarketCard({
 
             {/* Quick amounts */}
             <div className="flex gap-1">
-              {[5, 10, 25, 50].map(v => (
+              {[1, 5, 10, 25].map(v => (
                 <button key={v} onClick={() => setAmount(String(v))}
                   className="flex-1 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-violet-100 hover:text-violet-700 text-[11px] font-semibold transition-colors">
                   ${v}
@@ -282,11 +411,17 @@ function MarketCard({
               </div>
             )}
 
+            {/* Error */}
+            {betStep === 'error' && betError && (
+              <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                <p className="text-red-600 text-[11px]">{betError}</p>
+              </div>
+            )}
+
             {/* Connect wall OR confirm button */}
             {!isConnected ? (
-              <div className="flex flex-col items-center gap-2 py-2 bg-amber-50 border border-amber-200 rounded-xl px-3">
-                <p className="text-amber-700 text-[11px] font-semibold">Connect wallet to confirm bet</p>
-                <ConnectButton label="Connect" />
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1">
+                <WalletGate label="Connect wallet to place bet on-chain" variant="inline" />
               </div>
             ) : (
               <div className="flex gap-2">
@@ -298,9 +433,9 @@ function MarketCard({
                       ? 'bg-emerald-500 text-white hover:bg-emerald-400 shadow-sm'
                       : 'bg-red-500 text-white hover:bg-red-400 shadow-sm'
                   }`}>
-                  Confirm {side.toUpperCase()} {amountN > 0 ? `$${amountN}` : ''}
+                  ⛓ Confirm {side.toUpperCase()} {amountN > 0 ? `$${amountN}` : ''}
                 </button>
-                <button onClick={() => { setOpen(false); setAmount('') }}
+                <button onClick={() => { setOpen(false); setAmount(''); hook.reset() }}
                   className="px-3 py-2 rounded-xl bg-slate-100 text-slate-500 text-sm hover:bg-slate-200 transition-colors">
                   ✕
                 </button>
@@ -313,14 +448,228 @@ function MarketCard({
   )
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function fmtTime(ms: number): string {
+  const d = new Date(ms)
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+}
+
+function fmtRelative(ms: number): string {
+  const diff = Date.now() - ms
+  if (diff < 60_000)     return 'just now'
+  if (diff < 3_600_000)  return `${Math.floor(diff / 60_000)}m ago`
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
+  return `${Math.floor(diff / 86_400_000)}d ago`
+}
+
+// ── My Bets & History Section ─────────────────────────────────────────────────
+
+function MyBetsSection({
+  myBets, markets, totalBetAmount, onClear,
+}: {
+  myBets:          MyBet[]
+  markets:         Market[]
+  totalBetAmount:  number
+  onClear:         () => void
+}) {
+  const [tab, setTab] = useState<'positions' | 'history'>('positions')
+
+  // Portfolio metrics
+  const rows = myBets.map(bet => {
+    const market    = markets.find(m => m.id === bet.marketId)
+    const odds      = market ? getOdds(market.yesPool, market.noPool) : { yes: bet.odds, no: 100 - bet.odds }
+    const curOdds   = bet.side === 'yes' ? odds.yes : odds.no
+    const curValue  = bet.odds > 0 ? (bet.amount / bet.odds) * curOdds : 0
+    const payout    = bet.odds > 0 ? (bet.amount / bet.odds) * 100 : 0
+    const pnl       = curValue - bet.amount
+    const pnlPct    = bet.amount > 0 ? (pnl / bet.amount) * 100 : 0
+    return { bet, market, curOdds, curValue, payout, pnl, pnlPct }
+  })
+
+  const totalCurValue = rows.reduce((s, r) => s + r.curValue, 0)
+  const totalPnl      = totalCurValue - totalBetAmount
+  const totalPayout   = rows.reduce((s, r) => s + r.payout, 0)
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+
+      {/* ── Portfolio summary bar ── */}
+      <div className="bg-gradient-to-r from-slate-900 to-violet-900 px-5 py-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-white text-sm">🎯 My Portfolio</h3>
+          <button onClick={onClear}
+            className="text-[10px] text-white/50 hover:text-white/80 transition-colors px-2 py-0.5 rounded border border-white/20 hover:border-white/40">
+            Clear all
+          </button>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: 'Total Wagered',    value: `$${totalBetAmount.toFixed(2)}`,  sub: `${myBets.length} position${myBets.length > 1 ? 's' : ''}`,          color: 'text-white' },
+            { label: 'Current Value',    value: `$${totalCurValue.toFixed(2)}`,   sub: 'mark-to-market',                                                     color: 'text-white' },
+            { label: 'Unrealized P&L',   value: `${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}`, sub: `${totalPnl >= 0 ? '+' : ''}${totalBetAmount > 0 ? ((totalPnl / totalBetAmount) * 100).toFixed(1) : '0'}%`, color: totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400' },
+            { label: 'Max Payout',       value: `$${totalPayout.toFixed(2)}`,     sub: 'if all win',                                                          color: 'text-amber-400' },
+          ].map(s => (
+            <div key={s.label} className="bg-white/10 rounded-xl px-3 py-2.5">
+              <p className={`font-extrabold text-base ${s.color}`}>{s.value}</p>
+              <p className="text-white/50 text-[10px]">{s.label}</p>
+              <p className="text-white/35 text-[10px]">{s.sub}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Tabs ── */}
+      <div className="flex border-b border-slate-100">
+        {(['positions', 'history'] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)}
+            className={`flex-1 py-2.5 text-xs font-bold transition-colors capitalize ${
+              tab === t
+                ? 'text-violet-700 border-b-2 border-violet-600 bg-violet-50/50'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}>
+            {t === 'positions' ? `📊 Positions (${myBets.length})` : `📋 Tx History`}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'positions' ? (
+        /* ── Positions tab ── */
+        <div className="divide-y divide-slate-50">
+          {/* Header */}
+          <div className="grid grid-cols-[1fr_60px_80px_80px_80px_24px] gap-2 px-5 py-2 bg-slate-50">
+            {['Market', 'Side', 'Wagered', 'Cur. Value', 'Max Pay', ''].map(h => (
+              <p key={h} className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">{h}</p>
+            ))}
+          </div>
+          {rows.map(({ bet, market, curOdds, curValue, payout, pnl, pnlPct }) => {
+            if (!market) return null
+            const oddsChanged = curOdds !== bet.odds
+            return (
+              <div key={bet.marketId}
+                className="grid grid-cols-[1fr_60px_80px_80px_80px_24px] gap-2 items-center px-5 py-3.5 hover:bg-slate-50/70 transition-colors">
+                {/* Market */}
+                <div className="min-w-0">
+                  <p className="text-slate-900 text-xs font-semibold truncate">{market.title}</p>
+                  <p className="text-slate-400 text-[10px] mt-0.5">{getCountdown(market.endDate)}</p>
+                </div>
+                {/* Side */}
+                <div>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                    bet.side === 'yes'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-red-100 text-red-700'
+                  }`}>
+                    {bet.side.toUpperCase()}
+                  </span>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {bet.odds}% <span className={oddsChanged ? (curOdds > bet.odds ? 'text-emerald-500' : 'text-red-500') : 'text-slate-300'}>
+                      →{curOdds}%
+                    </span>
+                  </p>
+                </div>
+                {/* Wagered */}
+                <div className="text-right">
+                  <p className="text-slate-900 font-bold text-sm">${bet.amount.toFixed(2)}</p>
+                  <p className="text-slate-400 text-[10px]">{fmtRelative(bet.time)}</p>
+                </div>
+                {/* Current value */}
+                <div className="text-right">
+                  <p className="font-bold text-sm text-slate-900">${curValue.toFixed(2)}</p>
+                  <p className={`text-[10px] font-semibold ${pnl >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)} ({pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(1)}%)
+                  </p>
+                </div>
+                {/* Max payout */}
+                <div className="text-right">
+                  <p className="font-bold text-sm text-amber-600">${payout.toFixed(2)}</p>
+                  <p className="text-slate-400 text-[10px]">if wins</p>
+                </div>
+                {/* Link */}
+                <div className="flex justify-end">
+                  {bet.txHash && (
+                    <a href={`https://testnet.arcscan.app/tx/${bet.txHash}`}
+                      target="_blank" rel="noreferrer"
+                      title="View on ArcScan"
+                      className="text-slate-300 hover:text-violet-600 text-sm transition-colors">
+                      ↗
+                    </a>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        /* ── History tab ── */
+        <div className="divide-y divide-slate-50">
+          {/* Header */}
+          <div className="grid grid-cols-[1fr_60px_70px_120px_24px] gap-2 px-5 py-2 bg-slate-50">
+            {['Market', 'Side', 'Amount', 'Time', ''].map(h => (
+              <p key={h} className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">{h}</p>
+            ))}
+          </div>
+          {[...myBets].reverse().map(bet => {
+            const market = markets.find(m => m.id === bet.marketId)
+            return (
+              <div key={bet.marketId + bet.time}
+                className="grid grid-cols-[1fr_60px_70px_120px_24px] gap-2 items-center px-5 py-3 hover:bg-slate-50/70 transition-colors">
+                {/* Market */}
+                <div className="min-w-0">
+                  <p className="text-slate-900 text-xs font-semibold truncate">{market?.title ?? bet.marketId}</p>
+                  <p className="text-slate-400 text-[10px] mt-0.5">Market #{bet.marketId}</p>
+                </div>
+                {/* Side */}
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold w-fit ${
+                  bet.side === 'yes'
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-red-100 text-red-700'
+                }`}>
+                  {bet.side.toUpperCase()} @{bet.odds}%
+                </span>
+                {/* Amount */}
+                <p className="text-slate-900 font-bold text-sm text-right">${bet.amount.toFixed(2)}</p>
+                {/* Time */}
+                <div>
+                  <p className="text-slate-600 text-[10px] font-medium">{fmtTime(bet.time)}</p>
+                  <p className="text-slate-400 text-[10px]">{fmtRelative(bet.time)}</p>
+                </div>
+                {/* Tx hash */}
+                <div className="flex justify-end">
+                  {bet.txHash ? (
+                    <a href={`https://testnet.arcscan.app/tx/${bet.txHash}`}
+                      target="_blank" rel="noreferrer"
+                      title={`Tx: ${bet.txHash.slice(0,10)}…`}
+                      className="text-slate-300 hover:text-violet-600 text-sm transition-colors">
+                      ↗
+                    </a>
+                  ) : (
+                    <span className="text-slate-200 text-[10px]">—</span>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+          {myBets.length === 0 && (
+            <div className="py-10 text-center">
+              <p className="text-slate-400 text-sm">No transactions yet</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Panel ────────────────────────────────────────────────────────────────
 
 export default function PredictionMarketPanel() {
-  const { isConnected } = useAccount()
+  const { isReady: isConnected } = useWallet()
   const { balanceUSDC } = usePerpTrade()
+  const betHook = usePredictBet()
 
   const [markets,  setMarkets]  = useState<Market[]>(INITIAL_MARKETS)
-  const [myBets,   setMyBets]   = useState<MyBet[]>([])
+  const [myBets,   setMyBets]   = useState<MyBet[]>(loadBets)
   const [category, setCategory] = useState<Category>('all')
   const [sortBy,   setSortBy]   = useState<'volume' | 'ending' | 'newest'>('volume')
 
@@ -341,7 +690,7 @@ export default function PredictionMarketPanel() {
   const totalVolume     = markets.reduce((s, m) => s + m.yesPool + m.noPool, 0)
   const totalBetAmount  = myBets.reduce((s, b) => s + b.amount, 0)
 
-  const handleBet = (marketId: string, side: 'yes' | 'no', amount: number) => {
+  const handleBet = (marketId: string, side: 'yes' | 'no', amount: number, txHash: string) => {
     // Update pool sizes optimistically
     setMarkets(prev => prev.map(m =>
       m.id !== marketId ? m : {
@@ -350,17 +699,20 @@ export default function PredictionMarketPanel() {
         noPool:  side === 'no'  ? m.noPool  + amount : m.noPool,
       }
     ))
-    // Record the bet
+    // Record the bet and persist to localStorage
     const market = markets.find(m => m.id === marketId)!
     const odds   = getOdds(market.yesPool, market.noPool)
     setMyBets(prev => {
+      let next: MyBet[]
       const idx = prev.findIndex(b => b.marketId === marketId)
       if (idx >= 0) {
-        const next = [...prev]
-        next[idx] = { ...next[idx], amount: next[idx].amount + amount }
-        return next
+        next = [...prev]
+        next[idx] = { ...next[idx], amount: next[idx].amount + amount, txHash }
+      } else {
+        next = [...prev, { marketId, side, amount, odds: side === 'yes' ? odds.yes : odds.no, time: Date.now(), txHash }]
       }
-      return [...prev, { marketId, side, amount, odds: side === 'yes' ? odds.yes : odds.no, time: Date.now() }]
+      localStorage.setItem(LS_BETS_KEY, JSON.stringify(next))
+      return next
     })
   }
 
@@ -394,7 +746,7 @@ export default function PredictionMarketPanel() {
                 )}
               </>
             ) : (
-              <ConnectButton label="Connect Wallet" />
+              <WalletGate label="Connect to bet" variant="button-only" />
             )}
           </div>
         </div>
@@ -447,7 +799,7 @@ export default function PredictionMarketPanel() {
             key={m.id}
             market={m}
             myBet={myBets.find(b => b.marketId === m.id)}
-            isConnected={isConnected}
+            hook={betHook}
             onBet={handleBet}
           />
         ))}
@@ -459,54 +811,22 @@ export default function PredictionMarketPanel() {
         )}
       </div>
 
-      {/* ── My Bets ── */}
+      {/* ── My Bets & History ── */}
       {myBets.length > 0 && (
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="font-bold text-slate-900 text-sm">🎯 My Bets ({myBets.length})</h3>
-            <span className="text-xs text-slate-400">Total wagered: <strong className="text-slate-700">${totalBetAmount.toFixed(2)}</strong></span>
-          </div>
-          <div className="divide-y divide-slate-50">
-            {myBets.map(bet => {
-              const market = markets.find(m => m.id === bet.marketId)
-              if (!market) return null
-              const odds  = getOdds(market.yesPool, market.noPool)
-              const curOdds = bet.side === 'yes' ? odds.yes : odds.no
-              const payout  = bet.amount / bet.odds * 100
-              return (
-                <div key={bet.marketId} className="flex items-center gap-3 px-5 py-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-slate-900 text-xs font-semibold truncate">{market.title}</p>
-                    <p className="text-slate-400 text-[10px] mt-0.5">{getCountdown(market.endDate)}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border ${
-                      bet.side === 'yes'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : 'bg-red-50 text-red-700 border-red-200'
-                    }`}>
-                      {bet.side.toUpperCase()} @ {bet.odds}%
-                    </span>
-                    <div className="text-right">
-                      <p className="text-slate-900 font-bold text-sm">${bet.amount}</p>
-                      <p className="text-[10px] text-slate-400">→ ${payout.toFixed(0)}</p>
-                    </div>
-                    {curOdds !== bet.odds && (
-                      <span className={`text-[10px] font-semibold ${curOdds > bet.odds ? 'text-emerald-600' : 'text-red-500'}`}>
-                        {curOdds > bet.odds ? '▲' : '▼'}{Math.abs(curOdds - bet.odds)}%
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
+        <MyBetsSection
+          myBets={myBets}
+          markets={markets}
+          totalBetAmount={totalBetAmount}
+          onClear={() => {
+            setMyBets([])
+            localStorage.removeItem(LS_BETS_KEY)
+          }}
+        />
       )}
 
       {/* Disclaimer */}
       <p className="text-center text-[11px] text-slate-400 pb-1">
-        🎯 Prediction markets are simulated on Arc Testnet · No real money · For educational purposes only
+        ⛓ Bets are real USDC transfers on Arc Testnet · Testnet only · No real money
       </p>
     </div>
   )
