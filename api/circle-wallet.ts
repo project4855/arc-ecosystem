@@ -41,7 +41,7 @@ async function circle(apiKey: string, method: string, path: string, body?: objec
 }
 
 // ── Poll for a blockchain txHash (Arc confirms in ~780ms) ─────────────────────
-async function pollTxHash(apiKey: string, circleTxId: string, maxMs = 30_000): Promise<string> {
+async function pollTxHash(apiKey: string, circleTxId: string, maxMs = 90_000): Promise<string> {
   const deadline = Date.now() + maxMs
   while (Date.now() < deadline) {
     const { data } = await circle(apiKey, 'GET', `/transactions/${circleTxId}`) as {
@@ -52,9 +52,9 @@ async function pollTxHash(apiKey: string, circleTxId: string, maxMs = 30_000): P
     if (['FAILED', 'DENIED', 'CANCELLED'].includes(tx.state)) {
       throw new Error(`Circle tx ${tx.state}: ${tx.errorReason ?? ''}`)
     }
-    await new Promise(r => setTimeout(r, 1_200))
+    await new Promise(r => setTimeout(r, 2_000))
   }
-  throw new Error('Circle tx confirmation timeout (30s)')
+  throw new Error('Circle tx confirmation timeout (90s)')
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
