@@ -771,33 +771,57 @@ function CircleWalletSection() {
             </div>
 
             {/* Reconnect existing wallet */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-3">
-              <button
-                onClick={() => { setShowReconnect(v => !v); setReconnectErr('') }}
-                className="text-xs text-slate-500 hover:text-emerald-600 font-semibold text-left flex items-center gap-1 transition-colors"
-              >
-                🔁 Đã có ví trước? Kết nối lại bằng Wallet ID {showReconnect ? '▴' : '▾'}
-              </button>
+            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-2xl p-5 flex flex-col gap-4">
+              {/* Header — always visible */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-xl shrink-0">🔁</div>
+                <div className="flex-1">
+                  <p className="text-slate-900 font-extrabold text-base">Đã có ví trước?</p>
+                  <p className="text-emerald-700 text-xs font-semibold mt-0.5">Kết nối lại bằng Wallet ID — không tạo ví mới</p>
+                </div>
+                <button
+                  onClick={() => { setShowReconnect(v => !v); setReconnectErr('') }}
+                  className="w-8 h-8 rounded-xl bg-emerald-100 hover:bg-emerald-200 flex items-center justify-center text-emerald-700 font-bold text-sm transition-colors"
+                >
+                  {showReconnect ? '▴' : '▾'}
+                </button>
+              </div>
+
+              {!showReconnect && (
+                <button
+                  onClick={() => { setShowReconnect(true); setReconnectErr('') }}
+                  className="w-full py-3 rounded-xl border-2 border-emerald-300 bg-white text-emerald-700 font-bold text-sm hover:bg-emerald-50 hover:border-emerald-400 transition-all"
+                >
+                  Nhập Wallet ID để kết nối lại →
+                </button>
+              )}
 
               {showReconnect && (
-                <div className="flex flex-col gap-2">
-                  <p className="text-[11px] text-slate-500 leading-relaxed">
-                    Nhập Wallet ID đã lưu để kết nối lại ví cũ mà không cần tạo mới.
+                <div className="flex flex-col gap-3">
+                  <p className="text-slate-600 text-sm leading-relaxed">
+                    Nhập <strong>Wallet ID</strong> đã lưu để khôi phục ví cũ. Địa chỉ và số dư không thay đổi.
                   </p>
-                  <input
-                    type="text"
-                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                    value={reconnectId}
-                    onChange={e => { setReconnectId(e.target.value); setReconnectErr('') }}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs text-slate-800 outline-none focus:border-emerald-400 transition-colors"
-                  />
-                  {reconnectErr && <p className="text-red-500 text-[11px]">{reconnectErr}</p>}
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Wallet ID</label>
+                    <input
+                      type="text"
+                      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                      value={reconnectId}
+                      onChange={e => { setReconnectId(e.target.value); setReconnectErr('') }}
+                      className="w-full bg-white border-2 border-emerald-200 focus:border-emerald-500 rounded-xl px-4 py-3 font-mono text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-300"
+                    />
+                  </div>
+                  {reconnectErr && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-red-600 text-xs font-semibold">
+                      ❌ {reconnectErr}
+                    </div>
+                  )}
                   <button
                     onClick={handleReconnect}
                     disabled={reconnectBusy || !reconnectId.trim()}
-                    className="w-full py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-400 transition-colors disabled:opacity-50"
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold text-sm hover:from-emerald-500 hover:to-teal-500 transition-all disabled:opacity-50 shadow-sm"
                   >
-                    {reconnectBusy ? '⏳ Đang kết nối…' : '🔌 Kết nối lại'}
+                    {reconnectBusy ? '⏳ Đang kết nối…' : '🔌 Kết nối lại ví'}
                   </button>
                 </div>
               )}
