@@ -1,13 +1,15 @@
 // ── WalletConnector.tsx ───────────────────────────────────────────────────────
-// "Connect Wallet" button → popup with 2 clear options:
+// "Connect Wallet" button → popup with 3 clear options:
 //   1. Wallet Infrastructure (Turnkey HSM)
-//   2. MetaMask / External Wallet
+//   2. Circle Wallet (Developer-Controlled)
+//   3. MetaMask / External Wallet
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useAccount, useDisconnect, useChainId } from 'wagmi'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { getTurnkeyAddress, clearTurnkeySigner } from '../lib/turnkeySigner'
+import { loadCircleWallet, clearCircleWallet } from '../lib/circleWalletClient'
 
 interface WalletConnectorProps {
   onNavigateToWallet?: () => void
@@ -22,20 +24,19 @@ function shortAddr(addr: string) {
 function ConnectPopup({
   onConnectMetaMask,
   onConnectInfra,
+  onConnectCircle,
   onClose,
 }: {
   onConnectMetaMask: () => void
   onConnectInfra: () => void
+  onConnectCircle: () => void
   onClose: () => void
 }) {
   return (
-    // Backdrop
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
       onClick={onClose}>
-      {/* dim overlay */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
 
-      {/* Modal card */}
       <div
         className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
@@ -55,33 +56,52 @@ function ConnectPopup({
         {/* Options */}
         <div className="p-4 flex flex-col gap-3">
 
-          {/* Option 1: Wallet Infrastructure */}
+          {/* Option 1: Circle Wallet */}
+          <button
+            onClick={onConnectCircle}
+            className="group relative flex items-start gap-4 p-4 rounded-2xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 hover:border-emerald-400 hover:shadow-md hover:shadow-emerald-100 transition-all text-left"
+          >
+            <span className="absolute top-3 right-3 text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">
+              Recommended
+            </span>
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-2xl shadow-md shrink-0">
+              ⭕
+            </div>
+            <div className="flex-1 min-w-0 pr-16">
+              <p className="text-slate-900 font-extrabold text-base group-hover:text-emerald-700 transition-colors">
+                Circle Wallet
+              </p>
+              <p className="text-emerald-600 text-xs font-semibold mt-0.5">Developer-Controlled · No Quota</p>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {['No Quota', 'No Seed Phrase', 'Circle HSM'].map(tag => (
+                  <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold">{tag}</span>
+                ))}
+              </div>
+            </div>
+          </button>
+
+          {/* Option 2: Wallet Infrastructure */}
           <button
             onClick={onConnectInfra}
             className="group relative flex items-start gap-4 p-4 rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-violet-50 hover:border-indigo-400 hover:shadow-md hover:shadow-indigo-100 transition-all text-left"
           >
-            {/* Recommended badge */}
-            <span className="absolute top-3 right-3 text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">
-              Recommended
-            </span>
-
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-2xl shadow-md shrink-0">
               🏛
             </div>
-            <div className="flex-1 min-w-0 pr-16">
+            <div className="flex-1 min-w-0">
               <p className="text-slate-900 font-extrabold text-base group-hover:text-indigo-700 transition-colors">
                 Wallet Infrastructure
               </p>
               <p className="text-indigo-600 text-xs font-semibold mt-0.5">Powered by Turnkey HSM</p>
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {['Email OTP', 'Passkey', 'No seed phrase', 'HSM secured'].map(tag => (
+                {['Email OTP', 'Passkey', 'HSM secured'].map(tag => (
                   <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-semibold">{tag}</span>
                 ))}
               </div>
             </div>
           </button>
 
-          {/* Option 2: MetaMask */}
+          {/* Option 3: MetaMask */}
           <button
             onClick={onConnectMetaMask}
             className="group flex items-start gap-4 p-4 rounded-2xl border-2 border-slate-200 bg-slate-50 hover:border-orange-300 hover:bg-orange-50 hover:shadow-md hover:shadow-orange-100 transition-all text-left"
@@ -102,7 +122,6 @@ function ConnectPopup({
             </div>
           </button>
 
-          {/* Footnote */}
           <p className="text-center text-slate-400 text-xs px-2 pb-1">
             Arc Testnet · Chain ID 5042002 · Gas paid in USDC
           </p>
@@ -116,33 +135,65 @@ function ConnectPopup({
 
 function ConnectedDropdown({
   tkAddress,
+  circleAddress,
   wagmiAddress,
   wrongNet,
   onDisconnectTurnkey,
+  onDisconnectCircle,
   onDisconnectWagmi,
   onConnectMetaMask,
   onConnectInfra,
+  onConnectCircle,
   onClose,
 }: {
   tkAddress: string | null
+  circleAddress: string | null
   wagmiAddress: string | undefined
   wrongNet: boolean
   onDisconnectTurnkey: () => void
+  onDisconnectCircle: () => void
   onDisconnectWagmi: () => void
   onConnectMetaMask: () => void
   onConnectInfra: () => void
+  onConnectCircle: () => void
   onClose: () => void
 }) {
   return (
     <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[100] overflow-hidden">
 
-      {/* Header */}
       <div className="bg-slate-50 border-b border-slate-100 px-4 py-3 flex items-center justify-between">
         <p className="text-slate-700 font-bold text-sm">Connected Wallets</p>
         <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg leading-none">×</button>
       </div>
 
       <div className="p-3 flex flex-col gap-2">
+
+        {/* Circle wallet row */}
+        {circleAddress ? (
+          <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-lg shrink-0">⭕</div>
+            <div className="flex-1 min-w-0">
+              <p className="text-emerald-700 text-[11px] font-bold uppercase tracking-wide">Circle Wallet · No Quota</p>
+              <p className="text-slate-800 text-sm font-mono font-bold mt-0.5">{shortAddr(circleAddress)}</p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full" />
+              <button onClick={onDisconnectCircle}
+                className="text-[11px] text-red-400 hover:text-red-600 font-semibold transition-colors">
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={onConnectCircle}
+            className="flex items-center gap-3 px-3 py-3 rounded-xl border-2 border-dashed border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50 transition-all text-left group">
+            <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-lg shrink-0">⭕</div>
+            <div>
+              <p className="text-slate-700 text-sm font-bold group-hover:text-emerald-700 transition-colors">Connect Circle Wallet</p>
+              <p className="text-slate-400 text-[11px]">No quota · No seed phrase · Circle HSM</p>
+            </div>
+          </button>
+        )}
 
         {/* Turnkey wallet row */}
         {tkAddress ? (
@@ -213,22 +264,28 @@ export default function WalletConnector({ onNavigateToWallet }: WalletConnectorP
   const chainId = useChainId()
   const { openConnectModal } = useConnectModal()
 
-  const [tkAddress, setTkAddress] = useState<string | null>(getTurnkeyAddress())
-  const [showPopup,    setShowPopup]    = useState(false) // full modal (nothing connected)
-  const [showDropdown, setShowDropdown] = useState(false) // dropdown (already connected)
+  const [tkAddress,     setTkAddress]     = useState<string | null>(getTurnkeyAddress())
+  const [circleAddress, setCircleAddress] = useState<string | null>(loadCircleWallet()?.address ?? null)
+  const [showPopup,    setShowPopup]    = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const onReady = () => setTkAddress(getTurnkeyAddress())
-    window.addEventListener('turnkey_signer_ready', onReady)
-    window.addEventListener('turnkey_wallet_updated', onReady)
+    const onTk = () => setTkAddress(getTurnkeyAddress())
+    window.addEventListener('turnkey_signer_ready', onTk)
+    window.addEventListener('turnkey_wallet_updated', onTk)
     return () => {
-      window.removeEventListener('turnkey_signer_ready', onReady)
-      window.removeEventListener('turnkey_wallet_updated', onReady)
+      window.removeEventListener('turnkey_signer_ready', onTk)
+      window.removeEventListener('turnkey_wallet_updated', onTk)
     }
   }, [])
 
-  // Close dropdown on outside click
+  useEffect(() => {
+    const onCircle = () => setCircleAddress(loadCircleWallet()?.address ?? null)
+    window.addEventListener('circle_wallet_updated', onCircle)
+    return () => window.removeEventListener('circle_wallet_updated', onCircle)
+  }, [])
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setShowDropdown(false)
@@ -239,6 +296,10 @@ export default function WalletConnector({ onNavigateToWallet }: WalletConnectorP
 
   const handleDisconnectTurnkey = useCallback(() => {
     clearTurnkeySigner(); setTkAddress(null); setShowDropdown(false)
+  }, [])
+
+  const handleDisconnectCircle = useCallback(() => {
+    clearCircleWallet(); setCircleAddress(null); setShowDropdown(false)
   }, [])
 
   const handleDisconnectWagmi = useCallback(() => {
@@ -255,35 +316,39 @@ export default function WalletConnector({ onNavigateToWallet }: WalletConnectorP
     onNavigateToWallet?.()
   }, [onNavigateToWallet])
 
+  const handleConnectCircle = useCallback(() => {
+    setShowPopup(false); setShowDropdown(false)
+    onNavigateToWallet?.()
+  }, [onNavigateToWallet])
+
   const wrongNet    = isConnected && chainId !== 5042002
-  const anyConnected = !!tkAddress || isConnected
+  const anyConnected = !!tkAddress || !!circleAddress || isConnected
 
   // ── Button label ──────────────────────────────────────────────────────────
 
   let btnContent: React.ReactNode
   let btnClass: string
 
-  if (tkAddress && isConnected) {
+  const activeAddr = circleAddress ?? tkAddress
+  if (activeAddr) {
+    const icon = circleAddress ? '⭕' : '🏛'
     btnContent = (
       <>
         <span className="w-2 h-2 bg-emerald-400 rounded-full shrink-0" />
-        <span>🏛 {shortAddr(tkAddress)}</span>
-        <span className="text-slate-300">|</span>
-        <span>🦊 {shortAddr(wagmiAddress!)}</span>
+        <span>{icon}</span>
+        <span className="font-mono">{shortAddr(activeAddr)}</span>
+        {isConnected && wagmiAddress && (
+          <>
+            <span className="text-slate-300">|</span>
+            <span>🦊 {shortAddr(wagmiAddress)}</span>
+          </>
+        )}
         <span className="opacity-60">▾</span>
       </>
     )
-    btnClass = 'bg-indigo-600 text-white hover:bg-indigo-700 shadow'
-  } else if (tkAddress) {
-    btnContent = (
-      <>
-        <span className="w-2 h-2 bg-emerald-400 rounded-full shrink-0" />
-        <span>🏛</span>
-        <span className="font-mono">{shortAddr(tkAddress)}</span>
-        <span className="opacity-60">▾</span>
-      </>
-    )
-    btnClass = 'bg-indigo-600 text-white hover:bg-indigo-700 shadow'
+    btnClass = circleAddress
+      ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow'
+      : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow'
   } else if (isConnected && wagmiAddress) {
     btnContent = (
       <>
@@ -303,7 +368,6 @@ export default function WalletConnector({ onNavigateToWallet }: WalletConnectorP
 
   return (
     <>
-      {/* Trigger button */}
       <div className="relative" ref={ref}>
         <button
           onClick={() => {
@@ -318,27 +382,28 @@ export default function WalletConnector({ onNavigateToWallet }: WalletConnectorP
           {btnContent}
         </button>
 
-        {/* Connected dropdown */}
         {showDropdown && anyConnected && (
           <ConnectedDropdown
             tkAddress={tkAddress}
+            circleAddress={circleAddress}
             wagmiAddress={wagmiAddress}
             wrongNet={wrongNet}
             onDisconnectTurnkey={handleDisconnectTurnkey}
+            onDisconnectCircle={handleDisconnectCircle}
             onDisconnectWagmi={handleDisconnectWagmi}
             onConnectMetaMask={handleConnectMetaMask}
             onConnectInfra={handleConnectInfra}
+            onConnectCircle={handleConnectCircle}
             onClose={() => setShowDropdown(false)}
           />
         )}
       </div>
 
-      {/* Full-screen connect popup — rendered via Portal so it escapes navbar's
-          backdrop-blur stacking context and sits at true viewport center */}
       {showPopup && createPortal(
         <ConnectPopup
           onConnectMetaMask={handleConnectMetaMask}
           onConnectInfra={handleConnectInfra}
+          onConnectCircle={handleConnectCircle}
           onClose={() => setShowPopup(false)}
         />,
         document.body
