@@ -1,7 +1,7 @@
 // ── PredictionMarketPanel.tsx ────────────────────────────────────────────────
 // Prediction markets on Arc Testnet · USDC settlement · real on-chain bets
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { parseUnits, maxUint256 } from 'viem'
 import WalletGate from './WalletGate'
 import { useWallet } from '../hooks/useWallet'
@@ -94,8 +94,13 @@ function usePredictBet() {
 // ── localStorage key ──────────────────────────────────────────────────────────
 const LS_BETS_KEY = 'arc_predict_bets_5042002'
 
-function loadBets(): MyBet[] {
-  try { return JSON.parse(localStorage.getItem(LS_BETS_KEY) ?? '[]') } catch { return [] }
+function loadBets(address?: string): MyBet[] {
+  try {
+    const all: MyBet[] = JSON.parse(localStorage.getItem(LS_BETS_KEY) ?? '[]')
+    if (!address) return all
+    // Show bets for this wallet, plus legacy bets that have no walletAddress
+    return all.filter(b => !b.walletAddress || b.walletAddress.toLowerCase() === address.toLowerCase())
+  } catch { return [] }
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -114,12 +119,13 @@ interface Market {
 }
 
 interface MyBet {
-  marketId: string
-  side:     'yes' | 'no'
-  amount:   number
-  odds:     number   // % at time of bet
-  time:     number
-  txHash?:  string
+  marketId:      string
+  side:          'yes' | 'no'
+  amount:        number
+  odds:          number   // % at time of bet
+  time:          number
+  txHash?:       string
+  walletAddress?: string
 }
 
 // ── Mock markets data ─────────────────────────────────────────────────────────
@@ -664,14 +670,19 @@ function MyBetsSection({
 // ── Main Panel ────────────────────────────────────────────────────────────────
 
 export default function PredictionMarketPanel() {
-  const { isReady: isConnected } = useWallet()
+  const { isReady: isConnected, address } = useWallet()
   const { balanceUSDC } = usePerpTrade()
   const betHook = usePredictBet()
 
   const [markets,  setMarkets]  = useState<Market[]>(INITIAL_MARKETS)
-  const [myBets,   setMyBets]   = useState<MyBet[]>(loadBets)
+  const [myBets,   setMyBets]   = useState<MyBet[]>(() => loadBets(address))
   const [category, setCategory] = useState<Category>('all')
   const [sortBy,   setSortBy]   = useState<'volume' | 'ending' | 'newest'>('volume')
+
+  // Reload bets whenever the connected wallet changes
+  useEffect(() => {
+    setMyBets(loadBets(address))
+  }, [address])
 
   const filtered = useMemo(() => {
     let list = category === 'all' ? [...markets] : markets.filter(m => m.category === category)
@@ -702,17 +713,22 @@ export default function PredictionMarketPanel() {
     // Record the bet and persist to localStorage
     const market = markets.find(m => m.id === marketId)!
     const odds   = getOdds(market.yesPool, market.noPool)
-    setMyBets(prev => {
-      let next: MyBet[]
-      const idx = prev.findIndex(b => b.marketId === marketId)
+    setMyBets(_prev => {
+      // Work on all bets (all wallets) for storage, but display is filtered
+      const allBets: MyBet[] = (() => {
+        try { return JSON.parse(localStorage.getItem(LS_BETS_KEY) ?? '[]') } catch { return [] }
+      })()
+      const idx = allBets.findIndex(b => b.marketId === marketId && (!b.walletAddress || b.walletAddress.toLowerCase() === (address ?? '').toLowerCase()))
+      let nextAll: MyBet[]
       if (idx >= 0) {
-        next = [...prev]
-        next[idx] = { ...next[idx], amount: next[idx].amount + amount, txHash }
+        nextAll = [...allBets]
+        nextAll[idx] = { ...nextAll[idx], amount: nextAll[idx].amount + amount, txHash }
       } else {
-        next = [...prev, { marketId, side, amount, odds: side === 'yes' ? odds.yes : odds.no, time: Date.now(), txHash }]
+        nextAll = [...allBets, { marketId, side, amount, odds: side === 'yes' ? odds.yes : odds.no, time: Date.now(), txHash, walletAddress: address ?? undefined }]
       }
-      localStorage.setItem(LS_BETS_KEY, JSON.stringify(next))
-      return next
+      localStorage.setItem(LS_BETS_KEY, JSON.stringify(nextAll))
+      // Return only this wallet's bets for display
+      return nextAll.filter(b => !b.walletAddress || b.walletAddress.toLowerCase() === (address ?? '').toLowerCase())
     })
   }
 
@@ -727,7 +743,13 @@ export default function PredictionMarketPanel() {
           totalBetAmount={totalBetAmount}
           onClear={() => {
             setMyBets([])
-            localStorage.removeItem(LS_BETS_KEY)
+            // Remove only this wallet's bets; keep other wallets' bets intact
+            try {
+              const allBets: MyBet[] = JSON.parse(localStorage.getItem(LS_BETS_KEY) ?? '[]')
+              const remaining = allBets.filter(b => b.walletAddress && b.walletAddress.toLowerCase() !== (address ?? '').toLowerCase())
+              if (remaining.length === 0) localStorage.removeItem(LS_BETS_KEY)
+              else localStorage.setItem(LS_BETS_KEY, JSON.stringify(remaining))
+            } catch { localStorage.removeItem(LS_BETS_KEY) }
           }}
         />
       )}
