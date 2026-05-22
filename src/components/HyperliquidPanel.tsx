@@ -1,12 +1,13 @@
-// ── AgenticEconomyPanel.tsx ───────────────────────────────────────────────────
+// ── HyperliquidPanel.tsx (AgenticEconomyPanel) ───────────────────────────────
 // Tab "Agents" — ERC-8183 Job Marketplace on Arc Testnet (onchain)
 // Contract: ArcAgentJobs @ 0x55031271BDEfeBd9b6E6af52B9a92992aa6E3EFD
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useReadContract, usePublicClient, useWaitForTransactionReceipt } from 'wagmi'
-import { keccak256, toBytes } from 'viem'
+import { keccak256, toBytes, parseUnits } from 'viem'
 import { useWallet } from '../hooks/useWallet'
 import { AGENT_JOBS_ADDRESS, AGENT_JOBS_ABI, TOKEN_ADDRESSES, ERC20_ABI } from '../config/contracts'
+import { usePerpTrade } from '../hooks/usePerpsContract'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -38,58 +39,38 @@ interface OnchainJob {
   createdAt: bigint
 }
 
-function shortAddr(a: string) { return a === '0x0000000000000000000000000000000000000000' ? 'Open' : `${a.slice(0,6)}…${a.slice(-4)}` }
-function fmtUsdc(n: bigint)   { return `${(Number(n) / 1e6).toFixed(2)} USDC` }
-function fmtDate(ts: bigint)  {
+interface NanoTx {
+  to: string
+  amount: string
+  txHash: string
+  time: number
+}
+
+const LS_NANO_KEY = 'arc_nano_txs_v1'
+
+function loadNanoTxs(): NanoTx[] {
+  try { return JSON.parse(localStorage.getItem(LS_NANO_KEY) ?? '[]') } catch { return [] }
+}
+
+function shortAddr(a: string) {
+  return a === '0x0000000000000000000000000000000000000000' ? 'Open' : `${a.slice(0,6)}…${a.slice(-4)}`
+}
+function fmtUsdc(n: bigint)  { return `${(Number(n) / 1e6).toFixed(2)} USDC` }
+function fmtDate(ts: bigint) {
   const d = new Date(Number(ts) * 1000)
   return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
+function fmtRelative(ms: number) {
+  const diff = Date.now() - ms
+  if (diff < 60_000)     return 'just now'
+  if (diff < 3_600_000)  return `${Math.floor(diff / 60_000)}m ago`
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
+  return `${Math.floor(diff / 86_400_000)}d ago`
+}
 function statusName(s: number): StatusName { return STATUS_LABEL[s] ?? 'Open' }
 
-const USDC = TOKEN_ADDRESSES.USDC
+const USDC      = TOKEN_ADDRESSES.USDC
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000' as `0x${string}`
-
-// ── Live nanopayment ticker ───────────────────────────────────────────────────
-
-function NanoTicker() {
-  const [ticks, setTicks] = useState<{ id: number; label: string; amount: string; color: string }[]>([])
-  const counterRef = useRef(0)
-  useEffect(() => {
-    const EVENTS = [
-      { label: 'EV → Charger',       amount: '$0.000120', color: 'text-amber-600' },
-      { label: 'Agent → API',         amount: '$0.000500', color: 'text-violet-600' },
-      { label: 'Sensor → Hub',        amount: '$0.000010', color: 'text-blue-600' },
-      { label: 'Bot → Inference',     amount: '$0.000050', color: 'text-emerald-600' },
-      { label: 'Agent → Bandwidth',   amount: '$0.000001', color: 'text-slate-600' },
-      { label: 'Vehicle → Toll',      amount: '$0.000002', color: 'text-orange-600' },
-    ]
-    const iv = setInterval(() => {
-      const ev = EVENTS[counterRef.current % EVENTS.length]
-      counterRef.current++
-      setTicks(prev => [{ id: counterRef.current, ...ev }, ...prev].slice(0, 8))
-    }, 600)
-    return () => clearInterval(iv)
-  }, [])
-  return (
-    <div className="bg-slate-900 rounded-2xl p-4 min-h-[160px]">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-        <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider">Live M2M Stream · Arc Testnet</span>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        {ticks.map((t, i) => (
-          <div key={t.id} className="flex items-center justify-between" style={{ opacity: 1 - i * 0.1 }}>
-            <span className="text-slate-400 text-xs font-mono">{t.label}</span>
-            <div className="flex items-center gap-3">
-              <span className={`text-xs font-mono font-bold ${t.color}`}>{t.amount}</span>
-              <span className="text-slate-600 text-[10px]">~780ms ✓</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 // ── Job card ──────────────────────────────────────────────────────────────────
 
@@ -100,15 +81,19 @@ function JobCard({ job, myAddress, onAction, loading }: {
   loading: bigint | null
 }) {
   const [deliverableInput, setDeliverableInput] = useState('')
-  const sName = statusName(job.status)
+  const sName      = statusName(job.status)
   const isCreator   = myAddress?.toLowerCase() === job.creator.toLowerCase()
   const isProvider  = myAddress?.toLowerCase() === job.provider.toLowerCase()
   const isEvaluator = myAddress?.toLowerCase() === job.evaluator.toLowerCase()
   const isExpired   = Date.now() / 1000 > Number(job.deadline)
-  const busy = loading === job.id
+  const busy        = loading === job.id
 
   return (
-    <div className={`bg-white border rounded-2xl p-4 flex flex-col gap-3 ${sName === 'Completed' ? 'border-emerald-200' : sName === 'Rejected' || sName === 'Expired' ? 'border-slate-200 opacity-70' : 'border-slate-200 hover:border-violet-200'} transition-all`}>
+    <div className={`bg-white border rounded-2xl p-4 flex flex-col gap-3 ${
+      sName === 'Completed' ? 'border-emerald-200' :
+      sName === 'Rejected' || sName === 'Expired' ? 'border-slate-200 opacity-70' :
+      'border-slate-200 hover:border-violet-200'
+    } transition-all`}>
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -141,7 +126,6 @@ function JobCard({ job, myAddress, onAction, loading }: {
 
       {/* Actions */}
       <div className="flex flex-col gap-2">
-        {/* Fund — anyone can fund an open job */}
         {sName === 'Open' && !isExpired && myAddress && (
           <button onClick={() => onAction('fund', job.id)}
             disabled={busy}
@@ -150,7 +134,6 @@ function JobCard({ job, myAddress, onAction, loading }: {
           </button>
         )}
 
-        {/* Submit — provider submits deliverable */}
         {sName === 'Funded' && !isExpired && myAddress && (job.provider === ZERO_ADDR || isProvider) && (
           <div className="flex gap-2">
             <input
@@ -167,7 +150,6 @@ function JobCard({ job, myAddress, onAction, loading }: {
           </div>
         )}
 
-        {/* Complete / Reject — evaluator only */}
         {sName === 'Submitted' && isEvaluator && (
           <div className="flex gap-2">
             <button onClick={() => onAction('complete', job.id)}
@@ -183,7 +165,6 @@ function JobCard({ job, myAddress, onAction, loading }: {
           </div>
         )}
 
-        {/* Claim refund — creator after expiry */}
         {(sName === 'Funded' || sName === 'Submitted') && isExpired && isCreator && (
           <button onClick={() => onAction('claimRefund', job.id)}
             disabled={busy}
@@ -200,7 +181,8 @@ function JobCard({ job, myAddress, onAction, loading }: {
 
 export default function HyperliquidPanel() {
   const { address, isReady, writeContract } = useWallet()
-  const publicClient = usePublicClient()
+  const { balanceUSDC }  = usePerpTrade()
+  const publicClient     = usePublicClient()
 
   const [activeTab, setActiveTab] = useState<AgentTab>('jobs')
   const [jobs, setJobs]           = useState<OnchainJob[]>([])
@@ -213,14 +195,18 @@ export default function HyperliquidPanel() {
 
   // Create job form
   const [form, setForm] = useState({
-    title: '',
-    description: '',
-    budget: '',
-    deadlineHours: '24',
-    provider: '',
-    evaluator: '',
+    title: '', description: '', budget: '',
+    deadlineHours: '24', provider: '', evaluator: '',
   })
   const [creating, setCreating] = useState(false)
+
+  // Nanopayments
+  const [nanoTo, setNanoTo]         = useState('')
+  const [nanoAmount, setNanoAmount] = useState('')
+  const [nanoSending, setNanoSending] = useState(false)
+  const [nanoTxHash, setNanoTxHash] = useState<`0x${string}` | null>(null)
+  const [nanoErr, setNanoErr]       = useState<string | null>(null)
+  const [nanoTxs, setNanoTxs]       = useState<NanoTx[]>(loadNanoTxs)
 
   // Read total job count from chain
   const { data: jobCountData, refetch: refetchCount } = useReadContract({
@@ -229,8 +215,8 @@ export default function HyperliquidPanel() {
     functionName: 'jobCount',
   })
 
-  // Wait for tx confirmation
   const { isLoading: txPending, isSuccess: txConfirmed } = useWaitForTransactionReceipt({ hash: txHash ?? undefined })
+  const { isLoading: nanoPending, isSuccess: nanoConfirmed } = useWaitForTransactionReceipt({ hash: nanoTxHash ?? undefined })
 
   // Load recent jobs from chain
   const loadJobs = useCallback(async () => {
@@ -244,14 +230,10 @@ export default function HyperliquidPanel() {
         args: [20n],
       }) as OnchainJob[]
       setJobs(result.filter(j => j.id > 0n))
-    } catch (e) {
-      console.error('loadJobs', e)
-    } finally {
-      setLoadingJobs(false)
-    }
+    } catch (e) { console.error('loadJobs', e) }
+    finally { setLoadingJobs(false) }
   }, [publicClient])
 
-  // Load my jobs
   const loadMyJobs = useCallback(async () => {
     if (!publicClient || !address) return
     try {
@@ -261,34 +243,37 @@ export default function HyperliquidPanel() {
         functionName: 'getJobsByCreator',
         args: [address],
       }) as bigint[]
-
       const fetched = await Promise.all(ids.map(id =>
         publicClient.readContract({
-          address: AGENT_JOBS_ADDRESS,
-          abi: AGENT_JOBS_ABI,
-          functionName: 'getJob',
-          args: [id],
+          address: AGENT_JOBS_ADDRESS, abi: AGENT_JOBS_ABI,
+          functionName: 'getJob', args: [id],
         }) as Promise<OnchainJob>
       ))
       setMyJobs(fetched.filter(j => j.id > 0n).reverse())
-    } catch (e) {
-      console.error('loadMyJobs', e)
-    }
+    } catch (e) { console.error('loadMyJobs', e) }
   }, [publicClient, address])
 
   useEffect(() => { loadJobs() }, [loadJobs])
   useEffect(() => { if (address) loadMyJobs() }, [loadMyJobs, address])
 
-  // Reload after tx confirms
   useEffect(() => {
     if (txConfirmed) {
-      loadJobs()
-      if (address) loadMyJobs()
-      refetchCount()
-      setActionLoading(null)
-      setTxHash(null)
+      loadJobs(); if (address) loadMyJobs(); refetchCount()
+      setActionLoading(null); setTxHash(null)
     }
   }, [txConfirmed, loadJobs, loadMyJobs, refetchCount, address])
+
+  useEffect(() => {
+    if (nanoConfirmed && nanoTxHash) {
+      const rec: NanoTx = { to: nanoTo, amount: nanoAmount, txHash: nanoTxHash, time: Date.now() }
+      setNanoTxs(prev => {
+        const next = [rec, ...prev].slice(0, 20)
+        localStorage.setItem(LS_NANO_KEY, JSON.stringify(next))
+        return next
+      })
+      setNanoTxHash(null); setNanoTo(''); setNanoAmount('')
+    }
+  }, [nanoConfirmed, nanoTxHash, nanoTo, nanoAmount])
 
   // ── Action handler ─────────────────────────────────────────────────────────
 
@@ -298,53 +283,23 @@ export default function HyperliquidPanel() {
     extra?: string,
   ) => {
     if (!isReady) return
-    setTxError(null)
-    setTxSuccess(null)
-    setActionLoading(jobId)
-
+    setTxError(null); setTxSuccess(null); setActionLoading(jobId)
     try {
       let hash: `0x${string}`
-
       if (action === 'fund') {
-        // Find the job to get budget
         const job = [...jobs, ...myJobs].find(j => j.id === jobId)
         if (!job) throw new Error('Job not found')
-
-        // Approve USDC first
-        await writeContract({
-          address: USDC,
-          abi: ERC20_ABI,
-          functionName: 'approve',
-          args: [AGENT_JOBS_ADDRESS, job.budgetUsdc],
-        })
-
-        // Fund the job
-        hash = await writeContract({
-          address: AGENT_JOBS_ADDRESS,
-          abi: AGENT_JOBS_ABI,
-          functionName: 'fund',
-          args: [jobId],
-        })
+        await writeContract({ address: USDC, abi: ERC20_ABI, functionName: 'approve', args: [AGENT_JOBS_ADDRESS, job.budgetUsdc] })
+        hash = await writeContract({ address: AGENT_JOBS_ADDRESS, abi: AGENT_JOBS_ABI, functionName: 'fund', args: [jobId] })
       } else if (action === 'submit') {
         const deliverable = extra?.trim() || 'deliverable'
         const deliverableHash = keccak256(toBytes(deliverable))
-        hash = await writeContract({
-          address: AGENT_JOBS_ADDRESS,
-          abi: AGENT_JOBS_ABI,
-          functionName: 'submit',
-          args: [jobId, deliverableHash],
-        })
+        hash = await writeContract({ address: AGENT_JOBS_ADDRESS, abi: AGENT_JOBS_ABI, functionName: 'submit', args: [jobId, deliverableHash] })
       } else {
-        hash = await writeContract({
-          address: AGENT_JOBS_ADDRESS,
-          abi: AGENT_JOBS_ABI,
-          functionName: action,
-          args: [jobId],
-        })
+        hash = await writeContract({ address: AGENT_JOBS_ADDRESS, abi: AGENT_JOBS_ABI, functionName: action, args: [jobId] })
       }
-
       setTxHash(hash)
-      setTxSuccess(`Transaction submitted → waiting for confirmation…`)
+      setTxSuccess('Transaction submitted → waiting for confirmation…')
     } catch (e) {
       setTxError(e instanceof Error ? e.message : String(e))
       setActionLoading(null)
@@ -357,22 +312,17 @@ export default function HyperliquidPanel() {
     if (!isReady) return
     const budget = parseFloat(form.budget)
     if (!form.title || !budget || budget <= 0) { setTxError('Title and budget required'); return }
-    setCreating(true)
-    setTxError(null)
-    setTxSuccess(null)
+    setCreating(true); setTxError(null); setTxSuccess(null)
     try {
       const budgetUsdc = BigInt(Math.round(budget * 1e6))
       const hash = await writeContract({
-        address: AGENT_JOBS_ADDRESS,
-        abi: AGENT_JOBS_ABI,
-        functionName: 'createJob',
+        address: AGENT_JOBS_ADDRESS, abi: AGENT_JOBS_ABI, functionName: 'createJob',
         args: [
           (form.provider as `0x${string}`) || ZERO_ADDR,
           (form.evaluator as `0x${string}`) || ZERO_ADDR,
           budgetUsdc,
           BigInt(parseInt(form.deadlineHours) || 24),
-          form.title,
-          form.description,
+          form.title, form.description,
         ],
       })
       setTxHash(hash)
@@ -381,25 +331,43 @@ export default function HyperliquidPanel() {
       setActiveTab('myjobs')
     } catch (e) {
       setTxError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setCreating(false)
-    }
+    } finally { setCreating(false) }
   }
 
-  // ── Tabs config ────────────────────────────────────────────────────────────
+  // ── Send nanopayment ────────────────────────────────────────────────────────
+
+  const handleNanoSend = async () => {
+    if (!isReady) return
+    const amt = parseFloat(nanoAmount)
+    if (!nanoTo.startsWith('0x') || !amt || amt <= 0) { setNanoErr('Valid address and amount required'); return }
+    setNanoSending(true); setNanoErr(null)
+    try {
+      const raw = parseUnits(nanoAmount, 6)
+      const hash = await writeContract({
+        address: USDC, abi: ERC20_ABI,
+        functionName: 'transfer',
+        args: [nanoTo as `0x${string}`, raw],
+      })
+      setNanoTxHash(hash)
+    } catch (e) {
+      setNanoErr(e instanceof Error ? e.message.slice(0, 200) : String(e))
+    } finally { setNanoSending(false) }
+  }
+
+  // ── Tabs ───────────────────────────────────────────────────────────────────
 
   const TABS: { key: AgentTab; label: string; icon: string }[] = [
-    { key: 'jobs',    label: 'Job Board',       icon: '📋' },
-    { key: 'create',  label: 'Post a Job',      icon: '➕' },
-    { key: 'myjobs',  label: 'My Jobs',         icon: '👤' },
-    { key: 'nanopay', label: 'Nanopayments',    icon: '💸' },
-    { key: 'erc8183', label: 'ERC-8183 Spec',   icon: '📖' },
+    { key: 'jobs',    label: 'Job Board',     icon: '📋' },
+    { key: 'create',  label: 'Post a Job',    icon: '➕' },
+    { key: 'myjobs',  label: 'My Jobs',       icon: '👤' },
+    { key: 'nanopay', label: 'Nanopayments',  icon: '💸' },
+    { key: 'erc8183', label: 'ERC-8183 Spec', icon: '📖' },
   ]
 
   return (
     <div className="flex flex-col gap-5">
 
-      {/* Header banner */}
+      {/* Header */}
       <div className="bg-gradient-to-r from-slate-900 via-violet-950 to-blue-950 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-2xl shrink-0">🤖</div>
@@ -429,14 +397,11 @@ export default function HyperliquidPanel() {
           {txPending && '⏳ Confirming on Arc Testnet…  '}
           {txSuccess && !txPending && `✅ ${txSuccess}`}
           {txError && `❌ ${txError.slice(0, 200)}`}
-          {txHash && (
-            <a href={`https://testnet.arcscan.app/tx/${txHash}`} target="_blank" rel="noreferrer"
-              className="ml-2 underline text-violet-600 text-xs">View tx ↗</a>
-          )}
+          {txHash && <a href={`https://testnet.arcscan.app/tx/${txHash}`} target="_blank" rel="noreferrer" className="ml-2 underline text-violet-600 text-xs">View tx ↗</a>}
         </div>
       )}
 
-      {/* Tab switcher */}
+      {/* Tabs */}
       <div className="flex gap-2 flex-wrap">
         {TABS.map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
@@ -462,13 +427,9 @@ export default function HyperliquidPanel() {
               {loadingJobs ? '⏳ Loading…' : '🔄 Refresh'}
             </button>
           </div>
-
           {loadingJobs && jobs.length === 0 && (
-            <div className="flex items-center justify-center py-12 text-slate-400 text-sm">
-              ⏳ Reading from Arc Testnet…
-            </div>
+            <div className="flex items-center justify-center py-12 text-slate-400 text-sm">⏳ Reading from Arc Testnet…</div>
           )}
-
           {!loadingJobs && jobs.length === 0 && (
             <div className="flex flex-col items-center gap-3 py-12 bg-white border border-dashed border-slate-200 rounded-2xl">
               <span className="text-4xl">📋</span>
@@ -480,7 +441,6 @@ export default function HyperliquidPanel() {
               </button>
             </div>
           )}
-
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {jobs.map(job => (
               <JobCard key={job.id.toString()} job={job} myAddress={address}
@@ -498,94 +458,61 @@ export default function HyperliquidPanel() {
               <h3 className="text-slate-900 font-bold text-base mb-0.5">Post a Job Onchain</h3>
               <p className="text-slate-400 text-xs">Creates an ERC-8183-style escrow job on Arc Testnet. USDC funded after creation.</p>
             </div>
-
             {!isReady && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-amber-700 text-sm font-semibold">
                 ⚠ Connect your wallet to post a job
               </div>
             )}
-
             <div>
               <label className="block text-slate-700 text-xs font-bold mb-1.5">Job Title *</label>
-              <input
-                value={form.title}
-                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+              <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                 placeholder="e.g. Summarise risk signals from Arc testnet mempool"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:border-violet-400 focus:bg-white transition-colors"
-              />
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:border-violet-400 focus:bg-white transition-colors" />
             </div>
-
             <div>
               <label className="block text-slate-700 text-xs font-bold mb-1.5">Description</label>
-              <textarea
-                value={form.description}
-                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                rows={3}
-                placeholder="Describe the deliverable, acceptance criteria, and any context…"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:border-violet-400 focus:bg-white transition-colors resize-none"
-              />
+              <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                rows={3} placeholder="Describe the deliverable, acceptance criteria, and any context…"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:border-violet-400 focus:bg-white transition-colors resize-none" />
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-slate-700 text-xs font-bold mb-1.5">Budget (USDC) *</label>
-                <input
-                  type="number"
-                  value={form.budget}
-                  onChange={e => setForm(f => ({ ...f, budget: e.target.value }))}
-                  placeholder="25"
-                  min="0.01"
-                  step="0.01"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:border-violet-400 transition-colors"
-                />
+                <input type="number" value={form.budget} onChange={e => setForm(f => ({ ...f, budget: e.target.value }))}
+                  placeholder="25" min="0.01" step="0.01"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:border-violet-400 transition-colors" />
               </div>
               <div>
                 <label className="block text-slate-700 text-xs font-bold mb-1.5">Deadline (hours)</label>
-                <input
-                  type="number"
-                  value={form.deadlineHours}
-                  onChange={e => setForm(f => ({ ...f, deadlineHours: e.target.value }))}
-                  placeholder="24"
-                  min="1"
-                  max="8760"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:border-violet-400 transition-colors"
-                />
+                <input type="number" value={form.deadlineHours} onChange={e => setForm(f => ({ ...f, deadlineHours: e.target.value }))}
+                  placeholder="24" min="1" max="8760"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:border-violet-400 transition-colors" />
               </div>
             </div>
-
             <div>
-              <label className="block text-slate-700 text-xs font-bold mb-1.5">Provider Address <span className="text-slate-400 font-normal">(optional — leave blank for open market)</span></label>
-              <input
-                value={form.provider}
-                onChange={e => setForm(f => ({ ...f, provider: e.target.value }))}
+              <label className="block text-slate-700 text-xs font-bold mb-1.5">
+                Provider Address <span className="text-slate-400 font-normal">(optional — leave blank for open market)</span>
+              </label>
+              <input value={form.provider} onChange={e => setForm(f => ({ ...f, provider: e.target.value }))}
                 placeholder="0x… or leave blank"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm font-mono focus:outline-none focus:border-violet-400 transition-colors"
-              />
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm font-mono focus:outline-none focus:border-violet-400 transition-colors" />
             </div>
-
             <div>
-              <label className="block text-slate-700 text-xs font-bold mb-1.5">Evaluator Address <span className="text-slate-400 font-normal">(optional — defaults to you)</span></label>
-              <input
-                value={form.evaluator}
-                onChange={e => setForm(f => ({ ...f, evaluator: e.target.value }))}
+              <label className="block text-slate-700 text-xs font-bold mb-1.5">
+                Evaluator Address <span className="text-slate-400 font-normal">(optional — defaults to you)</span>
+              </label>
+              <input value={form.evaluator} onChange={e => setForm(f => ({ ...f, evaluator: e.target.value }))}
                 placeholder="0x… or leave blank (you evaluate)"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm font-mono focus:outline-none focus:border-violet-400 transition-colors"
-              />
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm font-mono focus:outline-none focus:border-violet-400 transition-colors" />
             </div>
-
-            <button
-              onClick={handleCreate}
-              disabled={!isReady || creating || !form.title || !form.budget}
-              className="w-full py-3 rounded-xl bg-violet-600 text-white font-bold text-sm hover:bg-violet-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {creating ? '⏳ Creating job onchain…' : `🚀 createJob() on Arc Testnet`}
+            <button onClick={handleCreate} disabled={!isReady || creating || !form.title || !form.budget}
+              className="w-full py-3 rounded-xl bg-violet-600 text-white font-bold text-sm hover:bg-violet-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+              {creating ? '⏳ Creating job onchain…' : '🚀 createJob() on Arc Testnet'}
             </button>
-            <p className="text-slate-400 text-[11px] text-center">
-              Gas paid in USDC · ~780ms finality · ArcAgentJobs contract
-            </p>
+            <p className="text-slate-400 text-[11px] text-center">Gas paid in USDC · ~780ms finality · ArcAgentJobs contract</p>
           </div>
 
-          {/* Side info */}
+          {/* Side — lifecycle only */}
           <div className="flex flex-col gap-4">
             <div className="bg-slate-900 rounded-xl p-4">
               <p className="text-emerald-400 text-xs font-bold mb-2">// Job lifecycle after creation:</p>
@@ -610,14 +537,7 @@ export default function HyperliquidPanel() {
               <p className="text-violet-700 text-xs font-bold mb-1">💡 After createJob()</p>
               <p className="text-slate-600 text-xs leading-relaxed">
                 Go to <strong>My Jobs</strong> tab and click <strong>Fund Job</strong> to escrow USDC.
-                The job is open for any provider to bid once funded.
-              </p>
-            </div>
-            <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-              <p className="text-indigo-700 text-xs font-bold mb-1">🔐 Opt-in Privacy</p>
-              <p className="text-slate-600 text-xs leading-relaxed">
-                Arc's Privacy VM allows agents to shield bid details from competitors while
-                remaining auditable. Full privacy integration coming in next release.
+                The job is open for any provider to submit once funded.
               </p>
             </div>
           </div>
@@ -638,14 +558,12 @@ export default function HyperliquidPanel() {
               </button>
             )}
           </div>
-
           {!address && (
             <div className="flex flex-col items-center gap-3 py-12 bg-white border border-dashed border-slate-200 rounded-2xl">
               <span className="text-4xl">👤</span>
               <p className="text-slate-500 text-sm">Connect wallet to view your jobs</p>
             </div>
           )}
-
           {address && myJobs.length === 0 && (
             <div className="flex flex-col items-center gap-3 py-12 bg-white border border-dashed border-slate-200 rounded-2xl">
               <span className="text-4xl">📭</span>
@@ -656,7 +574,6 @@ export default function HyperliquidPanel() {
               </button>
             </div>
           )}
-
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {myJobs.map(job => (
               <JobCard key={job.id.toString()} job={job} myAddress={address}
@@ -666,117 +583,158 @@ export default function HyperliquidPanel() {
         </div>
       )}
 
-      {/* ── Nanopayments ── */}
+      {/* ── Nanopayments — real onchain USDC transfer ── */}
       {activeTab === 'nanopay' && (
-        <div className="flex flex-col gap-6">
-          <div className="bg-gradient-to-br from-violet-50 to-blue-50 border border-violet-200 rounded-2xl p-6">
-            <h3 className="text-slate-900 font-extrabold text-xl mb-2">Nanopayments: Usage-Based Billing at Internet Scale</h3>
-            <p className="text-slate-500 text-sm leading-relaxed max-w-2xl mb-3">
-              Arc enables transactions as small as <strong>$0.000001</strong> — economically viable because
-              USDC gas fees are stable and dollar-denominated. <strong>Circle Nanopayments</strong> makes
-              what was impossible with volatile ETH gas now production-ready.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {['$0.000001 minimum', 'Circle Nanopayments API', 'Pay-per-byte', 'Pay-per-token', 'M2M flows'].map(t => (
-                <span key={t} className="px-2.5 py-1 rounded-full bg-violet-100 border border-violet-200 text-violet-700 text-[11px] font-semibold">{t}</span>
-              ))}
-            </div>
-          </div>
+        <div className="flex flex-col gap-5">
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {[
-              { service: 'Pay-per-query AI research',   unit: 'per query',  amount: '$0.000500', volume: '1.2M/day',  icon: '🧠' },
-              { service: 'IoT sensor data stream',       unit: 'per MB',     amount: '$0.000010', volume: '42M/day',   icon: '📡' },
-              { service: 'Agent bandwidth allocation',   unit: 'per second', amount: '$0.000001', volume: '200M/day',  icon: '🔌' },
-              { service: 'Usage-based AI inference',     unit: 'per token',  amount: '$0.000050', volume: '5M/day',    icon: '💡' },
-              { service: 'EV charging (M2M)',            unit: 'per kWh',    amount: '$0.000120', volume: '18M/day',   icon: '⚡' },
-              { service: 'Vehicle tolls (autonomous)',   unit: 'per meter',  amount: '$0.000002', volume: '500M/day',  icon: '🚗' },
-            ].map(d => (
-              <div key={d.service} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-2 hover:border-violet-200 transition-all">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">{d.icon}</span>
-                  <p className="text-slate-700 font-bold text-sm">{d.service}</p>
-                </div>
-                <div className="flex flex-col gap-1 mt-auto pt-2 border-t border-slate-100">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400 text-xs">Per unit ({d.unit})</span>
-                    <span className="text-emerald-600 font-mono font-bold text-sm">{d.amount}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400 text-xs">Est. daily volume</span>
-                    <span className="text-slate-600 font-mono text-xs">{d.volume}</span>
-                  </div>
-                </div>
+          {/* Send form */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col gap-4 max-w-lg">
+            <div>
+              <h3 className="text-slate-900 font-bold text-base mb-0.5">Send USDC Onchain</h3>
+              <p className="text-slate-400 text-xs">
+                Transfer any USDC amount directly via <code className="font-mono bg-slate-100 px-1 rounded">transfer()</code> — as small as $0.000001. ~780ms finality.
+              </p>
+            </div>
+
+            {!isReady && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-amber-700 text-sm font-semibold">
+                ⚠ Connect your wallet to send USDC
               </div>
-            ))}
+            )}
+
+            {isReady && (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 flex items-center justify-between">
+                <span className="text-slate-500 text-xs">Your USDC balance</span>
+                <span className="text-slate-900 font-bold text-sm font-mono">{balanceUSDC.toFixed(6)} USDC</span>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-slate-700 text-xs font-bold mb-1.5">Recipient Address *</label>
+              <input value={nanoTo} onChange={e => setNanoTo(e.target.value)}
+                placeholder="0x…"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm font-mono focus:outline-none focus:border-violet-400 focus:bg-white transition-colors" />
+            </div>
+
+            <div>
+              <label className="block text-slate-700 text-xs font-bold mb-1.5">Amount (USDC) *</label>
+              <input type="number" value={nanoAmount} onChange={e => setNanoAmount(e.target.value)}
+                placeholder="0.001" min="0.000001" step="any"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm focus:outline-none focus:border-violet-400 transition-colors" />
+              {/* Quick-fill amounts */}
+              <div className="flex gap-1.5 flex-wrap mt-2">
+                {['0.000001', '0.0001', '0.001', '0.01', '0.1', '1'].map(v => (
+                  <button key={v} onClick={() => setNanoAmount(v)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
+                      nanoAmount === v
+                        ? 'bg-violet-600 border-violet-500 text-white'
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-violet-300'
+                    }`}>
+                    ${v}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {nanoErr && (
+              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-2 text-red-700 text-xs font-semibold">
+                ❌ {nanoErr}
+              </div>
+            )}
+
+            {(nanoPending || (nanoTxHash && !nanoConfirmed)) && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2 text-emerald-700 text-xs font-semibold flex items-center gap-2">
+                ⏳ Confirming…
+                {nanoTxHash && (
+                  <a href={`https://testnet.arcscan.app/tx/${nanoTxHash}`} target="_blank" rel="noreferrer"
+                    className="underline text-violet-600">View tx ↗</a>
+                )}
+              </div>
+            )}
+
+            <button onClick={handleNanoSend}
+              disabled={!isReady || nanoSending || nanoPending || !nanoTo || !nanoAmount}
+              className="w-full py-3 rounded-xl bg-violet-600 text-white font-bold text-sm hover:bg-violet-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+              {nanoSending ? '⏳ Sending…' : '💸 Send USDC'}
+            </button>
+            <p className="text-slate-400 text-[11px] text-center">Gas paid in USDC · USDC ERC-20 on Arc Testnet</p>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <NanoTicker />
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { icon: '⚡', label: 'Finality',   value: '~780ms',    sub: 'Deterministic, no reorgs', color: 'bg-blue-50 border-blue-200' },
-                { icon: '💰', label: 'Min payment', value: '$0.000001', sub: 'USDC-denominated gas',      color: 'bg-violet-50 border-violet-200' },
-                { icon: '🔐', label: 'Privacy',     value: 'Opt-in',    sub: 'Shield agent strategies',   color: 'bg-indigo-50 border-indigo-200' },
-                { icon: '🔗', label: 'Standard',    value: 'ERC-8183',  sub: 'Open escrow protocol',      color: 'bg-amber-50 border-amber-200' },
-              ].map(s => (
-                <div key={s.label} className={`${s.color} border rounded-2xl p-4`}>
-                  <span className="text-2xl">{s.icon}</span>
-                  <p className="text-slate-900 font-extrabold text-lg mt-1">{s.value}</p>
-                  <p className="text-slate-700 font-semibold text-xs">{s.label}</p>
-                  <p className="text-slate-400 text-[10px] mt-0.5">{s.sub}</p>
-                </div>
-              ))}
+          {/* Tx history */}
+          {nanoTxs.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+              <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+                <h4 className="text-slate-900 font-bold text-sm">Recent Transfers</h4>
+                <button onClick={() => {
+                  setNanoTxs([])
+                  localStorage.removeItem(LS_NANO_KEY)
+                }} className="text-[10px] text-slate-400 hover:text-red-500 border border-slate-200 hover:border-red-200 px-2 py-0.5 rounded transition-colors">
+                  Clear
+                </button>
+              </div>
+              <div className="divide-y divide-slate-50">
+                {nanoTxs.map((tx, i) => (
+                  <div key={i} className="px-5 py-3 grid grid-cols-[1fr_auto_auto] gap-4 items-center text-xs">
+                    <span className="text-slate-500 font-mono truncate">→ {tx.to}</span>
+                    <span className="text-emerald-600 font-bold font-mono">${tx.amount} USDC</span>
+                    <div className="flex items-center gap-2 text-slate-400 shrink-0">
+                      <span>{fmtRelative(tx.time)}</span>
+                      <a href={`https://testnet.arcscan.app/tx/${tx.txHash}`} target="_blank" rel="noreferrer"
+                        className="hover:text-violet-600 transition-colors">↗</a>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
       {/* ── ERC-8183 Spec ── */}
       {activeTab === 'erc8183' && (
-        <div className="flex flex-col gap-6">
-          <div className="bg-slate-900 rounded-2xl p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-violet-600/30 border border-violet-500/40 flex items-center justify-center text-xl">🔗</div>
-              <div>
-                <h3 className="text-white font-extrabold text-lg">ArcAgentJobs — ERC-8183 Style Contract</h3>
-                <a href={`https://testnet.arcscan.app/address/${AGENT_JOBS_ADDRESS}`} target="_blank" rel="noreferrer"
-                  className="text-violet-400 text-xs hover:text-violet-300 font-mono">{AGENT_JOBS_ADDRESS} ↗</a>
-              </div>
+        <div className="bg-slate-900 rounded-2xl p-6 flex flex-col gap-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-violet-600/30 border border-violet-500/40 flex items-center justify-center text-xl">🔗</div>
+            <div>
+              <h3 className="text-white font-extrabold text-lg">ArcAgentJobs — ERC-8183 Style Contract</h3>
+              <a href={`https://testnet.arcscan.app/address/${AGENT_JOBS_ADDRESS}`} target="_blank" rel="noreferrer"
+                className="text-violet-400 text-xs hover:text-violet-300 font-mono">{AGENT_JOBS_ADDRESS} ↗</a>
             </div>
+          </div>
 
-            {/* Lifecycle */}
-            <div className="mb-5">
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-3">Job Lifecycle</p>
-              <div className="flex items-center gap-2 flex-wrap">
-                {['Open', 'Funded', 'Submitted', 'Completed'].map((s, i, arr) => (
-                  <div key={s} className="flex items-center gap-2">
-                    <div className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${STATUS_STYLES[s as StatusName]}`}>{s}</div>
-                    {i < arr.length - 1 && <span className="text-slate-600">→</span>}
-                  </div>
-                ))}
-              </div>
-              <p className="text-slate-500 text-xs mt-2">Alternative exits: Rejected (evaluator rejects) · Expired (creator reclaims after deadline)</p>
-            </div>
-
-            {/* Functions */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 mb-4">
-              {[
-                { fn: 'createJob()', desc: 'Define job: title, description, budget, deadline, provider (optional), evaluator', color: 'bg-blue-500/10 border-blue-500/30 text-blue-400' },
-                { fn: 'fund()',       desc: 'Escrow USDC onchain. Caller must approve() this contract for budgetUsdc first.', color: 'bg-amber-500/10 border-amber-500/30 text-amber-400' },
-                { fn: 'submit()',     desc: 'Provider submits deliverable as bytes32 hash (keccak256 of IPFS CID).', color: 'bg-violet-500/10 border-violet-500/30 text-violet-400' },
-                { fn: 'complete()',   desc: 'Evaluator approves — USDC released to provider instantly.', color: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' },
-                { fn: 'reject()',     desc: 'Evaluator rejects — USDC returned to creator.', color: 'bg-red-500/10 border-red-500/30 text-red-400' },
-                { fn: 'claimRefund()', desc: 'Creator reclaims USDC after deadline passes without completion.', color: 'bg-slate-500/10 border-slate-500/30 text-slate-400' },
-              ].map(f => (
-                <div key={f.fn} className={`${f.color} border rounded-xl p-3`}>
-                  <code className="font-mono font-bold text-sm block mb-1">{f.fn}</code>
-                  <p className="text-slate-400 text-[11px] leading-relaxed">{f.desc}</p>
+          {/* Lifecycle */}
+          <div>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-3">Job Lifecycle</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              {(['Open', 'Funded', 'Submitted', 'Completed'] as StatusName[]).map((s, i, arr) => (
+                <div key={s} className="flex items-center gap-2">
+                  <div className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${STATUS_STYLES[s]}`}>{s}</div>
+                  {i < arr.length - 1 && <span className="text-slate-600">→</span>}
                 </div>
               ))}
             </div>
+            <p className="text-slate-500 text-xs mt-2">Alternative exits: Rejected (evaluator rejects) · Expired (creator reclaims after deadline)</p>
+          </div>
 
-            {/* Code example */}
+          {/* Functions */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {[
+              { fn: 'createJob()', desc: 'Define job: title, description, budget, deadline, provider (optional), evaluator', color: 'bg-blue-500/10 border-blue-500/30 text-blue-400' },
+              { fn: 'fund()',      desc: 'Escrow USDC onchain. Caller must approve() this contract for budgetUsdc first.', color: 'bg-amber-500/10 border-amber-500/30 text-amber-400' },
+              { fn: 'submit()',    desc: 'Provider submits deliverable as bytes32 hash (keccak256 of IPFS CID).', color: 'bg-violet-500/10 border-violet-500/30 text-violet-400' },
+              { fn: 'complete()',  desc: 'Evaluator approves — USDC released to provider instantly.', color: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' },
+              { fn: 'reject()',    desc: 'Evaluator rejects — USDC returned to creator.', color: 'bg-red-500/10 border-red-500/30 text-red-400' },
+              { fn: 'claimRefund()', desc: 'Creator reclaims USDC after deadline passes without completion.', color: 'bg-slate-500/10 border-slate-500/30 text-slate-400' },
+            ].map(f => (
+              <div key={f.fn} className={`${f.color} border rounded-xl p-3`}>
+                <code className="font-mono font-bold text-sm block mb-1">{f.fn}</code>
+                <p className="text-slate-400 text-[11px] leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Code example */}
+          <div>
             <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">Example: Full lifecycle in JS (viem)</p>
             <pre className="bg-black/40 rounded-xl p-4 text-xs text-emerald-400 font-mono overflow-x-auto leading-relaxed">
 {`// 1. Create job
@@ -801,23 +759,6 @@ await writeContract({ address: '${AGENT_JOBS_ADDRESS}',
 await writeContract({ address: '${AGENT_JOBS_ADDRESS}',
   functionName: 'complete', args: [jobId] })`}
             </pre>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              { name: 'Circle Agent Stack', icon: '🧠', desc: 'Official Circle quickstart for building financial AI agent infrastructure on Arc. Circle Wallets + ERC-8183.', link: 'https://community.arc.io', color: 'border-violet-200 bg-violet-50' },
-              { name: 'Arc Blueprint', icon: '📄', desc: 'How Arc supports the Agentic Economy — nanopayments, M2M flows, real-time coordination, opt-in privacy.', link: 'https://www.arc.io/blog/how-arc-supports-the-agentic-economy-arc-blueprints', color: 'border-blue-200 bg-blue-50' },
-              { name: 'Agentic Commerce Hackathon', icon: '🎯', desc: 'Build AI agent commerce apps using Circle\'s payment infrastructure on Arc. Active challenge with prizes.', link: 'https://lablab.ai/ai-hackathons/agentic-commerce-on-arc', color: 'border-amber-200 bg-amber-50' },
-            ].map(p => (
-              <a key={p.name} href={p.link} target="_blank" rel="noreferrer"
-                className={`${p.color} border rounded-2xl p-4 hover:shadow-md transition-all flex flex-col gap-3`}>
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">{p.icon}</span>
-                  <h4 className="text-slate-900 font-bold text-sm">{p.name}</h4>
-                </div>
-                <p className="text-slate-500 text-xs leading-relaxed">{p.desc}</p>
-              </a>
-            ))}
           </div>
         </div>
       )}
