@@ -57,7 +57,7 @@ interface SwapCardProps {
 
 export default function SwapCard({ fromTokenProp = 'USDC', toTokenProp = 'EURC', onSwapComplete }: SwapCardProps) {
   const { address, isReady, walletType, chainId, writeContract } = useWallet()
-  const isArc = walletType === 'turnkey' || chainId === arcTestnet.id
+  const isArc = walletType === 'turnkey' || walletType === 'circle' || chainId === arcTestnet.id
   // Public client for waitForTransactionReceipt — ensures approve is on-chain before swap tx
   const publicClient = usePublicClient({ chainId: arcTestnet.id })
 
