@@ -506,35 +506,63 @@ export default function HyperliquidPanel() {
       {/* ── Job Board ── */}
       {activeTab === 'jobs' && (
         <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-slate-900 font-bold text-base">
-              Recent Jobs — {jobs.length > 0 ? `${jobs.length} loaded` : 'Loading…'}
-            </h3>
-            <button onClick={loadJobs} disabled={loadingJobs}
-              className="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-200 transition-colors disabled:opacity-50">
-              {loadingJobs ? '⏳ Loading…' : '🔄 Refresh'}
-            </button>
-          </div>
-          {loadingJobs && jobs.length === 0 && (
-            <div className="flex items-center justify-center py-12 text-slate-400 text-sm">⏳ Reading from Arc Testnet…</div>
-          )}
-          {!loadingJobs && jobs.length === 0 && (
-            <div className="flex flex-col items-center gap-3 py-12 bg-white border border-dashed border-slate-200 rounded-2xl">
-              <span className="text-4xl">📋</span>
-              <p className="text-slate-600 font-semibold">No jobs yet</p>
-              <p className="text-slate-400 text-sm">Be the first — post a job and fund it with USDC</p>
-              <button onClick={() => setActiveTab('create')}
-                className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-500 transition-colors">
-                Post a Job →
-              </button>
-            </div>
-          )}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            {jobs.map(job => (
-              <JobCard key={job.id.toString()} job={job} myAddress={address}
-                onAction={handleAction} loading={actionLoading} />
-            ))}
-          </div>
+          {(() => {
+            const myJobs2 = address
+              ? jobs.filter(j =>
+                  [j.creator, j.provider, j.evaluator].some(
+                    a => a.toLowerCase() === address.toLowerCase()
+                  )
+                )
+              : []
+
+            return (
+              <>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-slate-900 font-bold text-base">
+                    {!address
+                      ? 'My Jobs'
+                      : loadingJobs
+                      ? 'Loading…'
+                      : `My Jobs — ${myJobs2.length} found`}
+                  </h3>
+                  <button onClick={loadJobs} disabled={loadingJobs}
+                    className="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-200 transition-colors disabled:opacity-50">
+                    {loadingJobs ? '⏳ Loading…' : '🔄 Refresh'}
+                  </button>
+                </div>
+
+                {!address && (
+                  <div className="flex flex-col items-center gap-3 py-12 bg-white border border-dashed border-slate-200 rounded-2xl">
+                    <span className="text-4xl">👤</span>
+                    <p className="text-slate-600 font-semibold">Connect your wallet to see your jobs</p>
+                  </div>
+                )}
+
+                {address && loadingJobs && myJobs2.length === 0 && (
+                  <div className="flex items-center justify-center py-12 text-slate-400 text-sm">⏳ Reading from Arc Testnet…</div>
+                )}
+
+                {address && !loadingJobs && myJobs2.length === 0 && (
+                  <div className="flex flex-col items-center gap-3 py-12 bg-white border border-dashed border-slate-200 rounded-2xl">
+                    <span className="text-4xl">📋</span>
+                    <p className="text-slate-600 font-semibold">No jobs yet for this wallet</p>
+                    <p className="text-slate-400 text-sm">Post a job and fund it with USDC to get started</p>
+                    <button onClick={() => setActiveTab('create')}
+                      className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-500 transition-colors">
+                      Post a Job →
+                    </button>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  {myJobs2.map(job => (
+                    <JobCard key={job.id.toString()} job={job} myAddress={address}
+                      onAction={handleAction} loading={actionLoading} />
+                  ))}
+                </div>
+              </>
+            )
+          })()}
 
           {/* ── Compact ERC-8183 spec ── */}
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col gap-4 mt-2">
