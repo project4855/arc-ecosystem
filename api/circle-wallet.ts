@@ -65,16 +65,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(204).end()
   if (req.method !== 'POST')    return res.status(405).json({ error: 'POST only' })
 
-  const apiKey = process.env.CIRCLE_API_KEY
-  const secret = process.env.CIRCLE_ENTITY_SECRET
+  const apiKey = process.env.CIRCLE_API_KEY?.trim()
+  const secret = process.env.CIRCLE_ENTITY_SECRET?.trim()
 
   if (!apiKey) return res.status(500).json({
     error: 'CIRCLE_API_KEY not set',
     hint: 'Add TEST_API_KEY:…  from console.circle.com → API Keys → Create to Vercel env',
   })
-  if (!secret || secret.length !== 64) return res.status(500).json({
+  if (!secret) return res.status(500).json({
     error: 'CIRCLE_ENTITY_SECRET not set',
     hint: `Add CIRCLE_ENTITY_SECRET=a9d9ef125e0657920e003d3ffa76b2e494f3699b45d5e258633b382f73c5eece to Vercel env`,
+  })
+  if (secret.length !== 64) return res.status(500).json({
+    error: `CIRCLE_ENTITY_SECRET has wrong length: ${secret.length} (expected 64)`,
+    hint: `Current value starts with: ${secret.slice(0,8)}... Check Vercel env for extra spaces or wrong value`,
   })
 
   const { action, ...p } = (req.body ?? {}) as Record<string, string>
