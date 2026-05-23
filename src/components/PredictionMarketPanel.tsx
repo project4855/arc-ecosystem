@@ -732,7 +732,17 @@ export default function PredictionMarketPanel() {
   const [sortBy,   setSortBy]   = useState<'volume' | 'ending' | 'newest'>('volume')
 
   // Reload bets whenever the connected wallet changes
+  // Also migrate legacy bets (no walletAddress) to the current wallet on first connect
   useEffect(() => {
+    if (!address) { setMyBets([]); return }
+    try {
+      const all: MyBet[] = JSON.parse(localStorage.getItem(LS_BETS_KEY) ?? '[]')
+      const hasLegacy = all.some(b => !b.walletAddress)
+      if (hasLegacy) {
+        const migrated = all.map(b => b.walletAddress ? b : { ...b, walletAddress: address })
+        localStorage.setItem(LS_BETS_KEY, JSON.stringify(migrated))
+      }
+    } catch { /* ignore */ }
     setMyBets(loadBets(address))
   }, [address])
 
