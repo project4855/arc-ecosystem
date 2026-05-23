@@ -186,7 +186,17 @@ export default function TradeBox({ pair, basePrice = 0, onSwapComplete }: Props)
     try {
       const inAddr  = TOKEN_ADDR[spendToken]!
       const outAddr = TOKEN_ADDR[receiveToken]!
-      const rawAmt  = Math.round(amountNum * 1e6).toString()
+
+      // Circle API `amount` = tokenIn amount (how much you're SPENDING).
+      // Buy:  tokenIn = quote (EURC)  → spend `total` EURC to get base USDC
+      // Sell: tokenIn = base  (USDC)  → spend `amountNum` USDC to get quote EURC
+      const tokenInAmt = side === 'Buy' ? total : amountNum
+      if (!tokenInAmt || tokenInAmt <= 0) {
+        setError('Live price not available yet — please wait a moment and try again.')
+        setBusy(false)
+        return
+      }
+      const rawAmt = Math.round(tokenInAmt * 1e6).toString()
 
       const resp = await fetch('/api/swap', {
         method: 'POST',
