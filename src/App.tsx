@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { useMarketData } from './hooks/useMarketData'
+import { useLivePrices, type LivePrices } from './hooks/useLivePrices'
 import Navbar from './components/Navbar'
 import SwapCard, { type SwapRecord } from './components/SwapCard'
 import OrderBook from './components/OrderBook'
@@ -21,15 +21,16 @@ const PAIRS = ['USDC/EURC', 'ETH/USDC', 'SOL/USDC', 'cirBTC/USDC', 'USDC/cirBTC'
 type Pair   = typeof PAIRS[number]
 
 function fmtPrice(p: number): string {
-  if (p >= 1000)   return p.toLocaleString('en-US', { maximumFractionDigits: 0 })
+  if (p >= 1000)   return p.toLocaleString('en-US', { maximumFractionDigits: 2 })
   if (p >= 1)      return p.toFixed(4)
   if (p >= 0.0001) return p.toFixed(6)
   return p.toExponential(3)
 }
 
-function PairButton({ p, active, onClick }: { p: Pair; active: boolean; onClick: () => void }) {
-  const { lastPrice, priceChange } = useMarketData(p)
-  const up = priceChange >= 0
+function PairButton({ p, active, onClick, prices }: {
+  p: Pair; active: boolean; onClick: () => void; prices: LivePrices
+}) {
+  const price = prices[p] ?? 0
   return (
     <button onClick={onClick}
       className={`w-full px-3 py-2.5 rounded-xl border text-left transition-all flex flex-col gap-0.5 ${
@@ -38,18 +39,9 @@ function PairButton({ p, active, onClick }: { p: Pair; active: boolean; onClick:
           : 'bg-white border-slate-200 hover:border-violet-300 hover:bg-violet-50'
       }`}>
       <span className={`text-sm font-extrabold ${active ? 'text-white' : 'text-slate-800'}`}>{p}</span>
-      <div className="flex items-center justify-between gap-1">
-        <span className={`font-mono text-xs font-bold ${active ? 'text-violet-200' : 'text-slate-700'}`}>
-          {fmtPrice(lastPrice)}
-        </span>
-        <span className={`text-[10px] font-bold px-1 rounded ${
-          active
-            ? (up ? 'bg-violet-500 text-green-200' : 'bg-violet-500 text-red-200')
-            : (up ? 'text-emerald-600' : 'text-red-500')
-        }`}>
-          {up ? '▲' : '▼'}{Math.abs(priceChange).toFixed(2)}%
-        </span>
-      </div>
+      <span className={`font-mono text-xs font-bold ${active ? 'text-violet-200' : 'text-slate-600'}`}>
+        {price > 0 ? fmtPrice(price) : '…'}
+      </span>
     </button>
   )
 }
@@ -68,6 +60,7 @@ export default function App() {
   const [tab,   setTab]   = useState<AppTab>(getTabFromHash)
   const [pair,  setPair]  = useState<Pair>('USDC/EURC')
   const [myTxs, setMyTxs] = useState<SwapRecord[]>([])
+  const { prices } = useLivePrices(15_000)  // refresh every 15s
   const [fromToken, toToken] = pair.split('/') as [string, string]
 
   const handleTabChange = useCallback((next: string) => {
@@ -127,7 +120,7 @@ export default function App() {
                 {/* Pair selector — vertical left column with live prices */}
                 <div className="flex flex-col gap-1.5 shrink-0 w-[150px]">
                   {PAIRS.map(p => (
-                    <PairButton key={p} p={p} active={pair === p} onClick={() => setPair(p)} />
+                    <PairButton key={p} p={p} active={pair === p} onClick={() => setPair(p)} prices={prices} />
                   ))}
                 </div>
 
