@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { useMarketData } from './hooks/useMarketData'
 import Navbar from './components/Navbar'
 import SwapCard, { type SwapRecord } from './components/SwapCard'
 import OrderBook from './components/OrderBook'
@@ -18,6 +19,40 @@ import PaymentsPanel from './components/PaymentsPanel'
 
 const PAIRS = ['USDC/EURC', 'ETH/USDC', 'SOL/USDC', 'cirBTC/USDC', 'USDC/cirBTC', 'EURC/cirBTC'] as const
 type Pair   = typeof PAIRS[number]
+
+function fmtPrice(p: number): string {
+  if (p >= 1000)   return p.toLocaleString('en-US', { maximumFractionDigits: 0 })
+  if (p >= 1)      return p.toFixed(4)
+  if (p >= 0.0001) return p.toFixed(6)
+  return p.toExponential(3)
+}
+
+function PairButton({ p, active, onClick }: { p: Pair; active: boolean; onClick: () => void }) {
+  const { lastPrice, priceChange } = useMarketData(p)
+  const up = priceChange >= 0
+  return (
+    <button onClick={onClick}
+      className={`w-full px-3 py-2.5 rounded-xl border text-left transition-all flex flex-col gap-0.5 ${
+        active
+          ? 'bg-violet-600 border-violet-500 text-white shadow-md'
+          : 'bg-white border-slate-200 hover:border-violet-300 hover:bg-violet-50'
+      }`}>
+      <span className={`text-sm font-extrabold ${active ? 'text-white' : 'text-slate-800'}`}>{p}</span>
+      <div className="flex items-center justify-between gap-1">
+        <span className={`font-mono text-xs font-bold ${active ? 'text-violet-200' : 'text-slate-700'}`}>
+          {fmtPrice(lastPrice)}
+        </span>
+        <span className={`text-[10px] font-bold px-1 rounded ${
+          active
+            ? (up ? 'bg-violet-500 text-green-200' : 'bg-violet-500 text-red-200')
+            : (up ? 'text-emerald-600' : 'text-red-500')
+        }`}>
+          {up ? '▲' : '▼'}{Math.abs(priceChange).toFixed(2)}%
+        </span>
+      </div>
+    </button>
+  )
+}
 type AppTab = 'trade' | 'bridge' | 'lending' | 'perps' | 'traders' | 'airdrops' | 'wallet' | 'predict' | 'portfolio' | 'payments'
 
 const VALID_TABS: AppTab[] = ['trade', 'bridge', 'lending', 'perps', 'traders', 'airdrops', 'wallet', 'predict', 'portfolio', 'payments']
@@ -89,17 +124,10 @@ export default function App() {
               </div>
 
               <div className="flex gap-3">
-                {/* Pair selector — vertical left column */}
-                <div className="flex flex-col gap-1.5 shrink-0 w-[130px]">
+                {/* Pair selector — vertical left column with live prices */}
+                <div className="flex flex-col gap-1.5 shrink-0 w-[150px]">
                   {PAIRS.map(p => (
-                    <button key={p} onClick={() => setPair(p)}
-                      className={`w-full px-3 py-2 rounded-xl text-sm font-semibold border text-left transition-all ${
-                        pair === p
-                          ? 'bg-violet-600 border-violet-500 text-white shadow-sm'
-                          : 'bg-white border-slate-200 text-slate-600 hover:border-violet-300 hover:text-slate-900'
-                      }`}>
-                      {p}
-                    </button>
+                    <PairButton key={p} p={p} active={pair === p} onClick={() => setPair(p)} />
                   ))}
                 </div>
 
