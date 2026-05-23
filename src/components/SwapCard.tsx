@@ -196,21 +196,22 @@ export default function SwapCard({ fromTokenProp = 'USDC', toTokenProp = 'EURC',
         )
       }
 
-      // Convert human amount to raw integer (6 decimals for USDC/EURC, 8 for cirBTC)
+      // Send amount as human-readable decimal string (Circle Swap Kit format)
       const inDecimals = fromToken === 'cirBTC' ? 8 : 6
-      const rawAmount  = Math.round(parseFloat(fromAmount) * 10 ** inDecimals).toString()
+      const amountStr  = parseFloat(fromAmount).toFixed(inDecimals)
 
       // ── Step 1: Call /api/swap proxy (server holds CIRCLE_KIT_KEY securely) ─
       addStep('📡 Requesting swap route from Circle API…')
-      const swapBody = JSON.stringify({
+      const swapPayload = {
         tokenInAddress:  tokenInAddr,
         tokenInChain:    'ARC-TESTNET',
         tokenOutAddress: tokenOutAddr,
         tokenOutChain:   'ARC-TESTNET',
-        amount:          rawAmount,
+        amount:          amountStr,
         fromAddress:     address,
         toAddress:       address,
-      })
+      }
+      const swapBody = JSON.stringify(swapPayload)
 
       let resp = await fetch('/api/swap', {
         method:  'POST',
@@ -234,17 +235,18 @@ export default function SwapCard({ fromTokenProp = 'USDC', toTokenProp = 'EURC',
 
       if (!resp.ok) {
         const errBody = await resp.json().catch(() => ({} as Record<string, unknown>)) as Record<string, unknown>
-        const msg = String(errBody.message ?? errBody.error ?? resp.statusText)
+        const msg   = String(errBody.message ?? errBody.error ?? resp.statusText)
+        const extra = errBody.errors ?? errBody.details ?? errBody.code
         markLast('err')
         throw new Error(
-          `Circle API ${resp.status}: ${msg}\n` +
+          `Circle API ${resp.status}: ${msg}` +
+          (extra ? `\nDetails: ${JSON.stringify(extra)}` : '') +
           (resp.status === 404
-            ? `Kit Key not found or not enabled for Arc Testnet.\n` +
-              `→ In Vercel, add env var CIRCLE_KIT_KEY = KIT_KEY:<id>:<secret>\n` +
-              `→ Get a key at: https://developers.circle.com/w3s/keys#kit-keys`
+            ? `\nKit Key not found — add CIRCLE_KIT_KEY in Vercel env vars`
             : resp.status === 500 && msg.includes('CIRCLE_KIT_KEY')
-              ? `Server env var missing.\n→ Add CIRCLE_KIT_KEY in Vercel → Settings → Environment Variables`
-              : '')
+              ? `\nServer env var missing — add CIRCLE_KIT_KEY in Vercel`
+              : '') +
+          `\nPayload sent: ${JSON.stringify(swapPayload)}`
         )
       }
 

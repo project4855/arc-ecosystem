@@ -196,20 +196,35 @@ export default function TradeBox({ pair, basePrice = 0, onSwapComplete }: Props)
         setBusy(false)
         return
       }
-      const rawAmt = Math.round(tokenInAmt * 1e6).toString()
+      // Send as decimal string (e.g. "0.850000") — Circle Swap Kit uses human-readable amounts
+      const amountStr = tokenInAmt.toFixed(6)
+
+      const swapPayload = {
+        tokenInAddress:  inAddr,
+        tokenInChain:    'ARC-TESTNET',
+        tokenOutAddress: outAddr,
+        tokenOutChain:   'ARC-TESTNET',
+        amount:          amountStr,
+        fromAddress:     address,
+        toAddress:       address,
+      }
+      console.log('[TradeBox] swap payload:', swapPayload)
 
       const resp = await fetch('/api/swap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tokenInAddress: inAddr, tokenInChain: 'ARC-TESTNET',
-          tokenOutAddress: outAddr, tokenOutChain: 'ARC-TESTNET',
-          amount: rawAmt, fromAddress: address, toAddress: address,
-        }),
+        body: JSON.stringify(swapPayload),
       })
       if (!resp.ok) {
         const e = await resp.json().catch(() => ({})) as Record<string, unknown>
-        throw new Error(`Circle API ${resp.status}: ${String(e.message ?? e.error ?? resp.statusText)}`)
+        // Show full error body for debugging
+        const msg   = String(e.message ?? e.error ?? resp.statusText)
+        const extra = e.errors ?? e.details ?? e.code
+        throw new Error(
+          `Circle API ${resp.status}: ${msg}` +
+          (extra ? `\nDetails: ${JSON.stringify(extra)}` : '') +
+          `\nPayload: ${JSON.stringify(swapPayload)}`
+        )
       }
 
       type Ix = { target:`0x${string}`; data:`0x${string}`; value:string; tokenIn?:`0x${string}`; amountToApprove?:string; tokenOut?:`0x${string}`; minTokenOut?:string }
