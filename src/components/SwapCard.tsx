@@ -415,8 +415,8 @@ export default function SwapCard({ fromTokenProp = 'USDC', toTokenProp = 'EURC',
   const toTokens = TOKENS.filter((t) => t.symbol !== fromToken)
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+    <div className="w-full">
+      <div className="p-6">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -587,13 +587,6 @@ export default function SwapCard({ fromTokenProp = 'USDC', toTokenProp = 'EURC',
         )}
       </div>
 
-      <p className="text-center text-xs text-slate-400 mt-4">
-        Powered by{' '}
-        <a href="https://testnet.arcscan.app" target="_blank" rel="noreferrer" className="text-violet-500 hover:text-violet-400">
-          Arc Testnet
-        </a>{' '}
-        · USDC on-chain
-      </p>
     </div>
   )
 }

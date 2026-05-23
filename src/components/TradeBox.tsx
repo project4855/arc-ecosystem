@@ -278,7 +278,7 @@ export default function TradeBox({ pair, basePrice = 0, onSwapComplete }: Props)
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+    <div className="flex flex-col">
 
       {/* ── Order type tabs ───────────────────────────────────────────────── */}
       <div className="flex border-b border-slate-100">

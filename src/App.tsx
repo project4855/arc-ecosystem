@@ -118,20 +118,6 @@ export default function App() {
                 <h2 className="text-2xl font-extrabold text-slate-900">Stablecoin FX on Arc Testnet</h2>
               </div>
 
-              {/* ── Swap / Trade mode toggle ── */}
-              <div className="flex items-center gap-1 mb-3">
-                {(['swap', 'trade'] as const).map(m => (
-                  <button key={m} onClick={() => setTradeMode(m)}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
-                      tradeMode === m
-                        ? 'bg-violet-600 text-white shadow-sm'
-                        : 'text-slate-500 hover:text-violet-600 hover:bg-violet-50'
-                    }`}>
-                    {m === 'swap' ? '⇅ Swap' : '📊 Trade'}
-                  </button>
-                ))}
-              </div>
-
               <div className="flex gap-3">
                 {/* Pair selector — vertical left column with live prices */}
                 <div className="flex flex-col gap-1.5 shrink-0 w-[150px]">
@@ -147,13 +133,42 @@ export default function App() {
                       <PriceChart pair={pair} basePrice={prices[pair as keyof typeof prices]} />
                       <TransactionHistory pair={pair} myTxs={myTxs} />
                     </div>
+
+                    {/* ── Swap / Trade tab card ── */}
                     <div className="min-w-0">
-                      {tradeMode === 'swap' ? (
-                        <SwapCard fromTokenProp={fromToken} toTokenProp={toToken} onSwapComplete={handleSwapComplete} />
-                      ) : (
-                        <TradeBox pair={pair} basePrice={prices[pair as keyof typeof prices]} onSwapComplete={handleSwapComplete} />
-                      )}
+                      <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
+                        {/* Tab header */}
+                        <div className="flex border-b border-slate-200">
+                          {(['swap', 'trade'] as const).map(m => (
+                            <button
+                              key={m}
+                              onClick={() => setTradeMode(m)}
+                              className={`flex-1 py-3 text-sm font-bold transition-all flex items-center justify-center gap-1.5 border-b-2 ${
+                                tradeMode === m
+                                  ? 'border-violet-500 text-violet-600 bg-violet-50/50'
+                                  : 'border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-50'
+                              }`}
+                            >
+                              {m === 'swap' ? <><span>⇅</span> Swap</> : <><span>📊</span> Trade</>}
+                            </button>
+                          ))}
+                        </div>
+                        {/* Tab content — remove outer card from each child */}
+                        <div className={tradeMode === 'swap' ? '' : 'hidden'}>
+                          <SwapCard fromTokenProp={fromToken} toTokenProp={toToken} onSwapComplete={handleSwapComplete} />
+                        </div>
+                        <div className={tradeMode === 'trade' ? '' : 'hidden'}>
+                          <TradeBox pair={pair} basePrice={prices[pair as keyof typeof prices]} onSwapComplete={handleSwapComplete} />
+                        </div>
+                        {/* Shared footer */}
+                        <p className="text-center text-xs text-slate-400 py-3 border-t border-slate-100">
+                          Powered by{' '}
+                          <a href="https://testnet.arcscan.app" target="_blank" rel="noreferrer" className="text-violet-500 hover:text-violet-400">Arc Testnet</a>
+                          {' '}· USDC on-chain
+                        </p>
+                      </div>
                     </div>
+
                     <div className="min-w-0">
                       <OrderBook pair={pair} basePrice={prices[pair as keyof typeof prices]} />
                     </div>
