@@ -662,8 +662,6 @@ export default function HyperliquidPanel() {
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {AGENT_CATALOGUE.map((agent) => {
               const isThis    = deployingAgent === agent.name
-              const isDone    = !isThis && deploySuccess !== null && deployJobId !== null && deploySteps.some(s => s.includes(agent.name) || (deploySteps.length > 0 && deploySuccess?.includes('Job')))
-              const hasError  = !isThis && deployError !== null
 
               return (
                 <div key={agent.name}
