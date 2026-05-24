@@ -84,13 +84,25 @@ export default function SwapCard({ fromTokenProp = 'USDC', toTokenProp = 'EURC',
     query: { refetchInterval: 8_000 },
   })
 
-  const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a' as const
+  const EURC_ADDRESS   = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a' as const
+  const CIRBTC_ADDRESS = '0xf0C4a4CE82A5746AbAAd9425360Ab04fbBA432BF' as const
   const ERC20_BALANCE_ABI = [{ name: 'balanceOf', type: 'function', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ type: 'uint256' }] }] as const
+  const ZERO_ADDR = '0x0000000000000000000000000000000000000000' as const
+
   const { data: eurcRaw, refetch: refetchEURC } = useReadContract({
     address:      EURC_ADDRESS,
     abi:          ERC20_BALANCE_ABI,
     functionName: 'balanceOf',
-    args:         [address ?? '0x0000000000000000000000000000000000000000'],
+    args:         [address ?? ZERO_ADDR],
+    chainId:      arcTestnet.id,
+    query:        { enabled: !!address, refetchInterval: 8_000 },
+  })
+
+  const { data: cirBtcRaw } = useReadContract({
+    address:      CIRBTC_ADDRESS,
+    abi:          ERC20_BALANCE_ABI,
+    functionName: 'balanceOf',
+    args:         [address ?? ZERO_ADDR],
     chainId:      arcTestnet.id,
     query:        { enabled: !!address, refetchInterval: 8_000 },
   })
@@ -102,6 +114,8 @@ export default function SwapCard({ fromTokenProp = 'USDC', toTokenProp = 'EURC',
       return `${parseFloat(formatUnits(balance.value, balance.decimals)).toFixed(4)} USDC`
     if (token === 'EURC' && eurcRaw !== undefined)
       return `${parseFloat(formatUnits(eurcRaw as bigint, 6)).toFixed(4)} EURC`
+    if (token === 'cirBTC' && cirBtcRaw !== undefined)
+      return `${parseFloat(formatUnits(cirBtcRaw as bigint, 8)).toFixed(8)} cirBTC`
     return undefined
   }
 
