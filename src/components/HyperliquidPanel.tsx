@@ -294,6 +294,13 @@ export default function HyperliquidPanel() {
   })
   const [creating, setCreating] = useState(false)
 
+  // Quick-deploy state (marketplace)
+  const [deployingAgent, setDeployingAgent] = useState<string | null>(null)
+  const [deploySteps,    setDeploySteps]    = useState<string[]>([])
+  const [deployJobId,    setDeployJobId]    = useState<bigint | null>(null)
+  const [deployError,    setDeployError]    = useState<string | null>(null)
+  const [deploySuccess,  setDeploySuccess]  = useState<string | null>(null)
+
   // Nanopayments
   const [nanoTo, setNanoTo]         = useState('')
   const [nanoAmount, setNanoAmount] = useState('')
@@ -427,6 +434,81 @@ export default function HyperliquidPanel() {
       setTxError(e instanceof Error ? e.message : String(e))
     } finally { setCreating(false) }
   }
+
+  // ── Quick Deploy (marketplace one-click onchain deploy) ───────────────────
+
+  const handleQuickDeploy = useCallback(async (agentName: string) => {
+    if (!isReady || !publicClient) return
+    const agent = AGENT_CATALOGUE.find(a => a.name === agentName)
+    if (!agent) return
+
+    setDeployingAgent(agentName)
+    setDeploySteps(['📝 Creating job onchain…'])
+    setDeployJobId(null)
+    setDeployError(null)
+    setDeploySuccess(null)
+
+    const addStep = (s: string) => setDeploySteps(prev => [...prev, s])
+
+    try {
+      const budgetUsdc = BigInt(Math.round(agent.price * 1e6))
+
+      // ── Step 1: createJob() ───────────────────────────────────────────────
+      const createHash = await writeContract({
+        address: AGENT_JOBS_ADDRESS,
+        abi: AGENT_JOBS_ABI,
+        functionName: 'createJob',
+        args: [
+          ZERO_ADDR,
+          ZERO_ADDR,
+          budgetUsdc,
+          24n,
+          `${agent.name} — ${agent.sub}`,
+          `AI agent: ${agent.sub}. Deployed via Arc Ecosystem Marketplace.`,
+        ],
+      })
+      addStep('⏳ Waiting for confirmation…')
+      await publicClient.waitForTransactionReceipt({ hash: createHash })
+
+      // Get the job ID from jobCount (this is testnet, low concurrency)
+      const count = await publicClient.readContract({
+        address: AGENT_JOBS_ADDRESS,
+        abi: AGENT_JOBS_ABI,
+        functionName: 'jobCount',
+      }) as bigint
+      const jobId = count
+      setDeployJobId(jobId)
+      addStep(`✅ Job #${jobId} created! Approving USDC…`)
+
+      // ── Step 2: approve() ─────────────────────────────────────────────────
+      const approveHash = await writeContract({
+        address: USDC, abi: ERC20_ABI,
+        functionName: 'approve',
+        args: [AGENT_JOBS_ADDRESS, budgetUsdc],
+      })
+      await publicClient.waitForTransactionReceipt({ hash: approveHash })
+      addStep('💰 Funding job with USDC…')
+
+      // ── Step 3: fund() ────────────────────────────────────────────────────
+      const fundHash = await writeContract({
+        address: AGENT_JOBS_ADDRESS, abi: AGENT_JOBS_ABI,
+        functionName: 'fund',
+        args: [jobId],
+      })
+      await publicClient.waitForTransactionReceipt({ hash: fundHash })
+
+      setDeploySuccess(`🚀 Agent deployed! Job #${jobId} is live & funded on Arc Testnet.`)
+      addStep(`🚀 Done! Job #${jobId} funded with ${agent.price.toFixed(2)} USDC.`)
+      loadJobs(); loadMyJobs(); refetchCount()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setDeployError(msg.includes('rejected') || msg.includes('denied')
+        ? 'Transaction rejected by user.'
+        : msg.slice(0, 200))
+    } finally {
+      setDeployingAgent(null)
+    }
+  }, [isReady, publicClient, writeContract, loadJobs, loadMyJobs, refetchCount])
 
   // ── Send nanopayment ────────────────────────────────────────────────────────
 
@@ -578,61 +660,110 @@ export default function HyperliquidPanel() {
 
           {/* Agent cards grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {AGENT_CATALOGUE.map((agent) => (
-              <div key={agent.name}
-                className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-3 hover:border-violet-300 hover:shadow-md transition-all">
-                {/* Card top: icon + badge */}
-                <div className="flex items-start justify-between">
-                  <div className="w-12 h-12 rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center text-2xl shrink-0">
-                    {agent.icon}
+            {AGENT_CATALOGUE.map((agent) => {
+              const isThis    = deployingAgent === agent.name
+              const isDone    = !isThis && deploySuccess !== null && deployJobId !== null && deploySteps.some(s => s.includes(agent.name) || (deploySteps.length > 0 && deploySuccess?.includes('Job')))
+              const hasError  = !isThis && deployError !== null
+
+              return (
+                <div key={agent.name}
+                  className={`bg-white border-2 rounded-2xl p-5 flex flex-col gap-3 transition-all shadow-sm ${
+                    isThis ? 'border-violet-400 shadow-violet-100' :
+                    'border-slate-200 hover:border-violet-300 hover:shadow-md'
+                  }`}>
+
+                  {/* Card top: icon + badge */}
+                  <div className="flex items-start justify-between">
+                    <div className="w-12 h-12 rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center text-2xl shrink-0">
+                      {agent.icon}
+                    </div>
+                    {agent.badge && (
+                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${
+                        agent.badge === 'Popular'   ? 'bg-amber-50 border-amber-200 text-amber-700' :
+                        agent.badge === 'Top Rated' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
+                        agent.badge === 'New'       ? 'bg-blue-50 border-blue-200 text-blue-700' :
+                        'bg-slate-100 border-slate-200 text-slate-600'
+                      }`}>{agent.badge}</span>
+                    )}
                   </div>
-                  {agent.badge && (
-                    <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${
-                      agent.badge === 'Popular'   ? 'bg-amber-50 border-amber-200 text-amber-700' :
-                      agent.badge === 'Top Rated' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
-                      agent.badge === 'New'       ? 'bg-blue-50 border-blue-200 text-blue-700' :
-                      'bg-slate-100 border-slate-200 text-slate-600'
-                    }`}>{agent.badge}</span>
-                  )}
-                </div>
 
-                {/* Name + subtitle */}
-                <div>
-                  <p className="text-slate-900 font-extrabold text-base leading-snug">{agent.name}</p>
-                  <p className="text-slate-500 text-xs mt-0.5">{agent.sub}</p>
-                </div>
-
-                {/* Rating + reviews */}
-                <div className="flex items-center gap-2">
-                  <StarRating rating={agent.rating} />
-                  <span className="text-slate-700 text-xs font-bold">{agent.rating.toFixed(2)}</span>
-                  <span className="text-slate-400 text-xs">({agent.reviews} reviews)</span>
-                </div>
-
-                {/* Price + deploy */}
-                <div className="flex items-center justify-between pt-1 mt-auto">
+                  {/* Name + subtitle */}
                   <div>
-                    <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wide">Starting at</p>
+                    <p className="text-slate-900 font-extrabold text-base leading-snug">{agent.name}</p>
+                    <p className="text-slate-500 text-xs mt-0.5">{agent.sub}</p>
+                  </div>
+
+                  {/* Rating + reviews */}
+                  <div className="flex items-center gap-2">
+                    <StarRating rating={agent.rating} />
+                    <span className="text-slate-700 text-xs font-bold">{agent.rating.toFixed(2)}</span>
+                    <span className="text-slate-400 text-xs">({agent.reviews} reviews)</span>
+                  </div>
+
+                  {/* Price */}
+                  <div>
+                    <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wide">Budget</p>
                     <p className="text-emerald-600 font-extrabold text-lg font-mono leading-none">
                       ${agent.price.toFixed(2)} <span className="text-xs font-semibold text-emerald-500">USDC</span>
                     </p>
                   </div>
-                  <button
-                    onClick={() => {
-                      setForm(f => ({
-                        ...f,
-                        title: `${agent.name} — ${agent.sub}`,
-                        description: `Deploy the ${agent.name} AI agent to ${agent.sub.toLowerCase()}.`,
-                        budget: agent.price.toFixed(2),
-                      }))
-                      setActiveTab('create')
-                    }}
-                    className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-500 transition-colors shadow-sm">
-                    Deploy →
-                  </button>
+
+                  {/* Deploy steps (shown while deploying) */}
+                  {isThis && deploySteps.length > 0 && (
+                    <div className="bg-violet-50 border border-violet-200 rounded-xl px-3 py-2 flex flex-col gap-1">
+                      {deploySteps.map((step, i) => (
+                        <p key={i} className="text-violet-700 text-[11px] font-semibold">{step}</p>
+                      ))}
+                      <div className="flex gap-1 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{animationDelay:'0ms'}}/>
+                        <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{animationDelay:'150ms'}}/>
+                        <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{animationDelay:'300ms'}}/>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Success */}
+                  {deploySuccess && deployJobId !== null && deploySteps[deploySteps.length-1]?.includes(agent.name) || (deploySuccess && isThis) ? (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                      <p className="text-emerald-700 text-[11px] font-bold">{deploySuccess}</p>
+                      <a href={`https://testnet.arcscan.app/address/${AGENT_JOBS_ADDRESS}`} target="_blank" rel="noreferrer"
+                        className="text-violet-600 text-[10px] underline font-semibold">View on ArcScan ↗</a>
+                    </div>
+                  ) : null}
+
+                  {/* Error */}
+                  {deployError && isThis && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                      <p className="text-red-600 text-[11px] font-semibold">❌ {deployError}</p>
+                    </div>
+                  )}
+
+                  {/* Deploy button */}
+                  <div className="flex gap-2 mt-auto pt-1">
+                    <button
+                      onClick={() => handleQuickDeploy(agent.name)}
+                      disabled={isThis || !isReady}
+                      className="flex-1 py-2.5 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-500 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                      {isThis ? '⏳ Deploying…' : !isReady ? '🔒 Connect Wallet' : '🚀 Deploy Onchain'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setForm(f => ({
+                          ...f,
+                          title: `${agent.name} — ${agent.sub}`,
+                          description: `Deploy the ${agent.name} AI agent to ${agent.sub.toLowerCase()}.`,
+                          budget: agent.price.toFixed(2),
+                        }))
+                        setActiveTab('create')
+                      }}
+                      className="px-3 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 text-xs font-semibold hover:border-violet-300 transition-colors">
+                      ✏️
+                    </button>
+                  </div>
+                  <p className="text-slate-400 text-[10px] text-center">createJob() + fund() · ArcAgentJobs</p>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {/* Bottom CTA */}
