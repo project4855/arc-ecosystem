@@ -4,6 +4,7 @@ import { useBalance, useReadContract, usePublicClient } from 'wagmi'
 import { formatUnits } from 'viem'
 import { useWallet } from '../hooks/useWallet'
 import { arcTestnet } from '../config/wagmi'
+import { ARC_SWAP_ADDRESS, ARC_SWAP_ABI, TOKEN_ADDRESSES, TOKEN_DECIMALS } from '../config/contracts'
 import type { SwapRecord } from './SwapCard'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -21,12 +22,19 @@ const LS_KEY = 'arc_orders_v1'
 const loadOrders  = (): LocalOrder[] => { try { return JSON.parse(localStorage.getItem(LS_KEY) ?? '[]') } catch { return [] } }
 const saveOrders  = (o: LocalOrder[]) => localStorage.setItem(LS_KEY, JSON.stringify(o))
 
-// Circle-supported token addresses on Arc Testnet
+// Token addresses (all supported tokens)
 const TOKEN_ADDR: Record<string, `0x${string}`> = {
-  USDC: '0x3600000000000000000000000000000000000000',
-  EURC: '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a',
+  USDC:   TOKEN_ADDRESSES.USDC,
+  EURC:   TOKEN_ADDRESSES.EURC,
+  cirBTC: TOKEN_ADDRESSES.cirBTC,
+  ARC:    TOKEN_ADDRESSES.ARC,
+  QCAD:   TOKEN_ADDRESSES.QCAD,
 }
+
+// Circle Swap Kit: only USDC ↔ EURC
 const CIRCLE_OK = new Set(['USDC', 'EURC'])
+// ArcSwap: all other pairs (ARC, cirBTC, QCAD with USDC/EURC)
+const ARC_SWAP_OK = new Set(['USDC', 'EURC', 'ARC', 'cirBTC', 'QCAD'])
 const ERC20_APPROVE_ABI = [{
   name: 'approve', type: 'function', stateMutability: 'nonpayable',
   inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }],
@@ -79,6 +87,7 @@ interface Props {
 
 export default function TradeBox({ pair, basePrice = 0, onSwapComplete }: Props) {
   const [base, quote] = pair.split('/')
+  const baseDec = TOKEN_DECIMALS[base] ?? 6   // e.g. 8 for cirBTC, 6 for ARC/QCAD
   const { address, isReady, walletType, chainId, writeContract } = useWallet()
   const isArc       = walletType === 'turnkey' || walletType === 'circle' || chainId === arcTestnet.id
   const publicClient = usePublicClient({ chainId: arcTestnet.id })
@@ -113,17 +122,38 @@ export default function TradeBox({ pair, basePrice = 0, onSwapComplete }: Props)
   const { data: nativeBal, refetch: refetchNative } = useBalance({
     address, chainId: arcTestnet.id, query: { refetchInterval: 8_000 },
   })
-  const EURC_ADDR = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a' as const
   const ERC20_BAL_ABI = [{ name: 'balanceOf', type: 'function', stateMutability: 'view', inputs: [{ name: 'a', type: 'address' }], outputs: [{ type: 'uint256' }] }] as const
-  const { data: eurcRaw, refetch: refetchEURC } = useReadContract({
-    address: EURC_ADDR, abi: ERC20_BAL_ABI, functionName: 'balanceOf',
-    args: [address ?? '0x0000000000000000000000000000000000000000'],
-    chainId: arcTestnet.id, query: { enabled: !!address, refetchInterval: 8_000 },
+  const ZERO_ADDR = '0x0000000000000000000000000000000000000000' as const
+  const { data: eurcRaw,   refetch: refetchEURC   } = useReadContract({
+    address: TOKEN_ADDR.EURC,   abi: ERC20_BAL_ABI, functionName: 'balanceOf',
+    args: [address ?? ZERO_ADDR], chainId: arcTestnet.id, query: { enabled: !!address, refetchInterval: 8_000 },
   })
+  const { data: arcRaw,    refetch: refetchARC    } = useReadContract({
+    address: TOKEN_ADDR.ARC,    abi: ERC20_BAL_ABI, functionName: 'balanceOf',
+    args: [address ?? ZERO_ADDR], chainId: arcTestnet.id, query: { enabled: !!address, refetchInterval: 8_000 },
+  })
+  const { data: cirBtcRaw, refetch: refetchCirBTC } = useReadContract({
+    address: TOKEN_ADDR.cirBTC, abi: ERC20_BAL_ABI, functionName: 'balanceOf',
+    args: [address ?? ZERO_ADDR], chainId: arcTestnet.id, query: { enabled: !!address, refetchInterval: 8_000 },
+  })
+  const { data: qcadRaw,   refetch: refetchQCAD   } = useReadContract({
+    address: TOKEN_ADDR.QCAD,   abi: ERC20_BAL_ABI, functionName: 'balanceOf',
+    args: [address ?? ZERO_ADDR], chainId: arcTestnet.id, query: { enabled: !!address, refetchInterval: 8_000 },
+  })
+
+  const refetchAll = () => {
+    void refetchNative(); void refetchEURC(); void refetchARC()
+    void refetchCirBTC(); void refetchQCAD()
+  }
+
   const getBal = (token: string): number => {
     if (!address) return 0
-    if (token === 'USDC' && nativeBal) return parseFloat(formatUnits(nativeBal.value, nativeBal.decimals))
-    if (token === 'EURC' && eurcRaw != null) return parseFloat(formatUnits(eurcRaw as bigint, 6))
+    const dec = TOKEN_DECIMALS[token] ?? 6
+    if (token === 'USDC'   && nativeBal) return parseFloat(formatUnits(nativeBal.value, nativeBal.decimals))
+    if (token === 'EURC'   && eurcRaw   != null) return parseFloat(formatUnits(eurcRaw   as bigint, 6))
+    if (token === 'ARC'    && arcRaw    != null) return parseFloat(formatUnits(arcRaw    as bigint, dec))
+    if (token === 'cirBTC' && cirBtcRaw != null) return parseFloat(formatUnits(cirBtcRaw as bigint, 8))
+    if (token === 'QCAD'   && qcadRaw   != null) return parseFloat(formatUnits(qcadRaw   as bigint, dec))
     return 0
   }
 
@@ -141,10 +171,11 @@ export default function TradeBox({ pair, basePrice = 0, onSwapComplete }: Props)
   const handlePct = (pct: number) => {
     if (!spendBal || !effectivePrice) return
     if (side === 'Buy') {
-      // spending quote → how many base
-      setAmount(((spendBal * pct / 100) / effectivePrice).toFixed(6))
+      // spending quote → how many base (use baseDec decimals for precision)
+      setAmount(((spendBal * pct / 100) / effectivePrice).toFixed(baseDec))
     } else {
-      setAmount((spendBal * pct / 100).toFixed(6))
+      // spending base → use baseDec decimals
+      setAmount((spendBal * pct / 100).toFixed(baseDec))
     }
   }
 
@@ -175,10 +206,88 @@ export default function TradeBox({ pair, basePrice = 0, onSwapComplete }: Props)
       return
     }
 
-    // ── Market: Circle Swap API (USDC ↔ EURC only) ──────────────────────
+    // ── Market: route selection ───────────────────────────────────────────
     if (!address) { setError('Connect your wallet first.'); return }
-    if (!CIRCLE_OK.has(spendToken) || !CIRCLE_OK.has(receiveToken)) {
-      setError(`Market ${side} for ${pair} is not yet supported.\nCircle Swap Kit currently supports USDC ↔ EURC only on Arc Testnet.`)
+
+    const useArcSwap = !CIRCLE_OK.has(spendToken) || !CIRCLE_OK.has(receiveToken)
+
+    if (useArcSwap) {
+      // ── ArcSwap route (ARC, cirBTC, QCAD pairs) ────────────────────────
+      if (!ARC_SWAP_OK.has(spendToken) || !ARC_SWAP_OK.has(receiveToken)) {
+        setError(`Market ${side} for ${pair} is not supported.`)
+        return
+      }
+      setBusy(true)
+      try {
+        const inAddr   = TOKEN_ADDR[spendToken]!
+        const outAddr  = TOKEN_ADDR[receiveToken]!
+        const inDec    = TOKEN_DECIMALS[spendToken]  ?? 6
+        const tokenInAmt = side === 'Buy' ? total : amountNum
+        if (!tokenInAmt || tokenInAmt <= 0) {
+          setError('Live price not available yet — please wait a moment and try again.')
+          setBusy(false)
+          return
+        }
+        const sellAmt = BigInt(Math.round(tokenInAmt * 10 ** inDec))
+
+        // Pre-check: verify rate AND balance before wasting gas on approve tx
+        if (publicClient) {
+          const PREVIEW_ABI = [
+            { name: 'getAmountOut', type: 'function', stateMutability: 'view',
+              inputs: [{ name: 'tokenIn', type: 'address' }, { name: 'tokenOut', type: 'address' }, { name: 'amountIn', type: 'uint256' }],
+              outputs: [{ name: '', type: 'uint256' }] },
+            { name: 'liquidity', type: 'function', stateMutability: 'view',
+              inputs: [{ name: 'token', type: 'address' }],
+              outputs: [{ name: '', type: 'uint256' }] },
+          ] as const
+          try {
+            const [preview, liq] = await Promise.all([
+              publicClient.readContract({ address: ARC_SWAP_ADDRESS, abi: PREVIEW_ABI, functionName: 'getAmountOut', args: [inAddr, outAddr, sellAmt] }) as Promise<bigint>,
+              publicClient.readContract({ address: ARC_SWAP_ADDRESS, abi: PREVIEW_ABI, functionName: 'liquidity', args: [outAddr] }) as Promise<bigint>,
+            ])
+            if (preview === 0n) throw new Error(`ArcSwap: rate chưa set cho ${spendToken}→${receiveToken}.`)
+            if (liq < preview) throw new Error(`ArcSwap: không đủ ${receiveToken} liquidity (cần ${preview}, có ${liq}).`)
+          } catch (e) {
+            if (e instanceof Error && e.message.startsWith('ArcSwap:')) throw e
+          }
+        }
+
+        // 1. Approve
+        const approveHash = await writeContract({
+          address: inAddr, abi: ERC20_APPROVE_ABI, functionName: 'approve',
+          args: [ARC_SWAP_ADDRESS, sellAmt],
+        })
+        if (publicClient) await publicClient.waitForTransactionReceipt({ hash: approveHash, confirmations: 1 })
+
+        // 2. Swap
+        const swapHash = await writeContract({
+          address: ARC_SWAP_ADDRESS, abi: ARC_SWAP_ABI, functionName: 'swap',
+          args: [inAddr, outAddr, sellAmt],
+        })
+        if (publicClient) {
+          const rcpt = await publicClient.waitForTransactionReceipt({ hash: swapHash, confirmations: 1 })
+          if (rcpt.status === 'reverted') throw new Error('Transaction reverted — check ArcSwap liquidity.')
+        }
+
+        setTxHash(swapHash)
+        const now = new Date()
+        onSwapComplete?.({
+          id: Date.now().toString(),
+          time: `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`,
+          type: side === 'Buy' ? 'buy' : 'sell',
+          fromToken: spendToken, toToken: receiveToken,
+          fromAmount: tokenInAmt, toAmount: side === 'Buy' ? amountNum : total,
+          price: effectivePrice,
+          wallet: address ? `${address.slice(0,6)}...${address.slice(-4)}` : '0x????',
+          txHash: swapHash, status: 'confirmed',
+        })
+        setTimeout(refetchAll, 1500)
+        setTimeout(refetchAll, 4000)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e))
+      } finally {
+        setBusy(false)
+      }
       return
     }
 
@@ -283,8 +392,8 @@ export default function TradeBox({ pair, basePrice = 0, onSwapComplete }: Props)
         wallet: address ? `${address.slice(0,6)}...${address.slice(-4)}` : '0x????',
         txHash: hash, status: 'confirmed',
       })
-      setTimeout(() => { void refetchNative(); void refetchEURC() }, 2000)
-      setTimeout(() => { void refetchNative(); void refetchEURC() }, 6000)
+      setTimeout(refetchAll, 2000)
+      setTimeout(refetchAll, 6000)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -342,7 +451,9 @@ export default function TradeBox({ pair, basePrice = 0, onSwapComplete }: Props)
         <div className="flex justify-between text-xs text-slate-500">
           <span>Available</span>
           <span className="font-mono font-semibold text-slate-700">
-            {address ? `${fmtBal(spendBal)} ${spendToken}` : '—'}
+            {address
+              ? `${fmtBal(spendBal, spendToken === 'cirBTC' ? 8 : 4)} ${spendToken}`
+              : '—'}
           </span>
         </div>
 
@@ -393,7 +504,10 @@ export default function TradeBox({ pair, basePrice = 0, onSwapComplete }: Props)
             isBuy ? 'border-slate-200' : 'border-slate-200'
           }`}>
             <input
-              type="number" inputMode="decimal" placeholder="0.00000" value={amount}
+              type="number" inputMode="decimal"
+              placeholder={base === 'cirBTC' ? '0.00000000' : '0.00000'}
+              step={base === 'cirBTC' ? '0.00000001' : '0.000001'}
+              value={amount}
               onChange={e => setAmount(e.target.value)}
               className="flex-1 bg-transparent text-slate-900 font-mono text-sm outline-none"
             />

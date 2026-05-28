@@ -77,6 +77,12 @@ const PAIR_MID_FALLBACK: Record<string, number> = {
   'SOL/USDC':    84.25,
   'USDC/SOL':    1 / 84.25,
   'SOL/EURC':    84.25 / 1.08,
+  'ARC/USDC':    0.10,
+  'ARC/EURC':    0.10 / 1.08,    // ~0.0926
+  'QCAD/USDC':   0.73,
+  'QCAD/EURC':   0.73 / 1.08,   // ~0.6757
+  'USDC/QCAD':   1 / 0.73,      // ~1.37
+  'EURC/QCAD':   1.08 / 0.73,   // ~1.479
 }
 
 // basePrice: real live price from Hyperliquid (optional — falls back to PAIR_MID_FALLBACK)

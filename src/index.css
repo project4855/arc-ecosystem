@@ -1,35 +1,30 @@
 @import "tailwindcss";
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+:root {
+  --bnb-yellow:  #F0B90B;
+  --bnb-text:    #1E2329;
+  --bnb-muted:   #707A8A;
+  --bnb-subtle:  #B7BDC6;
+  --bnb-buy:     #0ECB81;
+  --bnb-sell:    #F6465D;
+  --bnb-border:  #EAECEF;
+  --bnb-hover:   #F5F5F5;
 }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background-color: #f8fafc;
-  color: #0f172a;
-  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #F5F5F5;
+  color: #1E2329;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   min-height: 100vh;
+  font-size: 14px;
 }
 
-#root {
-  min-height: 100vh;
-}
+#root { min-height: 100vh; }
 
-/* Custom scrollbar — light */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-::-webkit-scrollbar-thumb {
-  background: #94a3b8;
-  border-radius: 3px;
-}
-
-/* Subtle shadow for cards */
-.card-shadow {
-  box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
-}
+/* Binance-style thin scrollbars */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #DCDCDC; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #B7BDC6; }

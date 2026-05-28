@@ -18,7 +18,7 @@ import TradeBox from './components/TradeBox'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-const PAIRS = ['cirBTC/USDC', 'cirBTC/EURC', 'ETH/USDC', 'SOL/USDC', 'USDC/EURC'] as const
+const PAIRS = ['cirBTC/USDC', 'cirBTC/EURC', 'ARC/USDC', 'ARC/EURC', 'QCAD/USDC', 'QCAD/EURC', 'ETH/USDC', 'SOL/USDC', 'USDC/EURC'] as const
 type Pair   = typeof PAIRS[number]
 
 function fmtPrice(p: number): string {
@@ -28,24 +28,22 @@ function fmtPrice(p: number): string {
   return p.toExponential(3)
 }
 
-function PairButton({ p, active, onClick, prices }: {
+// Binance-style compact pair row for left sidebar
+function PairRow({ p, active, onClick, prices }: {
   p: Pair; active: boolean; onClick: () => void; prices: LivePrices
 }) {
   const price = prices[p] ?? 0
   return (
     <button onClick={onClick}
-      className={`w-full px-3 py-2.5 rounded-xl border text-left transition-all flex flex-col gap-0.5 ${
-        active
-          ? 'bg-violet-600 border-violet-500 text-white shadow-md'
-          : 'bg-white border-slate-200 hover:border-violet-300 hover:bg-violet-50'
+      className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${
+        active ? 'bg-[#FFF8E1]' : 'hover:bg-[#F5F5F5]'
       }`}>
-      <span className={`text-sm font-extrabold ${active ? 'text-white' : 'text-slate-800'}`}>{p}</span>
-      <span className={`font-mono text-xs font-bold ${active ? 'text-violet-200' : 'text-slate-600'}`}>
-        {price > 0 ? fmtPrice(price) : '…'}
-      </span>
+      <span className={`text-[13px] font-semibold ${active ? 'text-[#F0B90B]' : 'text-[#1E2329]'}`}>{p}</span>
+      <span className="font-mono text-[13px] text-[#1E2329]">{price > 0 ? fmtPrice(price) : '—'}</span>
     </button>
   )
 }
+
 type AppTab = 'trade' | 'bridge' | 'lending' | 'perps' | 'traders' | 'airdrops' | 'wallet' | 'predict' | 'portfolio' | 'payments'
 
 const VALID_TABS: AppTab[] = ['trade', 'bridge', 'lending', 'perps', 'traders', 'airdrops', 'wallet', 'predict', 'portfolio', 'payments']
@@ -82,100 +80,145 @@ export default function App() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
 
       {/* ── Navbar ── */}
       <Navbar tab={tab} onTabChange={handleTabChange} />
 
-      {/* ── Network strip ── */}
-      <div className="bg-white border-b border-slate-100">
-        <div className="max-w-[1440px] mx-auto px-4 xl:px-6 py-1.5 flex items-center gap-5 text-[11px] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <span className="flex items-center gap-1.5 text-emerald-600 font-semibold shrink-0">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            Arc Testnet Live
-          </span>
-          <span className="text-slate-400 shrink-0">Chain <strong className="text-slate-600">5042002</strong></span>
-          <span className="text-slate-400 shrink-0">Gas: <strong className="text-slate-600">USDC</strong></span>
-          <span className="text-slate-400 shrink-0">Finality: <strong className="text-slate-600">&lt;1 second</strong></span>
-          <span className="text-slate-400 shrink-0">Consensus: <strong className="text-slate-600">Malachite BFT</strong></span>
-          <span className="text-slate-400 shrink-0">Throughput: <strong className="text-slate-600">~50k TPS</strong></span>
-          <a href="https://testnet.arcscan.app" target="_blank" rel="noreferrer" className="text-violet-600 hover:text-violet-700 font-medium shrink-0">ArcScan ↗</a>
-          <a href="https://faucet.circle.com"  target="_blank" rel="noreferrer" className="hidden sm:block text-violet-600 hover:text-violet-700 font-medium shrink-0 ml-auto">💧 Get Testnet USDC ↗</a>
-        </div>
-      </div>
-
       {/* ── Main content ── */}
-      <main className="flex-1 max-w-[1440px] mx-auto w-full px-4 xl:px-6 py-6 flex flex-col gap-10">
+      {tab === 'trade' ? (
+        /* ══════ TRADE: full-width Binance-style layout ══════ */
+        <>
+          <div style={{ height: 'calc(100vh - 56px)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
 
-        {/* ══════════════════ TRADE / HOME ══════════════════ */}
-        {tab === 'trade' && (
-          <>
+          {/* ── Network + pair info bar ── */}
+          <div className="bg-white border-b border-[#EAECEF] shrink-0">
+            {/* Network strip */}
+            <div className="flex items-center gap-4 px-4 py-1 text-[11px] border-b border-[#EAECEF] overflow-x-auto [scrollbar-width:none]">
+              <span className="flex items-center gap-1 text-[#0ECB81] font-medium shrink-0">
+                <span className="w-1.5 h-1.5 bg-[#0ECB81] rounded-full animate-pulse" />
+                Arc Testnet
+              </span>
+              <span className="text-[#B7BDC6] shrink-0">Chain <strong className="text-[#707A8A]">5042002</strong></span>
+              <span className="text-[#B7BDC6] shrink-0">Gas: <strong className="text-[#707A8A]">USDC</strong></span>
+              <span className="text-[#B7BDC6] shrink-0">Finality: <strong className="text-[#707A8A]">&lt;1s</strong></span>
+              <span className="text-[#B7BDC6] shrink-0">~50k TPS</span>
+              <a href="https://testnet.arcscan.app" target="_blank" rel="noreferrer"
+                className="text-[#F0B90B] hover:text-[#d4a017] font-medium shrink-0 ml-auto">ArcScan ↗</a>
+              <a href="https://faucet.circle.com" target="_blank" rel="noreferrer"
+                className="hidden sm:block text-[#F0B90B] hover:text-[#d4a017] font-medium shrink-0">💧 Faucet ↗</a>
+            </div>
 
-            {/* ── TRADING INTERFACE — TOP ────────────────────────────────────── */}
-            <div id="swap">
-              <div className="mb-4">
-                <p className="text-xs text-violet-600 font-bold uppercase tracking-widest mb-0.5">Live Trading</p>
-                <h2 className="text-2xl font-extrabold text-slate-900">Stablecoin FX on Arc Testnet</h2>
+            {/* Pair stats bar */}
+            <div className="flex items-center gap-0 px-4 py-2 overflow-x-auto [scrollbar-width:none]">
+              {/* Pair name */}
+              <div className="flex items-center gap-2 shrink-0 mr-5 pr-5 border-r border-[#EAECEF]">
+                <span className="text-[18px] font-bold text-[#1E2329]">{pair}</span>
+              </div>
+              {/* Price */}
+              <div className="shrink-0 mr-5">
+                <p className={`text-[22px] font-bold font-mono leading-none ${
+                  (prices[pair as keyof typeof prices] ?? 0) > 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'
+                }`}>
+                  {prices[pair as keyof typeof prices] ? fmtPrice(prices[pair as keyof typeof prices]) : '—'}
+                </p>
+              </div>
+              {/* Stats chips */}
+              {[
+                { label: '24h Change', value: '+0.23%',  color: 'text-[#0ECB81]' },
+                { label: '24h High',   value: fmtPrice((prices[pair as keyof typeof prices] ?? 0) * 1.012), color: 'text-[#1E2329]' },
+                { label: '24h Low',    value: fmtPrice((prices[pair as keyof typeof prices] ?? 0) * 0.988), color: 'text-[#1E2329]' },
+                { label: '24h Vol',    value: '1.24M USDC', color: 'text-[#1E2329]' },
+              ].map(s => (
+                <div key={s.label} className="shrink-0 mr-5 pl-5 border-l border-[#EAECEF] first:border-0 first:pl-0">
+                  <p className="text-[10px] text-[#707A8A] leading-none mb-0.5">{s.label}</p>
+                  <p className={`text-[13px] font-mono font-medium leading-none ${s.color}`}>{s.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Binance 3-column trading grid ── */}
+          <div className="flex overflow-hidden" style={{ flex: '1 1 0', minHeight: 0 }}>
+
+            {/* Left: Pair list (200px) */}
+            <div className="w-[220px] bg-white border-r border-[#EAECEF] flex flex-col overflow-hidden shrink-0">
+              {/* Search */}
+              <div className="p-2 border-b border-[#EAECEF] shrink-0">
+                <input
+                  placeholder="Search pair…"
+                  className="w-full text-[12px] bg-[#F5F5F5] border-0 outline-none px-2.5 py-1.5 rounded-sm text-[#1E2329] placeholder:text-[#B7BDC6]"
+                  readOnly
+                />
+              </div>
+              {/* Header */}
+              <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#EAECEF] shrink-0">
+                <span className="text-[11px] text-[#707A8A]">Pair</span>
+                <span className="text-[11px] text-[#707A8A]">Price</span>
+              </div>
+              {/* Pair rows */}
+              <div className="flex-1 overflow-y-auto">
+                {PAIRS.map(p => (
+                  <PairRow key={p} p={p} active={pair === p} onClick={() => setPair(p)} prices={prices} />
+                ))}
+              </div>
+            </div>
+
+            {/* Center: Chart + Trade history */}
+            <div className="flex-1 flex flex-col overflow-hidden border-r border-[#EAECEF]" style={{ minHeight: 0 }}>
+              {/* Chart — takes available space */}
+              <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+                <PriceChart pair={pair} basePrice={prices[pair as keyof typeof prices]} />
+              </div>
+              {/* Trade history — fixed height 180px */}
+              <div className="h-[180px] border-t border-[#EAECEF] overflow-hidden shrink-0">
+                <TransactionHistory pair={pair} myTxs={myTxs} />
+              </div>
+            </div>
+
+            {/* Right: OrderBook (top) + Order form (bottom) */}
+            <div className="w-[340px] flex flex-col overflow-hidden bg-white shrink-0">
+              {/* Order book — 52% */}
+              <div className="border-b border-[#EAECEF] overflow-hidden" style={{ flex: '52 1 0' }}>
+                <OrderBook pair={pair} basePrice={prices[pair as keyof typeof prices]} />
               </div>
 
-              <div className="flex gap-3">
-                {/* Pair selector — vertical left column with live prices */}
-                <div className="flex flex-col gap-1.5 shrink-0 w-[150px]">
-                  {PAIRS.map(p => (
-                    <PairButton key={p} p={p} active={pair === p} onClick={() => setPair(p)} prices={prices} />
+              {/* Order form tabs: Swap / Trade — 48% */}
+              <div className="flex flex-col overflow-hidden" style={{ flex: '48 1 0' }}>
+                <div className="flex border-b border-[#EAECEF] shrink-0">
+                  {(['swap', 'trade'] as const).map(m => (
+                    <button
+                      key={m}
+                      onClick={() => setTradeMode(m)}
+                      className={[
+                        'flex-1 py-2.5 text-[13px] font-medium border-b-2 transition-colors',
+                        tradeMode === m
+                          ? 'border-[#F0B90B] text-[#1E2329] font-semibold'
+                          : 'border-transparent text-[#707A8A] hover:text-[#1E2329]',
+                      ].join(' ')}
+                    >
+                      {m === 'swap' ? 'Swap' : 'Trade'}
+                    </button>
                   ))}
                 </div>
-
-                {/* Chart + Swap/Trade + OrderBook */}
-                <div className="flex-1 min-w-0">
-                  <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px_260px] gap-4">
-                    <div className="flex flex-col gap-4 min-w-0">
-                      <PriceChart pair={pair} basePrice={prices[pair as keyof typeof prices]} />
-                      <TransactionHistory pair={pair} myTxs={myTxs} />
-                    </div>
-
-                    {/* ── Swap / Trade tab card ── */}
-                    <div className="min-w-0">
-                      <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
-                        {/* Tab header */}
-                        <div className="flex border-b border-slate-200">
-                          {(['swap', 'trade'] as const).map(m => (
-                            <button
-                              key={m}
-                              onClick={() => setTradeMode(m)}
-                              className={`flex-1 py-3 text-sm font-bold transition-all flex items-center justify-center gap-1.5 border-b-2 ${
-                                tradeMode === m
-                                  ? 'border-violet-500 text-violet-600 bg-violet-50/50'
-                                  : 'border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-50'
-                              }`}
-                            >
-                              {m === 'swap' ? <><span>⇅</span> Swap</> : <><span>📊</span> Trade</>}
-                            </button>
-                          ))}
-                        </div>
-                        {/* Tab content — remove outer card from each child */}
-                        <div className={tradeMode === 'swap' ? '' : 'hidden'}>
-                          <SwapCard fromTokenProp={fromToken} toTokenProp={toToken} onSwapComplete={handleSwapComplete} />
-                        </div>
-                        <div className={tradeMode === 'trade' ? '' : 'hidden'}>
-                          <TradeBox pair={pair} basePrice={prices[pair as keyof typeof prices]} onSwapComplete={handleSwapComplete} />
-                        </div>
-                        {/* Shared footer */}
-                        <p className="text-center text-xs text-slate-400 py-3 border-t border-slate-100">
-                          Powered by{' '}
-                          <a href="https://testnet.arcscan.app" target="_blank" rel="noreferrer" className="text-violet-500 hover:text-violet-400">Arc Testnet</a>
-                          {' '}· USDC on-chain
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="min-w-0">
-                      <OrderBook pair={pair} basePrice={prices[pair as keyof typeof prices]} />
-                    </div>
+                <div className="flex-1 overflow-y-auto">
+                  <div className={tradeMode === 'swap' ? '' : 'hidden'}>
+                    <SwapCard fromTokenProp={fromToken} toTokenProp={toToken} onSwapComplete={handleSwapComplete} />
+                  </div>
+                  <div className={tradeMode === 'trade' ? '' : 'hidden'}>
+                    <TradeBox pair={pair} basePrice={prices[pair as keyof typeof prices]} onSwapComplete={handleSwapComplete} />
                   </div>
                 </div>
               </div>
             </div>
+
+          </div>
+
+          </div>{/* end fixed-height trading viewport */}
+
+          {/* ── Marketing content (below trading area, scrollable) ── */}
+          <div className="max-w-[1440px] mx-auto w-full px-4 xl:px-6 py-6 flex flex-col gap-10">
+        {/* ── TRADE TAB MARKETING BELOW ── */}
 
             {/* ── HERO ───────────────────────────────────────────────────────── */}
             <div className="relative rounded-3xl overflow-hidden shadow-xl">
@@ -891,21 +934,23 @@ export default function App() {
               </div>
             </div>
 
-          </>
-        )}
+          </div>
+        </>
 
-        {/* ══════════════════ OTHER TABS ══════════════════ */}
-        {tab === 'bridge'    && <BridgePanel />}
-        {tab === 'lending'   && <LendingPanel />}
-        {tab === 'perps'     && <DerivativesPanel />}
-        {tab === 'traders'   && <HyperliquidPanel />}
-        {tab === 'airdrops'  && <AirdropPanel />}
-        {tab === 'wallet'    && <WalletPanel />}
-        {tab === 'predict'   && <PredictionMarketPanel />}
-        {tab === 'portfolio' && <PortfolioPanel />}
-        {tab === 'payments'  && <PaymentsPanel onNavigate={handleTabChange} />}
-
-      </main>
+      ) : (
+        /* ══════ OTHER TABS ══════ */
+        <main className="flex-1 max-w-[1440px] mx-auto w-full px-4 xl:px-6 py-6 flex flex-col gap-6">
+          {tab === 'bridge'    && <BridgePanel />}
+          {tab === 'lending'   && <LendingPanel />}
+          {tab === 'perps'     && <DerivativesPanel />}
+          {tab === 'traders'   && <HyperliquidPanel />}
+          {tab === 'airdrops'  && <AirdropPanel />}
+          {tab === 'wallet'    && <WalletPanel />}
+          {tab === 'predict'   && <PredictionMarketPanel />}
+          {tab === 'portfolio' && <PortfolioPanel />}
+          {tab === 'payments'  && <PaymentsPanel onNavigate={handleTabChange} />}
+        </main>
+      )}
 
       {/* ── FOOTER ── */}
       <footer className="border-t border-slate-200 bg-white">

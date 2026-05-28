@@ -7,14 +7,22 @@ export interface LivePrices {
   'SOL/USDC':    number
   'cirBTC/USDC': number
   'cirBTC/EURC': number
+  'ARC/USDC':    number
+  'ARC/EURC':    number
+  'QCAD/USDC':   number
+  'QCAD/EURC':   number
 }
 
 const FALLBACK: LivePrices = {
-  'USDC/EURC':   0.9259,       // 1/1.08
+  'USDC/EURC':   0.9259,
   'ETH/USDC':    2064,
   'SOL/USDC':    84.25,
   'cirBTC/USDC': 75500,
-  'cirBTC/EURC': parseFloat((75500 / 1.08).toFixed(2)),  // ~69,907
+  'cirBTC/EURC': parseFloat((75500 / 1.08).toFixed(2)),
+  'ARC/USDC':    0.10,
+  'ARC/EURC':    parseFloat((0.10 / 1.08).toFixed(6)),
+  'QCAD/USDC':   0.73,                                    // 1 CAD ≈ 0.73 USD
+  'QCAD/EURC':   parseFloat((0.73 / 1.08).toFixed(6)),   // ~0.6757
 }
 
 async function fetchPrices(): Promise<LivePrices> {
@@ -44,12 +52,26 @@ async function fetchPrices(): Promise<LivePrices> {
   // EURC is pegged 1:1 to EUR, so USDC/EURC = 1/eurUsd (how many EUR per 1 USD)
   const usdcEurc = 1 / eurUsd   // e.g. 1 USDC ≈ 0.926 EURC
 
+  // CAD/USD from forex API
+  let cadUsd = 0.73
+  try {
+    const fxData = await fetch(
+      'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json',
+    ).then(r => r.json())
+    const usdCad: number = fxData?.usd?.cad ?? 0
+    if (usdCad > 0) cadUsd = 1 / usdCad
+  } catch { /* use fallback */ }
+
   return {
     'USDC/EURC':   parseFloat(usdcEurc.toFixed(6)),
     'ETH/USDC':    eth,
     'SOL/USDC':    sol,
     'cirBTC/USDC': btc,
-    'cirBTC/EURC': parseFloat((btc / eurUsd).toFixed(2)),  // e.g. 75500/1.08 ≈ 69,907
+    'cirBTC/EURC': parseFloat((btc / eurUsd).toFixed(2)),
+    'ARC/USDC':    0.10,
+    'ARC/EURC':    parseFloat((0.10 / eurUsd).toFixed(6)),
+    'QCAD/USDC':   parseFloat(cadUsd.toFixed(6)),           // live CAD/USD
+    'QCAD/EURC':   parseFloat((cadUsd / eurUsd).toFixed(6)),
   }
 }
 

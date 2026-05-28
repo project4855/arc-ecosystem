@@ -2,16 +2,16 @@ import { useAccount, useChainId } from 'wagmi'
 import WalletConnector from './WalletConnector'
 
 const TABS = [
-  { key: 'trade',     label: 'Trade',     icon: '💱' },
-  { key: 'bridge',    label: 'Bridge',    icon: '🌉' },
-  { key: 'lending',   label: 'Lend',      icon: '🏦' },
-  { key: 'perps',     label: 'Perps',     icon: '⚡' },
-  { key: 'traders',   label: 'Agents',    icon: '🤖' },
-  { key: 'payments',  label: 'Pay',       icon: '💸' },
-  { key: 'predict',   label: 'Predict',   icon: '🎯' },
-  { key: 'portfolio', label: 'Treasury',  icon: '🏛️' },
-  { key: 'airdrops',  label: 'Community', icon: '🏠' },
-  { key: 'wallet',    label: 'Wallet',    icon: '👛' },
+  { key: 'trade',     label: 'Trade'     },
+  { key: 'bridge',    label: 'Bridge'    },
+  { key: 'lending',   label: 'Earn'      },
+  { key: 'perps',     label: 'Perps'     },
+  { key: 'traders',   label: 'Agents'    },
+  { key: 'payments',  label: 'Pay'       },
+  { key: 'predict',   label: 'Predict'   },
+  { key: 'portfolio', label: 'Treasury'  },
+  { key: 'airdrops',  label: 'Community' },
+  { key: 'wallet',    label: 'Wallet'    },
 ] as const
 
 interface NavbarProps {
@@ -25,77 +25,71 @@ export default function Navbar({ tab, onTabChange }: NavbarProps) {
   const wrongNet        = isConnected && chainId !== 5042002
 
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
-      <div className="max-w-[1600px] mx-auto px-6 h-[68px] flex items-center gap-6">
+    <nav className="sticky top-0 z-50 bg-white border-b border-[#EAECEF] h-[56px] flex items-stretch shadow-none">
+      <div className="max-w-[1800px] mx-auto w-full px-4 flex items-stretch">
 
         {/* ── Logo ── */}
         <button
           onClick={() => onTabChange('trade')}
-          className="flex items-center gap-3 shrink-0 group"
+          className="flex items-center gap-2.5 shrink-0 mr-5 hover:opacity-80 transition-opacity"
         >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-blue-500 flex items-center justify-center font-black text-white text-lg shadow-sm group-hover:shadow-md transition-all">
+          <div className="w-7 h-7 bg-[#F0B90B] rounded-sm flex items-center justify-center font-black text-[#1E2329] text-[13px] select-none">
             A
           </div>
-          <div className="hidden md:flex flex-col leading-none">
-            <span className="font-black text-slate-900 text-[15px] tracking-widest">
-              ARC<span className="text-violet-600">_ECOSYSTEM</span>
+          <div className="hidden md:flex flex-col leading-none gap-0.5">
+            <span className="font-bold text-[#1E2329] text-[15px] tracking-tight">
+              Arc<span style={{ color: '#F0B90B' }}>Ecosystem</span>
             </span>
-            <span className="text-[9px] text-slate-400 font-semibold tracking-widest uppercase mt-0.5">Arc Testnet</span>
+            <span className="text-[9px] text-[#B7BDC6] font-medium tracking-widest uppercase">
+              Arc Testnet
+            </span>
           </div>
         </button>
 
-        <div className="hidden md:block w-px h-8 bg-slate-200 shrink-0" />
+        {/* ── Divider ── */}
+        <div className="w-px bg-[#EAECEF] my-3 mr-4 shrink-0" />
 
-        {/* ── Tabs ── */}
-        <div className="flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-w-0">
-          <div className="flex items-center gap-2 min-w-max">
-            {TABS.map(t => {
-              const active = tab === t.key
-              return (
-                <button
-                  key={t.key}
-                  onClick={() => onTabChange(t.key)}
-                  className={`
-                    flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all
-                    ${active
-                      ? 'bg-violet-600 text-white shadow-md'
-                      : 'text-slate-600 hover:bg-violet-50 hover:text-violet-700'
-                    }
-                  `}
-                >
-                  <span className="text-[18px] leading-none">{t.icon}</span>
-                  <span className="text-[15px]">{t.label}</span>
-                </button>
-              )
-            })}
-          </div>
+        {/* ── Nav tabs ── */}
+        <div className="flex items-stretch flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {TABS.map(t => {
+            const active = tab === t.key
+            return (
+              <button
+                key={t.key}
+                onClick={() => onTabChange(t.key)}
+                style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
+                className={[
+                  'h-full shrink-0 text-[13px] font-medium whitespace-nowrap tracking-wider',
+                  'border-b-2 transition-colors',
+                  active
+                    ? 'border-[#F0B90B] text-[#1E2329] font-semibold'
+                    : 'border-transparent text-[#707A8A] hover:text-[#1E2329]',
+                ].join(' ')}
+              >
+                {t.label}
+              </button>
+            )
+          })}
         </div>
 
-        {/* ── Right ── */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* ── Right side ── */}
+        <div className="flex items-center gap-2 shrink-0 ml-4">
           {wrongNet && (
-            <span className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold">
+            <span className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-sm bg-[#FFF8E1] border border-[#F0B90B]/40 text-[#B8860B] text-[12px] font-medium">
               ⚠ Wrong Network
             </span>
           )}
-          <a href="https://faucet.circle.com" target="_blank" rel="noreferrer"
-            className="hidden xl:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-bold hover:bg-emerald-100 transition-colors">
+          <a
+            href="https://faucet.circle.com"
+            target="_blank"
+            rel="noreferrer"
+            className="hidden lg:flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-[#707A8A] hover:text-[#1E2329] hover:bg-[#F5F5F5] rounded transition-colors"
+          >
             💧 Faucet
           </a>
           <WalletConnector onNavigateToWallet={() => onTabChange('wallet')} />
         </div>
 
-      </div>
-
-      {/* Active indicator */}
-      <div className="h-[3px] bg-slate-100">
-        <div
-          className="h-full bg-violet-500 transition-all duration-300"
-          style={{
-            width: `${100 / TABS.length}%`,
-            marginLeft: `${(TABS.findIndex(t => t.key === tab) / TABS.length) * 100}%`,
-          }}
-        />
       </div>
     </nav>
   )

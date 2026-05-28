@@ -150,6 +150,64 @@ export const AGENT_JOBS_ABI = [
   },
 ] as const
 
+// ── ArcSwap contract ──────────────────────────────────────────────────────────
+// Deployed: 2026-05-24  chain: Arc Testnet (5042002)
+// Instant fixed-rate swap: approve → swap() — no order book, immediate settlement
+export const ARC_SWAP_ADDRESS = '0x8C16097F1f9a4B7Fab0497C29D3fC6a85a43C550' as `0x${string}`
+
+export const ARC_SWAP_ABI = [
+  {
+    name: 'swap',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'tokenIn',  type: 'address' },
+      { name: 'tokenOut', type: 'address' },
+      { name: 'amountIn', type: 'uint256' },
+    ],
+    outputs: [{ name: 'amountOut', type: 'uint256' }],
+  },
+  {
+    name: 'getAmountOut',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'tokenIn',  type: 'address' },
+      { name: 'tokenOut', type: 'address' },
+      { name: 'amountIn', type: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    name: 'rate',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'tokenIn',  type: 'address' },
+      { name: 'tokenOut', type: 'address' },
+    ],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    name: 'liquidity',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'token', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    name: 'Swapped',
+    type: 'event',
+    inputs: [
+      { name: 'user',      type: 'address', indexed: true  },
+      { name: 'tokenIn',   type: 'address', indexed: true  },
+      { name: 'tokenOut',  type: 'address', indexed: true  },
+      { name: 'amountIn',  type: 'uint256', indexed: false },
+      { name: 'amountOut', type: 'uint256', indexed: false },
+    ],
+  },
+] as const
+
 // ── ArcDEX contract ───────────────────────────────────────────────────────────
 // Deployed: 2026-05-24  chain: Arc Testnet (5042002)
 // Order-book DEX: placeOrder → fillOrder — supports cirBTC/USDC, EURC/USDC, etc.
@@ -361,12 +419,17 @@ export const TOKEN_ADDRESSES: Record<string, `0x${string}`> = {
   USDC:   '0x3600000000000000000000000000000000000000',
   EURC:   '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a',
   cirBTC: '0xf0C4a4CE82A5746AbAAd9425360Ab04fbBA432BF',
+  ARC:    '0x55e1a127e33C4Ccca470Ea9eE8F15683DEf2dCc1',
+  // QCAD — Canada's first regulated CAD stablecoin by Stablecorp (Arc Testnet deploy)
+  QCAD:   '0xf546Bc238F0893eD08586c892f3a111cBFf0d19a',
 }
 
 export const TOKEN_DECIMALS: Record<string, number> = {
   USDC:   6,
   EURC:   6,
   cirBTC: 8,
+  ARC:    6,
+  QCAD:   6,
 }
 
 // ── ArcLending ABI ────────────────────────────────────────────────────────────
