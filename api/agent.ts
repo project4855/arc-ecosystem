@@ -151,6 +151,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const contextMsg = `[Thông tin hiện tại]\nVí: ${walletAddress || 'Chưa kết nối'}\nSố dư: ${JSON.stringify(balances)}\nGiá: ${JSON.stringify(prices)}`
 
   const allMessages: OpenAI.ChatCompletionMessageParam[] = [
+    { role: 'system',    content: SYSTEM },
     { role: 'user',      content: contextMsg },
     { role: 'assistant', content: 'Đã nhận thông tin ví và giá.' },
     ...messages,
@@ -162,12 +163,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     for (let i = 0; i < 6; i++) {
       const resp = await client.chat.completions.create({
-        model:    MODEL,
-        messages: loopMessages,
-        tools:    TOOLS,
+        model:       MODEL,
+        messages:    loopMessages,
+        tools:       TOOLS,
         tool_choice: 'auto',
-        system: SYSTEM,
-      } as OpenAI.ChatCompletionCreateParamsNonStreaming & { system?: string })
+      })
 
       const msg = resp.choices[0].message
       loopMessages.push(msg as OpenAI.ChatCompletionMessageParam)
