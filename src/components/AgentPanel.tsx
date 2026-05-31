@@ -41,13 +41,49 @@ const ERC20_BAL_ABI = [{
 const nowTime = () => new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 const uid = () => Math.random().toString(36).slice(2)
 const HISTORY_KEY = 'agent_chat_v1'
-const loadHistory  = (): ChatMessage[] => { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]') } catch { return [] } }
+const loadHistory  = (): ChatMessage[] => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]') as ChatMessage[]
+    // Filter out corrupted messages (null/undefined text)
+    return raw.filter(m => m && typeof m.text === 'string' && m.id && m.role)
+  } catch { return [] }
+}
 const saveHistory  = (h: ChatMessage[]) => localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(-60)))
 const loadApiHist  = (): { role: 'user' | 'assistant'; content: string }[] => {
   try { return JSON.parse(localStorage.getItem(HISTORY_KEY + '_api') ?? '[]') } catch { return [] }
 }
 const saveApiHist  = (h: { role: 'user' | 'assistant'; content: string }[]) =>
   localStorage.setItem(HISTORY_KEY + '_api', JSON.stringify(h.slice(-20)))
+
+// ── Static product list (outside component to avoid recreation) ──────────────
+const PRODUCTS_STATIC = [
+  { id:'1', name:'DeFi Fundamentals',           author:'Arc Academy',  price:1.5  },
+  { id:'2', name:'Advanced Yield Strategies',   author:'YieldLab',     price:3.0  },
+  { id:'3', name:'Circle USDC Developer Guide', author:'Circle Docs',  price:0.5  },
+  { id:'4', name:'ArcSwap Strategy Book',       author:'DeFi Masters', price:2.0  },
+  { id:'5', name:'Arc Testnet Analytics Pro',   author:'ArcAnalytics', price:4.0  },
+  { id:'6', name:'Portfolio Tracker Access',    author:'CryptoTrack',  price:1.0  },
+  { id:'7', name:'ARC/USDC Trading Signals',    author:'SignalBot',    price:2.5  },
+  { id:'8', name:'cirBTC Price Alert Bot',      author:'AlertBot',     price:0.5  },
+  { id:'9', name:'Arc Builders Community',      author:'Arc House',    price:1.0  },
+  { id:'10',name:'AI Agent Development Kit',    author:'AgentLab',     price:3.5  },
+  { id:'11',name:'Smart Contract Audit Report', author:'AuditDAO',     price:5.0  },
+  { id:'12',name:'DeFi Glossary & Cheatsheet',  author:'CryptoLearn',  price:0.25 },
+  { id:'13',name:'Liquidity Provider Guide',    author:'LPMaster',     price:1.5  },
+  { id:'14',name:'Stablecoin Economics',        author:'EconLab',      price:2.0  },
+  { id:'15',name:'Arc Testnet NFT Badge',       author:'ArcNFT',       price:0.1  },
+  { id:'16',name:'QCAD Integration Tutorial',   author:'Stablecorp',   price:0.75 },
+  { id:'17',name:'Cross-Chain Bridge Mastery',  author:'BridgePro',    price:2.5  },
+  { id:'18',name:'Automated Trading Bot',       author:'BotFactory',   price:4.5  },
+  { id:'19',name:'DeFi Risk Assessment',        author:'RiskDAO',      price:1.5  },
+  { id:'20',name:'Arc Agentic Economy Guide',   author:'AgentEcon',    price:3.0  },
+]
+const SHOP_SECTIONS = [
+  { cat: '📚 Education',               ids: [1,2,3,4,12,13,14,16,17,20] },
+  { cat: '📊 Analytics & Trading',     ids: [5,6,7,8,19]                },
+  { cat: '🔧 Tools & Services',        ids: [10,11,18]                  },
+  { cat: '🤝 Community & Collectibles',ids: [9,15]                      },
+]
 
 const TX_HISTORY_KEY  = 'arc_swap_history'
 const PURCHASE_KEY    = 'arc_purchases_v1'
@@ -362,74 +398,44 @@ export default function AgentPanel() {
       {/* ── Shop tab ── */}
       {activeTab === 'shop' && (
         <div className="flex-1 overflow-y-auto bg-[#F8F9FB] p-3">
-          <p className="text-[11px] text-slate-400 text-center mb-3">Nhấn "Mua" để ra lệnh cho Agent · Thanh toán bằng USDC · Arc Testnet</p>
-          {[
-            { cat: '📚 Education', items: [1,2,3,4,12,13,14,16,17,20] },
-            { cat: '📊 Analytics & Trading', items: [5,6,7,8,19] },
-            { cat: '🔧 Tools & Services', items: [10,11,18] },
-            { cat: '🤝 Community & Collectibles', items: [9,15] },
-          ].map(({ cat, items: ids }) => {
-            const PRODUCTS_CLIENT = [
-              { id:'1',name:'DeFi Fundamentals',author:'Arc Academy',category:'Education',price:1.5 },
-              { id:'2',name:'Advanced Yield Strategies',author:'YieldLab',category:'Education',price:3.0 },
-              { id:'3',name:'Circle USDC Developer Guide',author:'Circle Docs',category:'Education',price:0.5 },
-              { id:'4',name:'ArcSwap Strategy Book',author:'DeFi Masters',category:'Education',price:2.0 },
-              { id:'5',name:'Arc Testnet Analytics Pro',author:'ArcAnalytics',category:'Analytics',price:4.0 },
-              { id:'6',name:'Portfolio Tracker Access',author:'CryptoTrack',category:'Analytics',price:1.0 },
-              { id:'7',name:'ARC/USDC Trading Signals',author:'SignalBot',category:'Trading',price:2.5 },
-              { id:'8',name:'cirBTC Price Alert Bot',author:'AlertBot',category:'Trading',price:0.5 },
-              { id:'9',name:'Arc Builders Community',author:'Arc House',category:'Community',price:1.0 },
-              { id:'10',name:'AI Agent Development Kit',author:'AgentLab',category:'Tools',price:3.5 },
-              { id:'11',name:'Smart Contract Audit Report',author:'AuditDAO',category:'Services',price:5.0 },
-              { id:'12',name:'DeFi Glossary & Cheatsheet',author:'CryptoLearn',category:'Education',price:0.25 },
-              { id:'13',name:'Liquidity Provider Guide',author:'LPMaster',category:'Education',price:1.5 },
-              { id:'14',name:'Stablecoin Economics',author:'EconLab',category:'Education',price:2.0 },
-              { id:'15',name:'Arc Testnet NFT Badge',author:'ArcNFT',category:'Collectibles',price:0.1 },
-              { id:'16',name:'QCAD Integration Tutorial',author:'Stablecorp',category:'Education',price:0.75 },
-              { id:'17',name:'Cross-Chain Bridge Mastery',author:'BridgePro',category:'Education',price:2.5 },
-              { id:'18',name:'Automated Trading Bot',author:'BotFactory',category:'Tools',price:4.5 },
-              { id:'19',name:'DeFi Risk Assessment',author:'RiskDAO',category:'Analytics',price:1.5 },
-              { id:'20',name:'Arc Agentic Economy Guide',author:'AgentEcon',category:'Education',price:3.0 },
-            ]
-            const prods = PRODUCTS_CLIENT.filter(p => ids.includes(parseInt(p.id)))
-            return (
-              <div key={cat} className="mb-4">
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">{cat}</p>
-                <div className="grid grid-cols-1 gap-2">
-                  {prods.map(p => {
-                    const bought = purchases.includes(p.id)
-                    return (
-                      <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border bg-white gap-3 ${bought ? 'border-emerald-200' : 'border-slate-200'}`}>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-sm font-semibold text-slate-900 truncate">{p.name}</p>
-                            {bought && <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">✓ Đã mua</span>}
-                          </div>
-                          <p className="text-[11px] text-slate-400">bởi {p.author}</p>
+          <p className="text-[11px] text-slate-400 text-center mb-3">Nhấn "Mua" → lệnh tự điền vào Chat · Thanh toán USDC · Arc Testnet</p>
+          {SHOP_SECTIONS.map(({ cat, ids }) => (
+            <div key={cat} className="mb-4">
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">{cat}</p>
+              <div className="grid grid-cols-1 gap-2">
+                {PRODUCTS_STATIC.filter(p => ids.includes(parseInt(p.id))).map(p => {
+                  const bought = purchases.includes(p.id)
+                  return (
+                    <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border bg-white gap-3 ${bought ? 'border-emerald-200' : 'border-slate-200'}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-semibold text-slate-900 truncate">{p.name}</p>
+                          {bought && <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">✓ Đã mua</span>}
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-sm font-bold text-violet-700">{p.price} USDC</span>
-                          {!bought ? (
-                            <button
-                              onClick={() => {
-                                setInput(`Mua cho tôi sản phẩm "${p.name}" bởi ${p.author}`)
-                                setActiveTab('chat')
-                                setTimeout(() => inputRef.current?.focus(), 150)
-                              }}
-                              className="px-2.5 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-bold transition-colors">
-                              Mua
-                            </button>
-                          ) : (
-                            <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-700 text-[11px] font-bold">✓</span>
-                          )}
-                        </div>
+                        <p className="text-[11px] text-slate-400">bởi {p.author}</p>
                       </div>
-                    )
-                  })}
-                </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-sm font-bold text-violet-700">{p.price} USDC</span>
+                        {!bought ? (
+                          <button
+                            onClick={() => {
+                              setInput(`Mua cho tôi sản phẩm "${p.name}" bởi ${p.author}`)
+                              setActiveTab('chat')
+                              setTimeout(() => inputRef.current?.focus(), 150)
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-bold transition-colors">
+                            Mua
+                          </button>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-700 text-[11px] font-bold">✓</span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       )}
 
@@ -451,7 +457,7 @@ export default function AgentPanel() {
                     ? 'bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-mono'
                     : 'bg-white border border-slate-200 text-slate-800 shadow-sm rounded-tl-sm'
                 }`}>
-                  {msg.text.split(/(\[.*?\]\(.*?\))/g).map((part, i) => {
+                  {(msg.text ?? '').split(/(\[.*?\]\(.*?\))/g).map((part, i) => {
                     const m = part.match(/\[(.*?)\]\((.*?)\)/)
                     return m
                       ? <a key={i} href={m[2]} target="_blank" rel="noreferrer" className="text-violet-600 underline">{m[1]}</a>
