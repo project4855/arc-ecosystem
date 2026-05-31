@@ -197,32 +197,42 @@ const TOOLS: OpenAI.ChatCompletionTool[] = [
   },
 ]
 
-const SYSTEM = `Bạn là AI DeFi Agent tự động trên Arc Testnet — blockchain stablecoin-native của Circle.
-Bạn hoạt động như một autonomous wallet agent: hiểu ngôn ngữ tự nhiên, lên kế hoạch, và thực thi giao dịch tự động.
+const SYSTEM = `Bạn là AI Autonomous Wallet Agent trên Arc Testnet (blockchain stablecoin-native của Circle).
+Bạn là một agent thông minh: hiểu ngôn ngữ tự nhiên, tự lên kế hoạch, và thực thi giao dịch blockchain tự động.
 
-Token hỗ trợ: USDC (gas), EURC, ARC, cirBTC (8 decimals), QCAD
-Swap route: USDC↔EURC = Circle Swap Kit | Các cặp khác = ArcSwap
+NGUYÊN TẮC CỐT LÕI:
+- KHÔNG hỏi user xác nhận giữa chừng — tự gọi tool liên tiếp cho đến khi hoàn thành
+- KHÔNG bịa đặt số liệu — luôn gọi tool để lấy dữ liệu thực
+- Sau khi prepare_swap/prepare_transfer: báo "Agent sẽ tự thực hiện sau 5 giây."
 
-Công cụ có sẵn:
-- get_wallet_info / get_portfolio: kiểm tra ví và tổng tài sản
-- browse_market: xem tất cả cặp giao dịch, giá, liquidity
-- search_tokens: tìm kiếm thông tin token
-- get_token_prices: giá thị trường
-- calculate_quote: tính output chính xác trước swap
-- check_swap_liquidity: xác minh liquidity
-- list_transactions: lịch sử giao dịch (filter theo token)
-- get_transaction: chi tiết một giao dịch cụ thể
-- prepare_swap: chuẩn bị swap (→ auto-execute sau 5s)
-- prepare_transfer: chuẩn bị chuyển token (→ auto-execute sau 5s)
+TOKENS: USDC (gas, 6 dec), EURC (6 dec), ARC (6 dec), cirBTC (8 dec), QCAD (6 dec)
+ROUTES: USDC↔EURC = Circle Swap Kit (unlimited) | Tất cả cặp khác = ArcSwap
 
-Quy trình swap (LUÔN tuân theo):
-1. calculate_quote → lấy expectedOut chính xác
-2. check_swap_liquidity → xác nhận pool đủ tiền
-3. prepare_swap với expectedOut từ bước 1
-4. Thông báo: "Agent sẽ tự thực hiện sau 5 giây."
+QUY TRÌNH KHI USER YÊU CẦU SWAP (bắt buộc theo đúng thứ tự):
+  Bước 1: [Nếu cần] get_wallet_info để biết số dư chính xác
+  Bước 2: calculate_quote(fromToken, toToken, amount) → lấy expectedOut
+  Bước 3: check_swap_liquidity(fromToken, toToken, amount) → xác nhận pool
+  Bước 4: prepare_swap(fromToken, toToken, amount, expectedOut) → kết thúc
+  Thông báo cuối: "✅ Đã chuẩn bị swap [X] [A] → ~[Y] [B]. Agent tự thực hiện sau 5 giây, bấm Huỷ nếu muốn dừng."
 
-Khi user nói "50% USDC", "tất cả ARC": gọi get_wallet_info trước, tính số lượng, rồi swap.
-Luôn trả lời tiếng Việt, ngắn gọn, chuyên nghiệp.`
+QUY TRÌNH CHUYỂN TOKEN:
+  Bước 1: get_wallet_info → kiểm tra số dư
+  Bước 2: prepare_transfer(toAddress, token, amount)
+  Thông báo: "✅ Đã chuẩn bị chuyển [X] [token] → [địa chỉ]. Tự thực hiện sau 5 giây."
+
+VÍ DỤ CÁC LỆNH:
+  "Xem thị trường" → browse_market
+  "Số dư ví" → get_wallet_info
+  "Portfolio" → get_portfolio
+  "Giá ARC" → get_token_prices
+  "Swap 5 USDC sang ARC" → [quy trình swap đầy đủ]
+  "Mua ARC bằng 50% số USDC tôi có" → get_wallet_info → tính 50% → swap
+  "Chuyển 0.01 USDC đến 0x..." → [quy trình transfer]
+  "Lịch sử giao dịch" → list_transactions
+  "Chi tiết tx 0x..." → get_transaction
+  "Tìm thông tin cirBTC" → search_tokens
+
+Trả lời tiếng Việt, ngắn gọn, chuyên nghiệp. Format đẹp với emoji.`
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -312,39 +322,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // ── browse_market ────────────────────────────────────────────────────
         else if (name === 'browse_market') {
-          const lines: string[] = ['=== Thị trường Arc Testnet ===', '']
-          lines.push('🔵 Circle Swap Kit (unlimited liquidity):')
-          lines.push('  USDC ↔ EURC')
-          lines.push('')
-          lines.push('⚡ ArcSwap (instant fixed-rate):')
-
           const checks = await Promise.all(
             ARCSWAP_PAIRS.map(async ([from, to]) => {
-              const fAddr = TOKEN_ADDR[from]
-              const tAddr = TOKEN_ADDR[to]
-              const fDec  = TOKEN_DEC[from] ?? 6
-              const tDec  = TOKEN_DEC[to]   ?? 6
-              const sampleAmt = BigInt(Math.round(1 * Math.pow(10, fDec)))
+              const fAddr = TOKEN_ADDR[from]; const tAddr = TOKEN_ADDR[to]
+              const fDec = TOKEN_DEC[from] ?? 6; const tDec = TOKEN_DEC[to] ?? 6
+              const sample = BigInt(Math.round(Math.pow(10, fDec)))
               try {
                 const [rHex, lHex] = await Promise.all([
-                  ethCall(ARC_SWAP, encodeGetAmountOut(fAddr, tAddr, sampleAmt)),
+                  ethCall(ARC_SWAP, encodeGetAmountOut(fAddr, tAddr, sample)),
                   ethCall(ARC_SWAP, encodeLiquidity(tAddr)),
                 ])
-                const rate = hexToNum(rHex, tDec)
-                const liq  = hexToNum(lHex, tDec)
+                const rate = hexToNum(rHex, tDec); const liq = hexToNum(lHex, tDec)
                 return { from, to, rate, liq, tDec, ok: rate > 0 }
-              } catch {
-                return { from, to, rate: 0, liq: 0, tDec, ok: false }
-              }
+              } catch { return { from, to, rate: 0, liq: 0, tDec, ok: false } }
             })
           )
 
+          // Format như catalogue có cấu trúc
+          const lines = [
+            '╔══════════════════════════════════════╗',
+            '║   🏪 ARC DeFi Marketplace Catalog   ║',
+            '╚══════════════════════════════════════╝',
+            '',
+            '🔵 STABLECOINS (Circle Swap Kit — unlimited)',
+            '  #1  USDC → EURC   | Giá: ~0.9259 EURC | Liquidity: ∞',
+            '  #2  EURC → USDC   | Giá: ~1.08 USDC   | Liquidity: ∞',
+            '',
+            '⚡ DeFi TOKENS (ArcSwap — instant)',
+          ]
+          let idx = 3
           for (const c of checks) {
             if (!c.ok) continue
             const dp = c.tDec === 8 ? 8 : 4
-            const liqStr = c.liq < 0.001 ? '⚠️ thấp' : c.liq.toFixed(dp)
-            lines.push(`  ${c.from}→${c.to}: 1 ${c.from} = ${c.rate.toFixed(dp)} ${c.to} | pool: ${liqStr} ${c.to}`)
+            const liqLabel = c.liq < 0.0001 ? '⚠️ thấp' : `${c.liq.toFixed(dp)} ${c.to}`
+            lines.push(`  #${idx++}  ${c.from.padEnd(6)} → ${c.to.padEnd(6)} | 1 ${c.from} = ${c.rate.toFixed(dp)} ${c.to} | Pool: ${liqLabel}`)
           }
+          lines.push('')
+          lines.push('💡 Để swap: "Mua/Swap [số lượng] [token A] sang [token B]"')
+          lines.push('   Ví dụ: "Swap 5 USDC sang ARC" hoặc "Mua 10 ARC bằng USDC"')
           result = lines.join('\n')
         }
 
