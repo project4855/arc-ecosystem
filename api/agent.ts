@@ -377,7 +377,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       for (const tc of msg.tool_calls) {
         const name = tc.function.name
-        const inp  = JSON.parse(tc.function.arguments) as Record<string, unknown>
+        const inp  = (JSON.parse(tc.function.arguments || '{}') ?? {}) as Record<string, unknown>
         let result = ''
 
         // ── get_wallet_info ──────────────────────────────────────────────────
