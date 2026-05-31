@@ -308,17 +308,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const raw = resp.choices[0].message.content?.trim() ?? ''
 
-      // Extract JSON from response (handle markdown code blocks)
-      const jsonStr = raw.startsWith('```')
-        ? raw.replace(/```(?:json)?\n?/g, '').replace(/```$/,'').trim()
-        : raw
+      // Extract JSON — find first {...} block anywhere in the response
+      let jsonStr = raw
+      if (raw.includes('```')) {
+        jsonStr = raw.replace(/```(?:json)?\n?/g,'').replace(/```/g,'').trim()
+      }
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/)
+      if (jsonMatch) jsonStr = jsonMatch[0]
 
       let parsed: Record<string, unknown>
       try {
         parsed = JSON.parse(jsonStr) as Record<string, unknown>
       } catch {
-        // Model gave non-JSON — treat as plain reply
-        return res.status(200).json({ reply: raw, action })
+        // Still can't parse — if contains a reply keyword, show it; otherwise show raw
+        const replyMatch = raw.match(/"reply"\s*:\s*"([^"]+)"/)
+        return res.status(200).json({ reply: replyMatch ? replyMatch[1] : raw, action })
       }
 
       // If model wants to call a tool
