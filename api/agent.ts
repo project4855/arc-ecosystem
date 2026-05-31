@@ -1,5 +1,6 @@
 // api/agent.ts — Autonomous DeFi Agent (Groq + tool use)
-// Features: browse market, portfolio, quote, swap, transfer, auto-execute
+// Features: browse market, portfolio, quote, swap, transfer, auto-execute,
+//           list_transactions, get_transaction, search_tokens
 import OpenAI from 'openai'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
@@ -138,6 +139,49 @@ const TOOLS: OpenAI.ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
+      name: 'list_transactions',
+      description: 'Xem lịch sử giao dịch (swap, transfer) gần đây của ví. Dùng khi hỏi "lịch sử", "giao dịch gần đây", "tôi đã swap gì".',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', description: 'Số lượng giao dịch hiển thị (mặc định 5)' },
+          token: { type: 'string', description: 'Lọc theo token, ví dụ: USDC, ARC, cirBTC' },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_transaction',
+      description: 'Lấy chi tiết một giao dịch cụ thể theo tx hash. Trả về link ArcScan.',
+      parameters: {
+        type: 'object',
+        properties: {
+          txHash: { type: 'string', description: 'Transaction hash dạng 0x...' },
+        },
+        required: ['txHash'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_tokens',
+      description: 'Tìm kiếm token theo tên hoặc symbol. Trả về thông tin token, giá, địa chỉ contract.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Tên hoặc symbol token cần tìm' },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'prepare_transfer',
       description: 'Chuẩn bị lệnh chuyển token đến ví khác.',
       parameters: {
@@ -154,20 +198,31 @@ const TOOLS: OpenAI.ChatCompletionTool[] = [
 ]
 
 const SYSTEM = `Bạn là AI DeFi Agent tự động trên Arc Testnet — blockchain stablecoin-native của Circle.
-Nhiệm vụ: giúp người dùng quản lý ví, swap token, chuyển tiền, và phân tích thị trường một cách tự động.
+Bạn hoạt động như một autonomous wallet agent: hiểu ngôn ngữ tự nhiên, lên kế hoạch, và thực thi giao dịch tự động.
 
 Token hỗ trợ: USDC (gas), EURC, ARC, cirBTC (8 decimals), QCAD
-Swap route: USDC↔EURC dùng Circle | Các cặp khác dùng ArcSwap
+Swap route: USDC↔EURC = Circle Swap Kit | Các cặp khác = ArcSwap
 
-Quy trình xử lý lệnh swap:
-1. Gọi calculate_quote để lấy giá chính xác
-2. Gọi check_swap_liquidity để xác nhận liquidity
-3. Nếu OK, gọi prepare_swap với expectedOut từ bước 1
-4. Nói với user "Agent sẽ tự thực hiện sau 5 giây, bấm Huỷ nếu không muốn."
+Công cụ có sẵn:
+- get_wallet_info / get_portfolio: kiểm tra ví và tổng tài sản
+- browse_market: xem tất cả cặp giao dịch, giá, liquidity
+- search_tokens: tìm kiếm thông tin token
+- get_token_prices: giá thị trường
+- calculate_quote: tính output chính xác trước swap
+- check_swap_liquidity: xác minh liquidity
+- list_transactions: lịch sử giao dịch (filter theo token)
+- get_transaction: chi tiết một giao dịch cụ thể
+- prepare_swap: chuẩn bị swap (→ auto-execute sau 5s)
+- prepare_transfer: chuẩn bị chuyển token (→ auto-execute sau 5s)
 
-Khi user nói "50% USDC", "tất cả ARC", v.v.: gọi get_wallet_info trước để biết số dư chính xác rồi tính.
+Quy trình swap (LUÔN tuân theo):
+1. calculate_quote → lấy expectedOut chính xác
+2. check_swap_liquidity → xác nhận pool đủ tiền
+3. prepare_swap với expectedOut từ bước 1
+4. Thông báo: "Agent sẽ tự thực hiện sau 5 giây."
 
-Trả lời tiếng Việt, ngắn gọn, chuyên nghiệp.`
+Khi user nói "50% USDC", "tất cả ARC": gọi get_wallet_info trước, tính số lượng, rồi swap.
+Luôn trả lời tiếng Việt, ngắn gọn, chuyên nghiệp.`
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -181,11 +236,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'GROQ_API_KEY chưa set trong Vercel env vars.' })
   }
 
-  const { messages, walletAddress, balances, prices } = req.body as {
+  const { messages, walletAddress, balances, prices, txHistory } = req.body as {
     messages:      { role: 'user' | 'assistant'; content: string }[]
     walletAddress: string
     balances:      Record<string, number>
     prices:        Record<string, number>
+    txHistory:     Array<{
+      id: string; time: string; type: string
+      fromToken: string; toToken: string
+      fromAmount: number; toAmount: number
+      price: number; txHash: string; status: string; route?: string
+    }>
   }
 
   const contextMsg = `[Context]\nVí: ${walletAddress || 'Chưa kết nối'}\nSố dư: ${JSON.stringify(balances)}\nGiá: ${JSON.stringify(prices)}`
@@ -290,6 +351,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // ── get_token_prices ─────────────────────────────────────────────────
         else if (name === 'get_token_prices') {
           result = JSON.stringify(prices)
+        }
+
+        // ── list_transactions ────────────────────────────────────────────────
+        else if (name === 'list_transactions') {
+          const { limit = 5, token } = inp as { limit?: number; token?: string }
+          const hist = (txHistory ?? [])
+          const filtered = token
+            ? hist.filter(t => t.fromToken === token || t.toToken === token)
+            : hist
+          const rows = filtered.slice(0, limit).map(t =>
+            `[${t.time}] ${t.type === 'buy' ? '📈' : '📉'} ${t.fromAmount.toFixed(t.fromToken === 'cirBTC' ? 8 : 4)} ${t.fromToken} → ${t.toAmount.toFixed(t.toToken === 'cirBTC' ? 8 : 4)} ${t.toToken} | ${t.status} | ${t.route ?? 'arcswap'} | tx: ${t.txHash ? t.txHash.slice(0,12) + '...' : 'N/A'}`
+          )
+          result = rows.length
+            ? `Lịch sử giao dịch (${rows.length} gần nhất):\n${rows.join('\n')}`
+            : 'Chưa có giao dịch nào trong lịch sử.'
+        }
+
+        // ── get_transaction ──────────────────────────────────────────────────
+        else if (name === 'get_transaction') {
+          const { txHash } = inp as { txHash: string }
+          const found = (txHistory ?? []).find(t => t.txHash === txHash || t.txHash?.startsWith(txHash.slice(0, 10)))
+          if (found) {
+            result = `Giao dịch: ${found.fromAmount} ${found.fromToken} → ${found.toAmount} ${found.toToken}\nThời gian: ${found.time}\nTrạng thái: ${found.status}\nRoute: ${found.route ?? 'arcswap'}\nArcScan: https://testnet.arcscan.app/tx/${found.txHash}`
+          } else {
+            result = `Tx hash: ${txHash}\nXem trực tiếp trên ArcScan: https://testnet.arcscan.app/tx/${txHash}`
+          }
+        }
+
+        // ── search_tokens ────────────────────────────────────────────────────
+        else if (name === 'search_tokens') {
+          const { query } = inp as { query: string }
+          const q = query.toLowerCase()
+          const TOKEN_INFO: Record<string, { name: string; decimals: number; desc: string }> = {
+            USDC:   { name: 'USD Coin',        decimals: 6, desc: 'Stablecoin USD, gas token của Arc Testnet' },
+            EURC:   { name: 'Euro Coin',        decimals: 6, desc: 'Stablecoin EUR của Circle' },
+            ARC:    { name: 'Arc Token',        decimals: 6, desc: 'Native token của Arc Testnet ecosystem' },
+            cirBTC: { name: 'Circle Bitcoin',   decimals: 8, desc: 'Bitcoin được tokenized bởi Circle trên Arc' },
+            QCAD:   { name: 'QCAD',             decimals: 6, desc: 'Stablecoin CAD của Stablecorp' },
+          }
+          const matches = Object.entries(TOKEN_INFO).filter(
+            ([sym, info]) => sym.toLowerCase().includes(q) || info.name.toLowerCase().includes(q) || info.desc.toLowerCase().includes(q)
+          )
+          if (!matches.length) {
+            result = `Không tìm thấy token nào khớp với "${query}". Token hỗ trợ: USDC, EURC, ARC, cirBTC, QCAD`
+          } else {
+            result = matches.map(([sym, info]) => {
+              const price = (prices as Record<string, number>)[`${sym}/USDC`] ?? (sym === 'USDC' ? 1 : 0)
+              const addr  = TOKEN_ADDR[sym]
+              return `${sym} (${info.name})\n  Decimals: ${info.decimals} | Giá: ~$${price || 'N/A'}\n  Contract: ${addr}\n  Mô tả: ${info.desc}`
+            }).join('\n\n')
+          }
         }
 
         // ── calculate_quote ──────────────────────────────────────────────────

@@ -48,13 +48,17 @@ const loadApiHist  = (): { role: 'user' | 'assistant'; content: string }[] => {
 const saveApiHist  = (h: { role: 'user' | 'assistant'; content: string }[]) =>
   localStorage.setItem(HISTORY_KEY + '_api', JSON.stringify(h.slice(-20)))
 
+const TX_HISTORY_KEY = 'arc_swap_history'
+const loadTxHistory = () => { try { return JSON.parse(localStorage.getItem(TX_HISTORY_KEY) ?? '[]') } catch { return [] } }
+
 const SUGGESTIONS = [
   '💰 Số dư ví của tôi',
   '📊 Portfolio của tôi',
   '🛒 Xem thị trường',
   '💱 Swap 5 USDC sang ARC',
-  '📈 Giá ARC hiện tại',
+  '📋 Lịch sử giao dịch',
   '🔄 Đổi tất cả ARC sang USDC',
+  '🔍 Tìm thông tin token cirBTC',
 ]
 
 const AUTO_EXEC_SECS = 5   // countdown before auto-execute
@@ -150,7 +154,7 @@ export default function AgentPanel() {
       const resp = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: apiHistory.current, walletAddress: address ?? '', balances, prices }),
+        body: JSON.stringify({ messages: apiHistory.current, walletAddress: address ?? '', balances, prices, txHistory: loadTxHistory() }),
       })
       const data = await resp.json() as { reply?: string; action?: AgentAction; error?: string }
       if (data.error) throw new Error(data.error)
