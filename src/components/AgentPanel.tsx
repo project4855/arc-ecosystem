@@ -129,8 +129,8 @@ export default function AgentPanel() {
   }
 
   // ── Chat state ────────────────────────────────────────────────────────────
-  const [activeTab,  setActiveTab]  = useState<'chat' | 'shop'>('chat')
   const [purchases,  setPurchases]  = useState<string[]>(loadPurchases)
+  const [showShop,   setShowShop]   = useState(false)
 
   const [messages,      setMessages]      = useState<ChatMessage[]>(() => {
     const saved = loadHistory()
@@ -366,21 +366,15 @@ export default function AgentPanel() {
         </div>
       </div>
 
-      {/* ── Tabs ── */}
-      <div className="flex border-b border-slate-200 bg-white shrink-0">
-        {(['chat', 'shop'] as const).map(t => (
-          <button key={t} onClick={() => setActiveTab(t)}
-            className={`flex-1 py-2 text-[13px] font-medium border-b-2 transition-colors ${
-              activeTab === t
-                ? 'border-violet-500 text-violet-700 bg-violet-50'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}>
-            {t === 'chat' ? '💬 Chat Agent' : '🛒 Marketplace'}
-            {t === 'shop' && purchases.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">{purchases.length}</span>
-            )}
-          </button>
-        ))}
+      {/* ── Marketplace toggle bar ── */}
+      <div className="flex items-center justify-between px-4 py-1.5 border-b border-slate-100 bg-white shrink-0">
+        <button onClick={() => setShowShop(v => !v)}
+          className={`flex items-center gap-1.5 text-[12px] font-medium transition-colors ${showShop ? 'text-violet-700' : 'text-slate-500 hover:text-violet-600'}`}>
+          🛒 Marketplace
+          {purchases.length > 0 && <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">{purchases.length} đã mua</span>}
+          <span className="text-[10px]">{showShop ? '▲' : '▼'}</span>
+        </button>
+        <span className="text-[11px] text-slate-400">20 sản phẩm DeFi</span>
       </div>
 
       {/* ── Balance chips ── */}
@@ -395,39 +389,37 @@ export default function AgentPanel() {
         </div>
       )}
 
-      {/* ── Shop tab ── */}
-      {activeTab === 'shop' && (
-        <div className="flex-1 overflow-y-auto bg-[#F8F9FB] p-3">
-          <p className="text-[11px] text-slate-400 text-center mb-3">Nhấn "Mua" → lệnh tự điền vào Chat · Thanh toán USDC · Arc Testnet</p>
+      {/* ── Marketplace panel (dropdown, no tab switch) ── */}
+      {showShop && (
+        <div className="max-h-64 overflow-y-auto border-b border-slate-200 bg-slate-50 shrink-0">
           {SHOP_SECTIONS.map(({ cat, ids }) => (
-            <div key={cat} className="mb-4">
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">{cat}</p>
-              <div className="grid grid-cols-1 gap-2">
+            <div key={cat} className="px-3 py-2">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">{cat}</p>
+              <div className="flex flex-col gap-1">
                 {PRODUCTS_STATIC.filter(p => ids.includes(parseInt(p.id))).map(p => {
                   const bought = purchases.includes(p.id)
                   return (
-                    <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border bg-white gap-3 ${bought ? 'border-emerald-200' : 'border-slate-200'}`}>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-semibold text-slate-900 truncate">{p.name}</p>
-                          {bought && <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">✓ Đã mua</span>}
-                        </div>
-                        <p className="text-[11px] text-slate-400">bởi {p.author}</p>
+                    <div key={p.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-slate-200">
+                      <div className="flex-1 min-w-0 mr-2">
+                        <span className="text-[12px] font-medium text-slate-800 truncate block">{p.name}</span>
+                        <span className="text-[10px] text-slate-400">{p.author}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-sm font-bold text-violet-700">{p.price} USDC</span>
-                        {!bought ? (
+                        <span className="text-[12px] font-bold text-violet-700">{p.price} USDC</span>
+                        {bought ? (
+                          <span className="text-[11px] text-emerald-600 font-bold">✓</span>
+                        ) : (
                           <button
+                            type="button"
                             onClick={() => {
-                              setInput(`Mua cho tôi sản phẩm "${p.name}" bởi ${p.author}`)
-                              setActiveTab('chat')
-                              setTimeout(() => inputRef.current?.focus(), 150)
+                              const cmd = 'Mua cho tôi sản phẩm "' + p.name + '" bởi ' + p.author
+                              setInput(cmd)
+                              setShowShop(false)
+                              inputRef.current?.focus()
                             }}
-                            className="px-2.5 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-bold transition-colors">
+                            className="px-2 py-0.5 rounded bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-bold">
                             Mua
                           </button>
-                        ) : (
-                          <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-700 text-[11px] font-bold">✓</span>
                         )}
                       </div>
                     </div>
@@ -440,7 +432,7 @@ export default function AgentPanel() {
       )}
 
       {/* ── Messages ── */}
-      {activeTab === 'chat' && <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-[#F8F9FB]">
+      {<div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-[#F8F9FB]">
         {messages.map(msg => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={msg.role !== 'user' ? 'flex gap-2 items-start max-w-[88%]' : 'max-w-[88%]'}>
@@ -606,7 +598,7 @@ export default function AgentPanel() {
       )}
 
       {/* Quick suggestions */}
-      {activeTab === 'chat' && messages.length <= 1 && (
+      {messages.length <= 1 && (
         <div className="px-4 pb-2 flex flex-wrap gap-1.5 shrink-0">
           {SUGGESTIONS.map(s => (
             <button key={s} onClick={() => sendMessage(s)}
@@ -618,7 +610,7 @@ export default function AgentPanel() {
       )}
 
       {/* ── Input (chat only) ── */}
-      {activeTab === 'chat' && <div className="p-4 border-t border-slate-200 bg-white rounded-b-2xl shrink-0">
+      {<div className="p-4 border-t border-slate-200 bg-white rounded-b-2xl shrink-0">
         <div className="flex gap-3 items-end">
           <textarea
             ref={inputRef}
