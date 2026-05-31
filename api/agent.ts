@@ -4,11 +4,11 @@ import OpenAI from 'openai'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 const client = new OpenAI({
-  apiKey:  process.env.XAI_API_KEY ?? '',
-  baseURL: 'https://api.x.ai/v1',
+  apiKey:  process.env.GROQ_API_KEY ?? '',
+  baseURL: 'https://api.groq.com/openai/v1',
 })
 
-const MODEL = 'grok-3-mini-beta'
+const MODEL = 'llama-3.3-70b-versatile'
 
 // ── Token config ─────────────────────────────────────────────────────────────
 const TOKEN_ADDR: Record<string, string> = {
@@ -136,8 +136,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(204).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  if (!process.env.XAI_API_KEY) {
-    return res.status(500).json({ error: 'XAI_API_KEY chưa được set trong Vercel Environment Variables.' })
+  if (!process.env.GROQ_API_KEY) {
+    return res.status(500).json({ error: 'GROQ_API_KEY chưa được set trong Vercel Environment Variables.' })
   }
 
   const { messages, walletAddress, balances, prices } = req.body as {
