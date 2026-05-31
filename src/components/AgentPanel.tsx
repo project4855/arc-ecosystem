@@ -41,19 +41,31 @@ const ERC20_BAL_ABI = [{
 const nowTime = () => new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 const uid = () => Math.random().toString(36).slice(2)
 const HISTORY_KEY = 'agent_chat_v1'
-const loadHistory  = (): ChatMessage[] => {
+const loadHistory = (): ChatMessage[] => {
   try {
-    const raw = JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]') as ChatMessage[]
-    // Filter out corrupted messages (null/undefined text)
-    return raw.filter(m => m && typeof m.text === 'string' && m.id && m.role)
-  } catch { return [] }
+    const raw = JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]')
+    if (!Array.isArray(raw)) { localStorage.removeItem(HISTORY_KEY); return [] }
+    return raw.filter((m): m is ChatMessage =>
+      m != null && typeof m === 'object' &&
+      typeof m.text === 'string' && typeof m.id === 'string' && typeof m.role === 'string'
+    )
+  } catch { localStorage.removeItem(HISTORY_KEY); return [] }
 }
-const saveHistory  = (h: ChatMessage[]) => localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(-60)))
-const loadApiHist  = (): { role: 'user' | 'assistant'; content: string }[] => {
-  try { return JSON.parse(localStorage.getItem(HISTORY_KEY + '_api') ?? '[]') } catch { return [] }
+const saveHistory = (h: ChatMessage[]) => {
+  if (!Array.isArray(h)) return
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(-60))) } catch { /* ignore */ }
 }
-const saveApiHist  = (h: { role: 'user' | 'assistant'; content: string }[]) =>
-  localStorage.setItem(HISTORY_KEY + '_api', JSON.stringify(h.slice(-20)))
+const loadApiHist = (): { role: 'user' | 'assistant'; content: string }[] => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HISTORY_KEY + '_api') ?? '[]')
+    if (!Array.isArray(raw)) { localStorage.removeItem(HISTORY_KEY + '_api'); return [] }
+    return raw.filter(m => m != null && typeof m.role === 'string' && typeof m.content === 'string')
+  } catch { localStorage.removeItem(HISTORY_KEY + '_api'); return [] }
+}
+const saveApiHist = (h: { role: 'user' | 'assistant'; content: string }[]) => {
+  if (!Array.isArray(h)) return
+  try { localStorage.setItem(HISTORY_KEY + '_api', JSON.stringify(h.slice(-20))) } catch { /* ignore */ }
+}
 
 // ── General Commerce Marketplace ─────────────────────────────────────────────
 const PRODUCTS_STATIC = [
@@ -177,6 +189,18 @@ export default function AgentPanel() {
   const inputRef      = useRef<HTMLTextAreaElement>(null)
   const apiHistory    = useRef<{ role: 'user' | 'assistant'; content: string }[]>(loadApiHist())
 
+  // On mount: clear corrupted localStorage
+  useEffect(() => {
+    const apiRaw = localStorage.getItem(HISTORY_KEY + '_api')
+    if (apiRaw) {
+      try {
+        const p = JSON.parse(apiRaw)
+        if (!Array.isArray(p)) { localStorage.removeItem(HISTORY_KEY + '_api'); apiHistory.current = [] }
+      } catch { localStorage.removeItem(HISTORY_KEY + '_api'); apiHistory.current = [] }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
   useEffect(() => { saveHistory(messages) }, [messages])
 
@@ -196,7 +220,7 @@ export default function AgentPanel() {
   }, [])
 
   const stopCountdown = useCallback(() => {
-    if (countdownRef.current) clearInterval(countdownRef.current)
+    if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
     setCountdown(0)
   }, [])
 
