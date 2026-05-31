@@ -93,9 +93,8 @@ export default function AgentPanel() {
   }
 
   // ── Chat state ────────────────────────────────────────────────────────────
-  const [activeTab,     setActiveTab]     = useState<'chat' | 'shop'>('chat')
-  const [purchases,     setPurchases]     = useState<string[]>(loadPurchases)
-  const [queuedMsg,     setQueuedMsg]     = useState<string | null>(null)
+  const [activeTab,  setActiveTab]  = useState<'chat' | 'shop'>('chat')
+  const [purchases,  setPurchases]  = useState<string[]>(loadPurchases)
 
   const [messages,      setMessages]      = useState<ChatMessage[]>(() => {
     const saved = loadHistory()
@@ -119,15 +118,6 @@ export default function AgentPanel() {
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
   useEffect(() => { saveHistory(messages) }, [messages])
 
-  // Auto-send queued message after tab switch renders
-  useEffect(() => {
-    if (queuedMsg && activeTab === 'chat') {
-      const msg = queuedMsg
-      setQueuedMsg(null)
-      setTimeout(() => void sendMessage(msg), 100)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queuedMsg, activeTab])
 
   // ── Auto-execute countdown ────────────────────────────────────────────────
   const startCountdown = useCallback(() => {
@@ -421,7 +411,11 @@ export default function AgentPanel() {
                           <span className="text-sm font-bold text-violet-700">{p.price} USDC</span>
                           {!bought ? (
                             <button
-                              onClick={() => { setQueuedMsg(`Mua cho tôi sản phẩm "${p.name}" bởi ${p.author}`); setActiveTab('chat') }}
+                              onClick={() => {
+                                setInput(`Mua cho tôi sản phẩm "${p.name}" bởi ${p.author}`)
+                                setActiveTab('chat')
+                                setTimeout(() => inputRef.current?.focus(), 150)
+                              }}
                               className="px-2.5 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-bold transition-colors">
                               Mua
                             </button>
