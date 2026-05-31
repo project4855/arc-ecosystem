@@ -280,6 +280,8 @@ export default function AgentPanel() {
   }
 
   const clearChat = () => {
+    if (messages.length <= 1) return
+    if (!window.confirm('Xoá toàn bộ lịch sử trò chuyện?')) return
     const welcome: ChatMessage = { id: uid(), role: 'agent', time: nowTime(), text: '🔄 Đã xoá lịch sử. Tôi có thể giúp gì cho bạn?' }
     setMessages([welcome])
     apiHistory.current = []
@@ -624,9 +626,19 @@ export default function AgentPanel() {
             }
           </button>
         </div>
-        <p className="text-[11px] text-slate-400 text-center mt-2">
-          🤖 Agent tự thực hiện sau {AUTO_EXEC_SECS}s · Testnet only · Groq free
-        </p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-[11px] text-slate-400">
+            🤖 Tự thực hiện sau {AUTO_EXEC_SECS}s · Groq free
+          </p>
+          {messages.length > 1 && (
+            <button
+              onClick={clearChat}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors border border-transparent hover:border-red-200"
+            >
+              🗑 Xoá lịch sử
+            </button>
+          )}
+        </div>
       </div>}
     </div>
   )
