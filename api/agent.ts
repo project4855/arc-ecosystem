@@ -1,11 +1,14 @@
-// api/agent.ts — Autonomous DeFi Agent using Claude tool use
-// Receives: { messages, walletAddress, balances, prices }
-// Returns:  { reply, action? }
-
-import Anthropic from '@anthropic-ai/sdk'
+// api/agent.ts — Autonomous DeFi Agent using Grok (xAI) tool use
+// xAI API is OpenAI-compatible: baseURL = https://api.x.ai/v1
+import OpenAI from 'openai'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const client = new OpenAI({
+  apiKey:  process.env.XAI_API_KEY ?? '',
+  baseURL: 'https://api.x.ai/v1',
+})
+
+const MODEL = 'grok-3-mini-beta'
 
 // ── Token config ─────────────────────────────────────────────────────────────
 const TOKEN_ADDR: Record<string, string> = {
@@ -21,99 +24,109 @@ const TOKEN_DEC: Record<string, number> = {
 const ARC_SWAP = '0x8C16097F1f9a4B7Fab0497C29D3fC6a85a43C550'
 const ARC_RPC  = 'https://rpc.testnet.arc.network'
 
-// ── RPC helper ───────────────────────────────────────────────────────────────
+// ── RPC helpers ───────────────────────────────────────────────────────────────
 async function ethCall(to: string, data: string): Promise<string> {
   const res = await fetch(ARC_RPC, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to, data }, 'latest'] }),
   })
-  const json = await res.json() as { result?: string; error?: unknown }
-  if (!json.result || json.result === '0x') return '0x0'
-  return json.result
+  const json = await res.json() as { result?: string }
+  return json.result || '0x0'
 }
 
 function encodeGetAmountOut(tIn: string, tOut: string, amt: bigint): string {
-  // getAmountOut(address,address,uint256) = 0xb10a6fd6
-  const pad = (s: string) => s.toLowerCase().replace('0x','').padStart(64,'0')
-  return '0xb10a6fd6' + pad(tIn) + pad(tOut) + amt.toString(16).padStart(64,'0')
+  const pad = (s: string) => s.toLowerCase().replace('0x', '').padStart(64, '0')
+  return '0xb10a6fd6' + pad(tIn) + pad(tOut) + amt.toString(16).padStart(64, '0')
 }
 function encodeLiquidity(token: string): string {
-  // liquidity(address) = 0x1090ce62
-  return '0x1090ce62' + token.toLowerCase().replace('0x','').padStart(64,'0')
+  return '0x1090ce62' + token.toLowerCase().replace('0x', '').padStart(64, '0')
 }
 function hexToNum(hex: string, decimals: number): number {
-  const big = BigInt(hex === '0x' ? '0x0' : hex)
+  const big = BigInt(hex === '0x' || hex === '0x0' ? '0x0' : hex)
   return Number(big) / Math.pow(10, decimals)
 }
 
-// ── Tool definitions ──────────────────────────────────────────────────────────
-const TOOLS: Anthropic.Tool[] = [
+// ── OpenAI-format tools ───────────────────────────────────────────────────────
+const TOOLS: OpenAI.ChatCompletionTool[] = [
   {
-    name: 'get_wallet_info',
-    description: 'Lấy thông tin ví: địa chỉ và số dư tất cả token (USDC, EURC, ARC, cirBTC, QCAD). Dùng khi user hỏi "số dư", "ví của tôi", "tôi có bao nhiêu".',
-    input_schema: { type: 'object' as const, properties: {}, required: [] },
-  },
-  {
-    name: 'get_token_prices',
-    description: 'Lấy giá hiện tại của các cặp token trên Arc Testnet. Dùng khi user hỏi giá.',
-    input_schema: { type: 'object' as const, properties: {}, required: [] },
-  },
-  {
-    name: 'check_swap_liquidity',
-    description: 'Kiểm tra xem có đủ liquidity trên ArcSwap để thực hiện swap không. Trả về số lượng tối đa có thể swap.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        fromToken: { type: 'string', description: 'Token input', enum: ['USDC','EURC','ARC','cirBTC','QCAD'] },
-        toToken:   { type: 'string', description: 'Token output', enum: ['USDC','EURC','ARC','cirBTC','QCAD'] },
-        amount:    { type: 'number', description: 'Số lượng fromToken muốn swap' },
-      },
-      required: ['fromToken', 'toToken', 'amount'],
+    type: 'function',
+    function: {
+      name: 'get_wallet_info',
+      description: 'Lấy địa chỉ ví và số dư tất cả token. Dùng khi user hỏi số dư, ví, tôi có bao nhiêu.',
+      parameters: { type: 'object', properties: {}, required: [] },
     },
   },
   {
-    name: 'prepare_swap',
-    description: 'Chuẩn bị lệnh swap token. Sau khi gọi tool này, frontend sẽ hiển thị nút Xác nhận để user ký giao dịch.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        fromToken:   { type: 'string', enum: ['USDC','EURC','ARC','cirBTC','QCAD'] },
-        toToken:     { type: 'string', enum: ['USDC','EURC','ARC','cirBTC','QCAD'] },
-        amount:      { type: 'number', description: 'Số lượng fromToken' },
-        expectedOut: { type: 'number', description: 'Số lượng toToken dự kiến nhận được' },
-      },
-      required: ['fromToken', 'toToken', 'amount', 'expectedOut'],
+    type: 'function',
+    function: {
+      name: 'get_token_prices',
+      description: 'Lấy giá hiện tại của các cặp token trên Arc Testnet.',
+      parameters: { type: 'object', properties: {}, required: [] },
     },
   },
   {
-    name: 'prepare_transfer',
-    description: 'Chuẩn bị lệnh chuyển token (USDC, EURC, ARC...) đến địa chỉ ví khác.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        toAddress: { type: 'string', description: 'Địa chỉ ví nhận (0x...)' },
-        token:     { type: 'string', enum: ['USDC','EURC','ARC','cirBTC','QCAD'] },
-        amount:    { type: 'number', description: 'Số lượng token' },
+    type: 'function',
+    function: {
+      name: 'check_swap_liquidity',
+      description: 'Kiểm tra liquidity trên ArcSwap cho cặp token. Luôn gọi trước khi prepare_swap.',
+      parameters: {
+        type: 'object',
+        properties: {
+          fromToken: { type: 'string', enum: ['USDC','EURC','ARC','cirBTC','QCAD'] },
+          toToken:   { type: 'string', enum: ['USDC','EURC','ARC','cirBTC','QCAD'] },
+          amount:    { type: 'number', description: 'Số lượng fromToken muốn swap' },
+        },
+        required: ['fromToken', 'toToken', 'amount'],
       },
-      required: ['toAddress', 'token', 'amount'],
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'prepare_swap',
+      description: 'Chuẩn bị lệnh swap. Frontend sẽ hiện nút Xác nhận để user ký giao dịch.',
+      parameters: {
+        type: 'object',
+        properties: {
+          fromToken:   { type: 'string', enum: ['USDC','EURC','ARC','cirBTC','QCAD'] },
+          toToken:     { type: 'string', enum: ['USDC','EURC','ARC','cirBTC','QCAD'] },
+          amount:      { type: 'number', description: 'Số lượng fromToken' },
+          expectedOut: { type: 'number', description: 'Số lượng toToken dự kiến' },
+        },
+        required: ['fromToken', 'toToken', 'amount', 'expectedOut'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'prepare_transfer',
+      description: 'Chuẩn bị lệnh chuyển token đến ví khác.',
+      parameters: {
+        type: 'object',
+        properties: {
+          toAddress: { type: 'string', description: 'Địa chỉ ví nhận (0x...)' },
+          token:     { type: 'string', enum: ['USDC','EURC','ARC','cirBTC','QCAD'] },
+          amount:    { type: 'number' },
+        },
+        required: ['toAddress', 'token', 'amount'],
+      },
     },
   },
 ]
 
 const SYSTEM = `Bạn là AI DeFi Agent trên Arc Testnet — blockchain stablecoin-native của Circle.
-Bạn có thể giúp người dùng kiểm tra số dư, xem giá, swap token, và chuyển token.
+Bạn giúp người dùng: kiểm tra số dư, xem giá, swap token, chuyển token.
 
-Các token hỗ trợ: USDC (gas token), EURC, ARC, cirBTC (Circle Bitcoin, 8 decimals), QCAD
-Swap route: USDC/EURC ↔ Circle Swap Kit | Các cặp khác ↔ ArcSwap contract
+Token hỗ trợ: USDC (gas), EURC, ARC, cirBTC (8 decimals), QCAD
+Swap route: USDC↔EURC dùng Circle Swap Kit | Các cặp khác dùng ArcSwap contract
 
 Quy tắc:
-- Luôn trả lời bằng tiếng Việt, ngắn gọn
-- Trước khi prepare_swap/prepare_transfer, hãy check_swap_liquidity trước
-- Không thực thi giao dịch nếu số dư không đủ — thông báo rõ cho user
-- cirBTC có 8 chữ số thập phân, các token khác 6 chữ số
-- Sau khi prepare_swap/prepare_transfer, kết thúc bằng câu "Bấm Xác nhận để thực hiện giao dịch."
-`
+- Trả lời tiếng Việt, ngắn gọn
+- Trước khi prepare_swap, luôn gọi check_swap_liquidity trước
+- Không swap nếu số dư không đủ
+- Sau khi prepare_swap/prepare_transfer, nói: "Bấm Xác nhận để thực hiện giao dịch."`
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -123,116 +136,118 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(204).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY not set in Vercel env vars.' })
+  if (!process.env.XAI_API_KEY) {
+    return res.status(500).json({ error: 'XAI_API_KEY chưa được set trong Vercel Environment Variables.' })
   }
 
   const { messages, walletAddress, balances, prices } = req.body as {
-    messages: Anthropic.MessageParam[]
+    messages: { role: 'user' | 'assistant'; content: string }[]
     walletAddress: string
     balances: Record<string, number>
-    prices: Record<string, number>
+    prices:   Record<string, number>
   }
 
-  // Context injected as first assistant turn so Claude always knows current state
-  const contextNote = `[Context hiện tại]
-Ví: ${walletAddress || 'Chưa kết nối'}
-Số dư: ${JSON.stringify(balances)}
-Giá: ${JSON.stringify(prices)}`
+  // Context injection
+  const contextMsg = `[Thông tin hiện tại]\nVí: ${walletAddress || 'Chưa kết nối'}\nSố dư: ${JSON.stringify(balances)}\nGiá: ${JSON.stringify(prices)}`
 
-  const allMessages: Anthropic.MessageParam[] = [
-    { role: 'user', content: contextNote },
-    { role: 'assistant', content: 'Đã nhận thông tin ví và giá hiện tại.' },
+  const allMessages: OpenAI.ChatCompletionMessageParam[] = [
+    { role: 'user',      content: contextMsg },
+    { role: 'assistant', content: 'Đã nhận thông tin ví và giá.' },
     ...messages,
   ]
 
-  // ── Agentic loop ────────────────────────────────────────────────────────────
   let action: Record<string, unknown> | undefined
+  let loopMessages = [...allMessages]
 
   try {
-    let loopMessages = [...allMessages]
-    let finalReply = ''
+    for (let i = 0; i < 6; i++) {
+      const resp = await client.chat.completions.create({
+        model:    MODEL,
+        messages: loopMessages,
+        tools:    TOOLS,
+        tool_choice: 'auto',
+        system: SYSTEM,
+      } as OpenAI.ChatCompletionCreateParamsNonStreaming & { system?: string })
 
-    for (let i = 0; i < 5; i++) {   // max 5 tool calls
-      const resp = await client.messages.create({
-        model:      'claude-3-5-haiku-20241022',
-        max_tokens: 1024,
-        system:     SYSTEM,
-        tools:      TOOLS,
-        messages:   loopMessages,
-      })
-
-      // Collect text content
-      const textBlocks = resp.content.filter(b => b.type === 'text')
-      if (textBlocks.length) finalReply = textBlocks.map(b => (b as Anthropic.TextBlock).text).join('\n')
+      const msg = resp.choices[0].message
+      loopMessages.push(msg as OpenAI.ChatCompletionMessageParam)
 
       // No tool calls → done
-      if (resp.stop_reason === 'end_turn') break
+      if (!msg.tool_calls?.length) {
+        return res.status(200).json({ reply: msg.content ?? '', action })
+      }
 
-      // Process tool calls
-      const toolUses = resp.content.filter(b => b.type === 'tool_use') as Anthropic.ToolUseBlock[]
-      if (!toolUses.length) break
+      // Handle tool calls
+      const toolResults: OpenAI.ChatCompletionMessageParam[] = []
 
-      // Add assistant message with tool use
-      loopMessages.push({ role: 'assistant', content: resp.content })
-
-      // Handle each tool
-      const toolResults: Anthropic.ToolResultBlockParam[] = []
-
-      for (const tu of toolUses) {
+      for (const tc of msg.tool_calls) {
+        const name = tc.function.name
+        const inp  = JSON.parse(tc.function.arguments) as Record<string, unknown>
         let result = ''
-        const inp = tu.input as Record<string, unknown>
 
-        if (tu.name === 'get_wallet_info') {
+        if (name === 'get_wallet_info') {
           result = JSON.stringify({ address: walletAddress, balances })
         }
-        else if (tu.name === 'get_token_prices') {
+        else if (name === 'get_token_prices') {
           result = JSON.stringify(prices)
         }
-        else if (tu.name === 'check_swap_liquidity') {
+        else if (name === 'check_swap_liquidity') {
           const { fromToken, toToken, amount } = inp as { fromToken: string; toToken: string; amount: number }
           const fAddr = TOKEN_ADDR[fromToken]
           const tAddr = TOKEN_ADDR[toToken]
           const fDec  = TOKEN_DEC[fromToken] ?? 6
           const tDec  = TOKEN_DEC[toToken]   ?? 6
-          if (!fAddr || !tAddr) { result = `Token không hỗ trợ.`; continue }
-          const amtRaw = BigInt(Math.round(amount * Math.pow(10, fDec)))
-          try {
-            const [outHex, liqHex] = await Promise.all([
-              ethCall(ARC_SWAP, encodeGetAmountOut(fAddr, tAddr, amtRaw)),
-              ethCall(ARC_SWAP, encodeLiquidity(tAddr)),
-            ])
-            const expectedOut = hexToNum(outHex, tDec)
-            const liquidity   = hexToNum(liqHex, tDec)
-            if (expectedOut === 0) {
-              result = `Rate chưa set cho cặp ${fromToken}→${toToken}.`
-            } else if (liquidity < expectedOut) {
-              result = `Không đủ liquidity: cần ${expectedOut.toFixed(tDec === 8 ? 8 : 4)} ${toToken} nhưng pool chỉ có ${liquidity.toFixed(tDec === 8 ? 8 : 4)} ${toToken}.`
-            } else {
-              result = `OK: ${amount} ${fromToken} → ~${expectedOut.toFixed(tDec === 8 ? 8 : 4)} ${toToken}. Pool còn ${liquidity.toFixed(tDec === 8 ? 8 : 4)} ${toToken}.`
+          if (!fAddr || !tAddr) {
+            result = `Token không hỗ trợ.`
+          } else {
+            const amtRaw = BigInt(Math.round(amount * Math.pow(10, fDec)))
+            try {
+              const [outHex, liqHex] = await Promise.all([
+                ethCall(ARC_SWAP, encodeGetAmountOut(fAddr, tAddr, amtRaw)),
+                ethCall(ARC_SWAP, encodeLiquidity(tAddr)),
+              ])
+              const expectedOut = hexToNum(outHex, tDec)
+              const liquidity   = hexToNum(liqHex, tDec)
+              const dp = tDec === 8 ? 8 : 4
+              if (expectedOut === 0) {
+                result = `Rate chưa set cho ${fromToken}→${toToken}.`
+              } else if (liquidity < expectedOut) {
+                result = `Không đủ liquidity: cần ${expectedOut.toFixed(dp)} ${toToken}, pool chỉ có ${liquidity.toFixed(dp)}.`
+              } else {
+                result = `OK: ${amount} ${fromToken} → ~${expectedOut.toFixed(dp)} ${toToken}. Pool còn ${liquidity.toFixed(dp)} ${toToken}.`
+              }
+            } catch {
+              result = 'RPC lỗi, không kiểm tra được liquidity.'
             }
-          } catch { result = 'Không thể kiểm tra liquidity (RPC lỗi).'; }
+          }
         }
-        else if (tu.name === 'prepare_swap') {
+        else if (name === 'prepare_swap') {
           const { fromToken, toToken, amount, expectedOut } = inp as { fromToken: string; toToken: string; amount: number; expectedOut: number }
           action = { type: 'swap', fromToken, toToken, amount, expectedOut }
-          result = `Đã chuẩn bị lệnh swap: ${amount} ${fromToken} → ~${expectedOut} ${toToken}`
+          result = `Đã chuẩn bị: ${amount} ${fromToken} → ~${expectedOut} ${toToken}`
         }
-        else if (tu.name === 'prepare_transfer') {
+        else if (name === 'prepare_transfer') {
           const { toAddress, token, amount } = inp as { toAddress: string; token: string; amount: number }
           action = { type: 'transfer', toAddress, token, amount }
-          result = `Đã chuẩn bị lệnh chuyển: ${amount} ${token} → ${toAddress}`
+          result = `Đã chuẩn bị: chuyển ${amount} ${token} → ${toAddress}`
         }
 
-        toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: result })
+        toolResults.push({
+          role: 'tool',
+          tool_call_id: tc.id,
+          content: result,
+        } as OpenAI.ChatCompletionMessageParam)
       }
 
-      loopMessages.push({ role: 'user', content: toolResults })
+      loopMessages.push(...toolResults)
     }
 
-    return res.status(200).json({ reply: finalReply, action })
+    // Fallback if loop exhausted
+    const last = loopMessages.findLast(m => m.role === 'assistant') as { content?: string } | undefined
+    return res.status(200).json({ reply: last?.content ?? 'Xong.', action })
+
   } catch (e) {
     console.error('[agent]', e)
-    return res.status(500).json({ error: String(e) })
+    return res.status(500).json({ error: e instanceof Error ? e.message : String(e) })
   }
 }
