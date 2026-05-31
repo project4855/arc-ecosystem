@@ -1,5 +1,6 @@
-// AgentPanel.tsx — Autonomous DeFi Agent: chat → plan → confirm → execute on-chain
-import { useState, useRef, useEffect } from 'react'
+// AgentPanel.tsx — Autonomous DeFi Agent
+// Features: chat, auto-execute countdown, portfolio, browse market, persistent history
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useBalance, useReadContract, usePublicClient } from 'wagmi'
 import { formatUnits } from 'viem'
 import { useWallet } from '../hooks/useWallet'
@@ -7,72 +8,71 @@ import { arcTestnet } from '../config/wagmi'
 import { useLivePrices } from '../hooks/useLivePrices'
 import { ARC_SWAP_ADDRESS, TOKEN_ADDRESSES, TOKEN_DECIMALS } from '../config/contracts'
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
+// ── Types ─────────────────────────────────────────────────────────────────────
 type Role = 'user' | 'agent' | 'system'
-interface ChatMessage { id: string; role: Role; text: string; timestamp: string }
+interface ChatMessage { id: string; role: Role; text: string; time: string }
 type AgentAction =
   | { type: 'swap';     fromToken: string; toToken: string; amount: number; expectedOut: number }
   | { type: 'transfer'; toAddress: string; token: string;  amount: number }
 
-// ── ABIs ─────────────────────────────────────────────────────────────────────
-
+// ── ABIs ──────────────────────────────────────────────────────────────────────
 const ERC20_APPROVE_ABI = [{
   name: 'approve', type: 'function', stateMutability: 'nonpayable',
   inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }],
   outputs: [{ type: 'bool' }],
 }] as const
-
 const ERC20_TRANSFER_ABI = [{
   name: 'transfer', type: 'function', stateMutability: 'nonpayable',
   inputs: [{ name: 'to', type: 'address' }, { name: 'amount', type: 'uint256' }],
   outputs: [{ type: 'bool' }],
 }] as const
-
-const ARC_SWAP_ABI = [{
+const ARC_SWAP_EXEC_ABI = [{
   name: 'swap', type: 'function', stateMutability: 'nonpayable',
-  inputs: [
-    { name: 'tokenIn',  type: 'address' },
-    { name: 'tokenOut', type: 'address' },
-    { name: 'amountIn', type: 'uint256' },
-  ],
+  inputs: [{ name: 'tokenIn', type: 'address' }, { name: 'tokenOut', type: 'address' }, { name: 'amountIn', type: 'uint256' }],
   outputs: [{ name: 'amountOut', type: 'uint256' }],
 }] as const
-
 const ERC20_BAL_ABI = [{
   name: 'balanceOf', type: 'function', stateMutability: 'view',
-  inputs: [{ name: 'a', type: 'address' }],
-  outputs: [{ type: 'uint256' }],
+  inputs: [{ name: 'a', type: 'address' }], outputs: [{ type: 'uint256' }],
 }] as const
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const nowTime = () => new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-const uid     = () => Math.random().toString(36).slice(2)
+const uid = () => Math.random().toString(36).slice(2)
+const HISTORY_KEY = 'agent_chat_v1'
+const loadHistory  = (): ChatMessage[] => { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]') } catch { return [] } }
+const saveHistory  = (h: ChatMessage[]) => localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(-60)))
+const loadApiHist  = (): { role: 'user' | 'assistant'; content: string }[] => {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY + '_api') ?? '[]') } catch { return [] }
+}
+const saveApiHist  = (h: { role: 'user' | 'assistant'; content: string }[]) =>
+  localStorage.setItem(HISTORY_KEY + '_api', JSON.stringify(h.slice(-20)))
 
 const SUGGESTIONS = [
   '💰 Số dư ví của tôi',
+  '📊 Portfolio của tôi',
+  '🛒 Xem thị trường',
   '💱 Swap 5 USDC sang ARC',
-  '📈 Giá cirBTC là bao nhiêu?',
-  '🔄 Đổi 10 ARC sang USDC',
-  '💸 Kiểm tra liquidity USDC → cirBTC',
+  '📈 Giá ARC hiện tại',
+  '🔄 Đổi tất cả ARC sang USDC',
 ]
 
-// ── Component ────────────────────────────────────────────────────────────────
+const AUTO_EXEC_SECS = 5   // countdown before auto-execute
 
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function AgentPanel() {
   const { address, isReady, walletType, chainId, writeContract } = useWallet()
   const isArc = walletType === 'turnkey' || walletType === 'circle' || chainId === arcTestnet.id
   const publicClient = usePublicClient({ chainId: arcTestnet.id })
   const { prices } = useLivePrices(15_000)
 
-  // ── Balances ──────────────────────────────────────────────────────────────
+  // ── Balances ─────────────────────────────────────────────────────────────
   const ZERO = '0x0000000000000000000000000000000000000000' as const
   const { data: nativeBal } = useBalance({ address, chainId: arcTestnet.id, query: { refetchInterval: 10_000 } })
-  const { data: eurcRaw  } = useReadContract({ address: TOKEN_ADDRESSES.EURC,   abi: ERC20_BAL_ABI, functionName: 'balanceOf', args: [address ?? ZERO], chainId: arcTestnet.id, query: { enabled: !!address, refetchInterval: 10_000 } })
-  const { data: arcRaw   } = useReadContract({ address: TOKEN_ADDRESSES.ARC,    abi: ERC20_BAL_ABI, functionName: 'balanceOf', args: [address ?? ZERO], chainId: arcTestnet.id, query: { enabled: !!address, refetchInterval: 10_000 } })
-  const { data: cirBtcRaw} = useReadContract({ address: TOKEN_ADDRESSES.cirBTC, abi: ERC20_BAL_ABI, functionName: 'balanceOf', args: [address ?? ZERO], chainId: arcTestnet.id, query: { enabled: !!address, refetchInterval: 10_000 } })
-  const { data: qcadRaw  } = useReadContract({ address: TOKEN_ADDRESSES.QCAD,   abi: ERC20_BAL_ABI, functionName: 'balanceOf', args: [address ?? ZERO], chainId: arcTestnet.id, query: { enabled: !!address, refetchInterval: 10_000 } })
+  const { data: eurcRaw   } = useReadContract({ address: TOKEN_ADDRESSES.EURC,   abi: ERC20_BAL_ABI, functionName: 'balanceOf', args: [address ?? ZERO], chainId: arcTestnet.id, query: { enabled: !!address, refetchInterval: 10_000 } })
+  const { data: arcRaw    } = useReadContract({ address: TOKEN_ADDRESSES.ARC,    abi: ERC20_BAL_ABI, functionName: 'balanceOf', args: [address ?? ZERO], chainId: arcTestnet.id, query: { enabled: !!address, refetchInterval: 10_000 } })
+  const { data: cirBtcRaw } = useReadContract({ address: TOKEN_ADDRESSES.cirBTC, abi: ERC20_BAL_ABI, functionName: 'balanceOf', args: [address ?? ZERO], chainId: arcTestnet.id, query: { enabled: !!address, refetchInterval: 10_000 } })
+  const { data: qcadRaw   } = useReadContract({ address: TOKEN_ADDRESSES.QCAD,   abi: ERC20_BAL_ABI, functionName: 'balanceOf', args: [address ?? ZERO], chainId: arcTestnet.id, query: { enabled: !!address, refetchInterval: 10_000 } })
 
   const balances = {
     USDC:   nativeBal ? parseFloat(formatUnits(nativeBal.value, nativeBal.decimals)) : 0,
@@ -83,31 +83,65 @@ export default function AgentPanel() {
   }
 
   // ── Chat state ────────────────────────────────────────────────────────────
-  const [messages,  setMessages]  = useState<ChatMessage[]>([{
-    id: uid(), role: 'agent', timestamp: nowTime(),
-    text: '👋 Xin chào! Tôi là AI Agent DeFi trên Arc Testnet.\n\nTôi có thể giúp bạn:\n• Kiểm tra số dư ví\n• Swap token (USDC, EURC, ARC, cirBTC, QCAD)\n• Chuyển token đến ví khác\n• Xem giá và liquidity\n\nHãy nhập lệnh bằng tiếng Việt hoặc tiếng Anh!',
-  }])
-  const [input,     setInput]     = useState('')
-  const [loading,   setLoading]   = useState(false)
+  const [messages,      setMessages]      = useState<ChatMessage[]>(() => {
+    const saved = loadHistory()
+    if (saved.length) return saved
+    return [{
+      id: uid(), role: 'agent', time: nowTime(),
+      text: '👋 Xin chào! Tôi là AI Agent DeFi tự động trên Arc Testnet.\n\nTôi có thể:\n• Kiểm tra số dư & portfolio\n• Xem thị trường và giá token\n• Swap token tự động\n• Chuyển token đến ví khác\n• Tính toán quote trước khi giao dịch\n\nHãy nói lệnh bằng tiếng Việt hoặc tiếng Anh!',
+    }]
+  })
+  const [input,         setInput]         = useState('')
+  const [loading,       setLoading]       = useState(false)
   const [pendingAction, setPendingAction] = useState<AgentAction | null>(null)
-  const [executing, setExecuting] = useState(false)
-  const [txHash,    setTxHash]    = useState<string | null>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const inputRef  = useRef<HTMLTextAreaElement>(null)
-
-  // API message history (only user/assistant for Claude)
-  const apiHistory = useRef<{ role: 'user' | 'assistant'; content: string }[]>([])
+  const [countdown,     setCountdown]     = useState(0)
+  const [executing,     setExecuting]     = useState(false)
+  const [txHash,        setTxHash]        = useState<string | null>(null)
+  const countdownRef  = useRef<ReturnType<typeof setInterval> | null>(null)
+  const bottomRef     = useRef<HTMLDivElement>(null)
+  const inputRef      = useRef<HTMLTextAreaElement>(null)
+  const apiHistory    = useRef<{ role: 'user' | 'assistant'; content: string }[]>(loadApiHist())
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  useEffect(() => { saveHistory(messages) }, [messages])
 
-  // ── Send message to agent ─────────────────────────────────────────────────
+  // ── Auto-execute countdown ────────────────────────────────────────────────
+  const startCountdown = useCallback(() => {
+    setCountdown(AUTO_EXEC_SECS)
+    countdownRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(countdownRef.current!)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }, [])
+
+  const stopCountdown = useCallback(() => {
+    if (countdownRef.current) clearInterval(countdownRef.current)
+    setCountdown(0)
+  }, [])
+
+  // Auto-execute when countdown hits 0
+  useEffect(() => {
+    if (countdown === 0 && pendingAction && !executing && isReady && isArc) {
+      if (countdownRef.current === null) return // not started yet
+      void executeAction()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countdown])
+
+  // ── Send message ──────────────────────────────────────────────────────────
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return
-    const userMsg: ChatMessage = { id: uid(), role: 'user', text: text.trim(), timestamp: nowTime() }
+    const userMsg: ChatMessage = { id: uid(), role: 'user', text: text.trim(), time: nowTime() }
     setMessages(prev => [...prev, userMsg])
     setInput('')
     setLoading(true)
     setPendingAction(null)
+    stopCountdown()
     setTxHash(null)
 
     apiHistory.current.push({ role: 'user', content: text.trim() })
@@ -116,38 +150,39 @@ export default function AgentPanel() {
       const resp = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: apiHistory.current,
-          walletAddress: address ?? 'Chưa kết nối',
-          balances,
-          prices,
-        }),
+        body: JSON.stringify({ messages: apiHistory.current, walletAddress: address ?? '', balances, prices }),
       })
       const data = await resp.json() as { reply?: string; action?: AgentAction; error?: string }
-
       if (data.error) throw new Error(data.error)
 
       const reply = data.reply || '...'
       apiHistory.current.push({ role: 'assistant', content: reply })
+      saveApiHist(apiHistory.current)
 
-      setMessages(prev => [...prev, { id: uid(), role: 'agent', text: reply, timestamp: nowTime() }])
-      if (data.action && (data.action.type === 'swap' || data.action.type === 'transfer')) setPendingAction(data.action as AgentAction)
+      setMessages(prev => [...prev, { id: uid(), role: 'agent', text: reply, time: nowTime() }])
+
+      if (data.action && (data.action.type === 'swap' || data.action.type === 'transfer')) {
+        setPendingAction(data.action)
+        if (isReady && isArc) startCountdown()
+      }
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e)
-      setMessages(prev => [...prev, { id: uid(), role: 'system', text: `❌ Lỗi: ${err}`, timestamp: nowTime() }])
+      setMessages(prev => [...prev, { id: uid(), role: 'system', text: `❌ Lỗi: ${err}`, time: nowTime() }])
     } finally {
       setLoading(false)
       inputRef.current?.focus()
     }
   }
 
-  // ── Execute confirmed action ───────────────────────────────────────────────
+  // ── Execute action ────────────────────────────────────────────────────────
   const executeAction = async () => {
     if (!pendingAction || !address) return
+    stopCountdown()
+    setPendingAction(null)
     setExecuting(true)
 
     const addSys = (text: string) =>
-      setMessages(prev => [...prev, { id: uid(), role: 'system', text, timestamp: nowTime() }])
+      setMessages(prev => [...prev, { id: uid(), role: 'system', text, time: nowTime() }])
 
     try {
       if (pendingAction.type === 'swap') {
@@ -167,19 +202,20 @@ export default function AgentPanel() {
 
         addSys(`⏳ Đang swap ${amount} ${fromToken} → ${toToken}…`)
         const swapHash = await writeContract({
-          address: ARC_SWAP_ADDRESS, abi: ARC_SWAP_ABI, functionName: 'swap',
+          address: ARC_SWAP_ADDRESS, abi: ARC_SWAP_EXEC_ABI, functionName: 'swap',
           args: [inAddr, outAddr, amtRaw],
         })
         if (publicClient) {
           const rcpt = await publicClient.waitForTransactionReceipt({ hash: swapHash, confirmations: 1 })
-          if (rcpt.status === 'reverted') throw new Error('Giao dịch bị revert — kiểm tra liquidity.')
+          if (rcpt.status === 'reverted') throw new Error('Giao dịch bị revert.')
         }
         setTxHash(swapHash)
-        addSys(`✅ Swap thành công! Tx: ${swapHash.slice(0, 14)}…`)
-
-        // Report result to agent
-        apiHistory.current.push({ role: 'user', content: `Swap đã xác nhận. Tx hash: ${swapHash}` })
-        setMessages(prev => [...prev, { id: uid(), role: 'agent', text: `🎉 Đã swap thành công!\nTx: ${swapHash.slice(0,14)}…\n\n[Xem trên ArcScan](https://testnet.arcscan.app/tx/${swapHash})`, timestamp: nowTime() }])
+        addSys(`✅ Swap thành công!`)
+        setMessages(prev => [...prev, {
+          id: uid(), role: 'agent', time: nowTime(),
+          text: `🎉 Đã swap ${amount} ${fromToken} → ${toToken} thành công!\n[Xem trên ArcScan](https://testnet.arcscan.app/tx/${swapHash})`,
+        }])
+        apiHistory.current.push({ role: 'user', content: `Swap thành công. Tx: ${swapHash}` })
       }
       else if (pendingAction.type === 'transfer') {
         const { toAddress, token, amount } = pendingAction
@@ -194,11 +230,14 @@ export default function AgentPanel() {
         })
         if (publicClient) await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 })
         setTxHash(hash)
-        addSys(`✅ Chuyển thành công! Tx: ${hash.slice(0, 14)}…`)
-        setMessages(prev => [...prev, { id: uid(), role: 'agent', text: `🎉 Đã chuyển ${amount} ${token} thành công!\nTx: ${hash.slice(0,14)}…`, timestamp: nowTime() }])
+        addSys(`✅ Chuyển thành công!`)
+        setMessages(prev => [...prev, {
+          id: uid(), role: 'agent', time: nowTime(),
+          text: `🎉 Đã chuyển ${amount} ${token} thành công!\n[Xem trên ArcScan](https://testnet.arcscan.app/tx/${hash})`,
+        }])
+        apiHistory.current.push({ role: 'user', content: `Chuyển thành công. Tx: ${hash}` })
       }
-
-      setPendingAction(null)
+      saveApiHist(apiHistory.current)
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e)
       addSys(`❌ Thất bại: ${err}`)
@@ -208,9 +247,27 @@ export default function AgentPanel() {
   }
 
   const cancelAction = () => {
+    stopCountdown()
     setPendingAction(null)
-    setMessages(prev => [...prev, { id: uid(), role: 'system', text: '↩️ Đã huỷ lệnh.', timestamp: nowTime() }])
+    setMessages(prev => [...prev, { id: uid(), role: 'system', text: '↩️ Đã huỷ lệnh.', time: nowTime() }])
   }
+
+  const clearChat = () => {
+    const welcome: ChatMessage = { id: uid(), role: 'agent', time: nowTime(), text: '🔄 Đã xoá lịch sử. Tôi có thể giúp gì cho bạn?' }
+    setMessages([welcome])
+    apiHistory.current = []
+    saveApiHist([])
+    localStorage.removeItem(HISTORY_KEY)
+  }
+
+  // ── Portfolio total ───────────────────────────────────────────────────────
+  const pricesAny = prices as unknown as Record<string, number>
+  const totalUSD = Object.entries(balances).reduce((sum, [token, bal]) => {
+    const price = token === 'USDC' ? 1
+      : token === 'EURC' ? (pricesAny['USDC/EURC'] ? 1 / pricesAny['USDC/EURC'] : 1.08)
+      : (pricesAny[`${token}/USDC`] ?? 0)
+    return sum + bal * price
+  }, 0)
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -218,66 +275,69 @@ export default function AgentPanel() {
 
       {/* ── Header ── */}
       <div className="flex items-center gap-3 p-4 border-b border-slate-200 bg-white rounded-t-2xl shrink-0">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-blue-500 flex items-center justify-center text-white text-lg font-bold shadow-md">
-          🤖
-        </div>
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-blue-500 flex items-center justify-center text-white text-lg shadow-md">🤖</div>
         <div>
           <h2 className="font-bold text-slate-900 text-base">AI DeFi Agent</h2>
-          <p className="text-[11px] text-slate-400">Powered by Claude · Arc Testnet</p>
+          <p className="text-[11px] text-slate-400">Groq · Llama 3.3 70B · Arc Testnet</p>
         </div>
-        <div className="ml-auto flex items-center gap-1.5">
-          <span className={`w-2 h-2 rounded-full ${isReady && isArc ? 'bg-emerald-400 animate-pulse' : 'bg-slate-300'}`} />
-          <span className="text-[11px] text-slate-400">{isReady && isArc ? 'Đã kết nối' : 'Chưa kết nối'}</span>
+        <div className="ml-auto flex items-center gap-3">
+          {isReady && isArc && totalUSD > 0 && (
+            <div className="text-right">
+              <p className="text-[10px] text-slate-400">Portfolio</p>
+              <p className="text-sm font-bold text-violet-700">${totalUSD.toFixed(2)}</p>
+            </div>
+          )}
+          <div className="flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full ${isReady && isArc ? 'bg-emerald-400 animate-pulse' : 'bg-slate-300'}`} />
+            <span className="text-[11px] text-slate-400">{isReady && isArc ? 'Connected' : 'No wallet'}</span>
+          </div>
+          <button onClick={clearChat} className="text-[10px] text-slate-300 hover:text-red-400 transition-colors" title="Xoá lịch sử">🗑</button>
         </div>
       </div>
 
       {/* ── Balance chips ── */}
       {isReady && isArc && (
-        <div className="flex gap-1.5 px-4 py-2 border-b border-slate-100 bg-slate-50 overflow-x-auto [scrollbar-width:none] shrink-0">
-          {Object.entries(balances).map(([sym, bal]) => (
+        <div className="flex gap-1.5 px-3 py-2 border-b border-slate-100 bg-slate-50 overflow-x-auto [scrollbar-width:none] shrink-0">
+          {Object.entries(balances).map(([sym, bal]) => bal > 0 ? (
             <span key={sym} className="flex-shrink-0 px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-mono text-slate-600 shadow-sm">
               <span className="font-semibold text-slate-900">{sym}</span>{' '}
               {sym === 'cirBTC' ? bal.toFixed(8) : bal.toFixed(2)}
             </span>
-          ))}
+          ) : null)}
         </div>
       )}
 
       {/* ── Messages ── */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-[#F8F9FB]">
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-[#F8F9FB]">
         {messages.map(msg => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] ${msg.role === 'user' ? '' : 'flex gap-2 items-start'}`}>
+            <div className={msg.role !== 'user' ? 'flex gap-2 items-start max-w-[88%]' : 'max-w-[88%]'}>
               {msg.role !== 'user' && (
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0 mt-0.5 ${
-                  msg.role === 'agent' ? 'bg-violet-100' : 'bg-amber-100'
-                }`}>
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0 mt-0.5 ${msg.role === 'agent' ? 'bg-violet-100' : 'bg-amber-100'}`}>
                   {msg.role === 'agent' ? '🤖' : '⚙️'}
                 </div>
               )}
-              <div className={`px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                msg.role === 'user'
-                  ? 'bg-violet-600 text-white rounded-br-sm'
-                  : msg.role === 'system'
-                  ? 'bg-amber-50 border border-amber-200 text-amber-800 text-xs font-mono'
-                  : 'bg-white border border-slate-200 text-slate-800 shadow-sm rounded-tl-sm'
-              }`}>
-                {/* Render markdown links */}
-                {msg.text.split(/(\[.*?\]\(.*?\))/g).map((part, i) => {
-                  const m = part.match(/\[(.*?)\]\((.*?)\)/)
-                  return m ? (
-                    <a key={i} href={m[2]} target="_blank" rel="noreferrer" className="text-violet-600 underline">{m[1]}</a>
-                  ) : part
-                })}
+              <div>
+                <div className={`px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                  msg.role === 'user'
+                    ? 'bg-violet-600 text-white rounded-br-sm'
+                    : msg.role === 'system'
+                    ? 'bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-mono'
+                    : 'bg-white border border-slate-200 text-slate-800 shadow-sm rounded-tl-sm'
+                }`}>
+                  {msg.text.split(/(\[.*?\]\(.*?\))/g).map((part, i) => {
+                    const m = part.match(/\[(.*?)\]\((.*?)\)/)
+                    return m
+                      ? <a key={i} href={m[2]} target="_blank" rel="noreferrer" className="text-violet-600 underline">{m[1]}</a>
+                      : part
+                  })}
+                </div>
+                {msg.role !== 'user' && <span className="text-[9px] text-slate-300 ml-1">{msg.time}</span>}
               </div>
-              {msg.role !== 'user' && (
-                <span className="text-[9px] text-slate-300 mt-1 block ml-1">{msg.timestamp}</span>
-              )}
             </div>
           </div>
         ))}
 
-        {/* Loading indicator */}
         {loading && (
           <div className="flex justify-start">
             <div className="flex gap-2 items-center">
@@ -292,20 +352,27 @@ export default function AgentPanel() {
             </div>
           </div>
         )}
-
         <div ref={bottomRef} />
       </div>
 
-      {/* ── Pending action card ── */}
+      {/* ── Pending action with countdown ── */}
       {pendingAction && !executing && (
         <div className="mx-4 mb-3 p-4 bg-white border-2 border-violet-300 rounded-2xl shadow-lg shrink-0">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center text-base">
-              {pendingAction.type === 'swap' ? '💱' : '💸'}
-            </span>
-            <span className="font-bold text-slate-900 text-sm">
-              {pendingAction.type === 'swap' ? 'Xác nhận Swap' : 'Xác nhận Chuyển'}
-            </span>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{pendingAction.type === 'swap' ? '💱' : '💸'}</span>
+              <span className="font-bold text-slate-900 text-sm">
+                {pendingAction.type === 'swap' ? 'Tự động Swap' : 'Tự động Chuyển'}
+              </span>
+            </div>
+            {countdown > 0 && (
+              <div className="flex items-center gap-1.5">
+                <div className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center">
+                  <span className="text-xs font-bold text-violet-700">{countdown}</span>
+                </div>
+                <span className="text-[11px] text-slate-400">giây</span>
+              </div>
+            )}
           </div>
 
           {pendingAction.type === 'swap' && (
@@ -314,7 +381,7 @@ export default function AgentPanel() {
                 <p className="text-lg font-bold text-slate-900">{pendingAction.amount}</p>
                 <p className="text-xs text-slate-500">{pendingAction.fromToken}</p>
               </div>
-              <div className="text-violet-500 text-xl font-bold">→</div>
+              <div className="text-violet-500 text-2xl">→</div>
               <div className="text-center">
                 <p className="text-lg font-bold text-emerald-600">
                   ~{pendingAction.toToken === 'cirBTC' ? pendingAction.expectedOut.toFixed(8) : pendingAction.expectedOut.toFixed(4)}
@@ -325,64 +392,73 @@ export default function AgentPanel() {
           )}
 
           {pendingAction.type === 'transfer' && (
-            <div className="mb-4 bg-slate-50 rounded-xl p-3 space-y-1">
+            <div className="mb-4 bg-slate-50 rounded-xl p-3 space-y-1.5">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">Số lượng</span>
-                <span className="font-bold text-slate-900">{pendingAction.amount} {pendingAction.token}</span>
+                <span className="font-bold">{pendingAction.amount} {pendingAction.token}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Đến</span>
-                <span className="font-mono text-xs text-slate-700">{pendingAction.toAddress.slice(0,8)}…{pendingAction.toAddress.slice(-6)}</span>
+                <span className="text-slate-500">Đến ví</span>
+                <span className="font-mono text-xs text-slate-700">{pendingAction.toAddress.slice(0,10)}…{pendingAction.toAddress.slice(-6)}</span>
               </div>
+            </div>
+          )}
+
+          {/* Countdown bar */}
+          {countdown > 0 && (
+            <div className="w-full bg-slate-100 rounded-full h-1 mb-3 overflow-hidden">
+              <div
+                className="bg-violet-500 h-1 rounded-full transition-all duration-1000"
+                style={{ width: `${(countdown / AUTO_EXEC_SECS) * 100}%` }}
+              />
             </div>
           )}
 
           {!isReady ? (
             <p className="text-xs text-red-500 text-center">Kết nối ví để tiếp tục</p>
           ) : !isArc ? (
-            <p className="text-xs text-amber-600 text-center">Chuyển sang Arc Testnet để tiếp tục</p>
+            <p className="text-xs text-amber-600 text-center">Chuyển sang Arc Testnet</p>
           ) : (
             <div className="flex gap-2">
               <button onClick={cancelAction}
                 className="flex-1 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors">
-                Huỷ
+                ✗ Huỷ
               </button>
-              <button onClick={executeAction}
-                className="flex-1 py-2 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-500 transition-colors shadow-sm">
-                ✅ Xác nhận
+              <button onClick={() => { stopCountdown(); void executeAction() }}
+                className="flex-1 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-500 transition-colors shadow-sm">
+                ✅ Thực hiện ngay
               </button>
             </div>
           )}
         </div>
       )}
 
-      {/* Executing state */}
+      {/* Executing */}
       {executing && (
         <div className="mx-4 mb-3 p-3 bg-violet-50 border border-violet-200 rounded-2xl flex items-center gap-2 shrink-0">
           <svg className="animate-spin h-4 w-4 text-violet-600 shrink-0" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
           </svg>
-          <span className="text-sm text-violet-700 font-medium">Đang thực hiện giao dịch…</span>
+          <span className="text-sm text-violet-700 font-medium">Agent đang thực hiện giao dịch…</span>
         </div>
       )}
 
-      {/* Tx hash */}
       {txHash && (
         <div className="mx-4 mb-2 shrink-0">
           <a href={`https://testnet.arcscan.app/tx/${txHash}`} target="_blank" rel="noreferrer"
-            className="block text-center text-xs text-emerald-600 hover:text-emerald-500 underline underline-offset-2 truncate">
+            className="block text-center text-xs text-emerald-600 hover:text-emerald-500 underline truncate">
             🔗 Xem giao dịch trên ArcScan ↗
           </a>
         </div>
       )}
 
-      {/* ── Suggestions (show when empty) ── */}
+      {/* Quick suggestions */}
       {messages.length <= 1 && (
         <div className="px-4 pb-2 flex flex-wrap gap-1.5 shrink-0">
           {SUGGESTIONS.map(s => (
             <button key={s} onClick={() => sendMessage(s)}
-              className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-[12px] text-slate-600 hover:border-violet-300 hover:text-violet-600 transition-colors shadow-sm">
+              className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 text-[11px] text-slate-600 hover:border-violet-300 hover:text-violet-600 transition-colors shadow-sm">
               {s}
             </button>
           ))}
@@ -396,19 +472,17 @@ export default function AgentPanel() {
             ref={inputRef}
             value={input}
             onChange={e => setInput(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input) }
-            }}
-            placeholder={isReady ? 'Nhập lệnh… (Enter để gửi)' : 'Kết nối ví để sử dụng AI Agent'}
-            disabled={loading}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage(input) } }}
+            placeholder="Nhập lệnh… (Enter để gửi)"
+            disabled={loading || executing}
             rows={1}
-            className="flex-1 resize-none bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-violet-400 focus:bg-white transition-colors disabled:opacity-50"
+            className="flex-1 resize-none bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-violet-400 focus:bg-white transition-colors disabled:opacity-50"
             style={{ maxHeight: 100 }}
           />
           <button
-            onClick={() => sendMessage(input)}
-            disabled={loading || !input.trim()}
-            className="w-10 h-10 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center transition-colors shrink-0 shadow-sm"
+            onClick={() => void sendMessage(input)}
+            disabled={loading || executing || !input.trim()}
+            className="w-10 h-10 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center transition-colors shrink-0"
           >
             {loading
               ? <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
@@ -416,9 +490,10 @@ export default function AgentPanel() {
             }
           </button>
         </div>
-        <p className="text-[10px] text-slate-300 text-center mt-1">AI Agent · Chỉ thực thi khi bạn Xác nhận · Testnet only</p>
+        <p className="text-[10px] text-slate-300 text-center mt-1">
+          Agent tự thực hiện sau {AUTO_EXEC_SECS}s · Testnet only · Groq free
+        </p>
       </div>
-
     </div>
   )
 }
