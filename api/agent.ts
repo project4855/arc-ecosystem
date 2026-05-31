@@ -8,7 +8,7 @@ const client = new OpenAI({
   apiKey:  process.env.GROQ_API_KEY ?? '',
   baseURL: 'https://api.groq.com/openai/v1',
 })
-const MODEL = 'llama-3.3-70b-versatile'
+const MODEL = 'llama3-groq-70b-8192-tool-use-preview'
 
 // ── Token config ──────────────────────────────────────────────────────────────
 const TOKEN_ADDR: Record<string, string> = {
@@ -360,10 +360,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     for (let i = 0; i < 8; i++) {
       const resp = await client.chat.completions.create({
-        model:       MODEL,
-        messages:    loopMessages,
-        tools:       TOOLS,
-        tool_choice: 'auto',
+        model:                MODEL,
+        messages:             loopMessages,
+        tools:                TOOLS,
+        tool_choice:          'auto',
+        parallel_tool_calls:  false,
       })
 
       const msg = resp.choices[0].message
