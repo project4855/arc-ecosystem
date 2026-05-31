@@ -14,6 +14,7 @@ interface ChatMessage { id: string; role: Role; text: string; time: string }
 type AgentAction =
   | { type: 'swap';     fromToken: string; toToken: string; amount: number; expectedOut: number }
   | { type: 'transfer'; toAddress: string; token: string;  amount: number }
+  | { type: 'purchase'; toAddress: string; token: string;  amount: number; productId: string; productName: string; author: string; category: string }
 
 // ── ABIs ──────────────────────────────────────────────────────────────────────
 const ERC20_APPROVE_ABI = [{
@@ -48,17 +49,22 @@ const loadApiHist  = (): { role: 'user' | 'assistant'; content: string }[] => {
 const saveApiHist  = (h: { role: 'user' | 'assistant'; content: string }[]) =>
   localStorage.setItem(HISTORY_KEY + '_api', JSON.stringify(h.slice(-20)))
 
-const TX_HISTORY_KEY = 'arc_swap_history'
-const loadTxHistory = () => { try { return JSON.parse(localStorage.getItem(TX_HISTORY_KEY) ?? '[]') } catch { return [] } }
+const TX_HISTORY_KEY  = 'arc_swap_history'
+const PURCHASE_KEY    = 'arc_purchases_v1'
+const loadTxHistory   = () => { try { return JSON.parse(localStorage.getItem(TX_HISTORY_KEY) ?? '[]') } catch { return [] } }
+const loadPurchases   = (): string[] => { try { return JSON.parse(localStorage.getItem(PURCHASE_KEY) ?? '[]') } catch { return [] } }
+const savePurchase    = (productId: string) => {
+  const p = loadPurchases(); if (!p.includes(productId)) p.push(productId)
+  localStorage.setItem(PURCHASE_KEY, JSON.stringify(p))
+}
 
 const SUGGESTIONS = [
+  '🛒 Xem sản phẩm marketplace',
   '💰 Số dư ví của tôi',
   '📊 Portfolio của tôi',
-  '🛒 Xem thị trường',
   '💱 Swap 5 USDC sang ARC',
   '📋 Lịch sử giao dịch',
   '🔄 Đổi tất cả ARC sang USDC',
-  '🔍 Tìm thông tin token cirBTC',
 ]
 
 const AUTO_EXEC_SECS = 5   // countdown before auto-execute
@@ -87,6 +93,9 @@ export default function AgentPanel() {
   }
 
   // ── Chat state ────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<'chat' | 'shop'>('chat')
+  const [purchases, setPurchases] = useState<string[]>(loadPurchases)
+
   const [messages,      setMessages]      = useState<ChatMessage[]>(() => {
     const saved = loadHistory()
     if (saved.length) return saved
@@ -165,7 +174,7 @@ export default function AgentPanel() {
 
       setMessages(prev => [...prev, { id: uid(), role: 'agent', text: reply, time: nowTime() }])
 
-      if (data.action && (data.action.type === 'swap' || data.action.type === 'transfer')) {
+      if (data.action && (data.action.type === 'swap' || data.action.type === 'transfer' || data.action.type === 'purchase')) {
         setPendingAction(data.action)
         if (isReady && isArc) startCountdown()
       }
@@ -221,25 +230,39 @@ export default function AgentPanel() {
         }])
         apiHistory.current.push({ role: 'user', content: `Swap thành công. Tx: ${swapHash}` })
       }
-      else if (pendingAction.type === 'transfer') {
+      else if (pendingAction.type === 'transfer' || pendingAction.type === 'purchase') {
         const { toAddress, token, amount } = pendingAction
         const tokenAddr = TOKEN_ADDRESSES[token] as `0x${string}`
         const dec       = TOKEN_DECIMALS[token] ?? 6
         const amtRaw    = BigInt(Math.round(amount * Math.pow(10, dec)))
+        const isPurchase = pendingAction.type === 'purchase'
+        const productName = isPurchase ? pendingAction.productName : undefined
 
-        addSys(`⏳ Đang chuyển ${amount} ${token}…`)
+        addSys(`⏳ ${isPurchase ? `Đang mua "${productName}"` : `Đang chuyển ${amount} ${token}`}…`)
         const hash = await writeContract({
           address: tokenAddr, abi: ERC20_TRANSFER_ABI, functionName: 'transfer',
           args: [toAddress as `0x${string}`, amtRaw],
         })
         if (publicClient) await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 })
         setTxHash(hash)
-        addSys(`✅ Chuyển thành công!`)
-        setMessages(prev => [...prev, {
-          id: uid(), role: 'agent', time: nowTime(),
-          text: `🎉 Đã chuyển ${amount} ${token} thành công!\n[Xem trên ArcScan](https://testnet.arcscan.app/tx/${hash})`,
-        }])
-        apiHistory.current.push({ role: 'user', content: `Chuyển thành công. Tx: ${hash}` })
+
+        if (isPurchase) {
+          savePurchase(pendingAction.productId)
+          setPurchases(loadPurchases())
+          addSys(`✅ Đã mua thành công!`)
+          setMessages(prev => [...prev, {
+            id: uid(), role: 'agent', time: nowTime(),
+            text: `🎉 ✅ Đã mua "${productName}" với giá ${amount} USDC!\n\nCảm ơn bạn đã mua sắm tại ARC DeFi Marketplace!\n[Xem giao dịch trên ArcScan](https://testnet.arcscan.app/tx/${hash})`,
+          }])
+          apiHistory.current.push({ role: 'user', content: `Mua "${productName}" thành công. Tx: ${hash}` })
+        } else {
+          addSys(`✅ Chuyển thành công!`)
+          setMessages(prev => [...prev, {
+            id: uid(), role: 'agent', time: nowTime(),
+            text: `🎉 Đã chuyển ${amount} ${token} thành công!\n[Xem trên ArcScan](https://testnet.arcscan.app/tx/${hash})`,
+          }])
+          apiHistory.current.push({ role: 'user', content: `Chuyển thành công. Tx: ${hash}` })
+        }
       }
       saveApiHist(apiHistory.current)
     } catch (e) {
@@ -299,6 +322,23 @@ export default function AgentPanel() {
         </div>
       </div>
 
+      {/* ── Tabs ── */}
+      <div className="flex border-b border-slate-200 bg-white shrink-0">
+        {(['chat', 'shop'] as const).map(t => (
+          <button key={t} onClick={() => setActiveTab(t)}
+            className={`flex-1 py-2 text-[13px] font-medium border-b-2 transition-colors ${
+              activeTab === t
+                ? 'border-violet-500 text-violet-700 bg-violet-50'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}>
+            {t === 'chat' ? '💬 Chat Agent' : '🛒 Marketplace'}
+            {t === 'shop' && purchases.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">{purchases.length}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
       {/* ── Balance chips ── */}
       {isReady && isArc && (
         <div className="flex gap-1.5 px-3 py-2 border-b border-slate-100 bg-slate-50 overflow-x-auto [scrollbar-width:none] shrink-0">
@@ -311,8 +351,78 @@ export default function AgentPanel() {
         </div>
       )}
 
+      {/* ── Shop tab ── */}
+      {activeTab === 'shop' && (
+        <div className="flex-1 overflow-y-auto bg-[#F8F9FB] p-3">
+          <p className="text-[11px] text-slate-400 text-center mb-3">Nhấn "Mua" để ra lệnh cho Agent · Thanh toán bằng USDC · Arc Testnet</p>
+          {[
+            { cat: '📚 Education', items: [1,2,3,4,12,13,14,16,17,20] },
+            { cat: '📊 Analytics & Trading', items: [5,6,7,8,19] },
+            { cat: '🔧 Tools & Services', items: [10,11,18] },
+            { cat: '🤝 Community & Collectibles', items: [9,15] },
+          ].map(({ cat, items: ids }) => {
+            const PRODUCTS_CLIENT = [
+              { id:'1',name:'DeFi Fundamentals',author:'Arc Academy',category:'Education',price:1.5 },
+              { id:'2',name:'Advanced Yield Strategies',author:'YieldLab',category:'Education',price:3.0 },
+              { id:'3',name:'Circle USDC Developer Guide',author:'Circle Docs',category:'Education',price:0.5 },
+              { id:'4',name:'ArcSwap Strategy Book',author:'DeFi Masters',category:'Education',price:2.0 },
+              { id:'5',name:'Arc Testnet Analytics Pro',author:'ArcAnalytics',category:'Analytics',price:4.0 },
+              { id:'6',name:'Portfolio Tracker Access',author:'CryptoTrack',category:'Analytics',price:1.0 },
+              { id:'7',name:'ARC/USDC Trading Signals',author:'SignalBot',category:'Trading',price:2.5 },
+              { id:'8',name:'cirBTC Price Alert Bot',author:'AlertBot',category:'Trading',price:0.5 },
+              { id:'9',name:'Arc Builders Community',author:'Arc House',category:'Community',price:1.0 },
+              { id:'10',name:'AI Agent Development Kit',author:'AgentLab',category:'Tools',price:3.5 },
+              { id:'11',name:'Smart Contract Audit Report',author:'AuditDAO',category:'Services',price:5.0 },
+              { id:'12',name:'DeFi Glossary & Cheatsheet',author:'CryptoLearn',category:'Education',price:0.25 },
+              { id:'13',name:'Liquidity Provider Guide',author:'LPMaster',category:'Education',price:1.5 },
+              { id:'14',name:'Stablecoin Economics',author:'EconLab',category:'Education',price:2.0 },
+              { id:'15',name:'Arc Testnet NFT Badge',author:'ArcNFT',category:'Collectibles',price:0.1 },
+              { id:'16',name:'QCAD Integration Tutorial',author:'Stablecorp',category:'Education',price:0.75 },
+              { id:'17',name:'Cross-Chain Bridge Mastery',author:'BridgePro',category:'Education',price:2.5 },
+              { id:'18',name:'Automated Trading Bot',author:'BotFactory',category:'Tools',price:4.5 },
+              { id:'19',name:'DeFi Risk Assessment',author:'RiskDAO',category:'Analytics',price:1.5 },
+              { id:'20',name:'Arc Agentic Economy Guide',author:'AgentEcon',category:'Education',price:3.0 },
+            ]
+            const prods = PRODUCTS_CLIENT.filter(p => ids.includes(parseInt(p.id)))
+            return (
+              <div key={cat} className="mb-4">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">{cat}</p>
+                <div className="grid grid-cols-1 gap-2">
+                  {prods.map(p => {
+                    const bought = purchases.includes(p.id)
+                    return (
+                      <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border bg-white gap-3 ${bought ? 'border-emerald-200' : 'border-slate-200'}`}>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-semibold text-slate-900 truncate">{p.name}</p>
+                            {bought && <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">✓ Đã mua</span>}
+                          </div>
+                          <p className="text-[11px] text-slate-400">bởi {p.author}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-sm font-bold text-violet-700">{p.price} USDC</span>
+                          {!bought ? (
+                            <button
+                              onClick={() => { setActiveTab('chat'); void sendMessage(`Mua cho tôi sản phẩm "${p.name}" bởi ${p.author}`) }}
+                              className="px-2.5 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-bold transition-colors">
+                              Mua
+                            </button>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-700 text-[11px] font-bold">✓</span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* ── Messages ── */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-[#F8F9FB]">
+      {activeTab === 'chat' && <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-[#F8F9FB]">
         {messages.map(msg => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={msg.role !== 'user' ? 'flex gap-2 items-start max-w-[88%]' : 'max-w-[88%]'}>
@@ -357,16 +467,16 @@ export default function AgentPanel() {
           </div>
         )}
         <div ref={bottomRef} />
-      </div>
+      </div>}
 
       {/* ── Pending action with countdown ── */}
       {pendingAction && !executing && (
         <div className="mx-4 mb-3 p-4 bg-white border-2 border-violet-300 rounded-2xl shadow-lg shrink-0">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <span className="text-lg">{pendingAction.type === 'swap' ? '💱' : '💸'}</span>
+              <span className="text-lg">{pendingAction.type === 'swap' ? '💱' : pendingAction.type === 'purchase' ? '🛒' : '💸'}</span>
               <span className="font-bold text-slate-900 text-sm">
-                {pendingAction.type === 'swap' ? 'Tự động Swap' : 'Tự động Chuyển'}
+                {pendingAction.type === 'swap' ? 'Tự động Swap' : pendingAction.type === 'purchase' ? 'Xác nhận mua hàng' : 'Tự động Chuyển'}
               </span>
             </div>
             {countdown > 0 && (
@@ -404,6 +514,26 @@ export default function AgentPanel() {
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">Đến ví</span>
                 <span className="font-mono text-xs text-slate-700">{pendingAction.toAddress.slice(0,10)}…{pendingAction.toAddress.slice(-6)}</span>
+              </div>
+            </div>
+          )}
+
+          {pendingAction.type === 'purchase' && (
+            <div className="mb-4 bg-violet-50 border border-violet-200 rounded-xl p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">📦</span>
+                <div>
+                  <p className="font-bold text-slate-900 text-sm">{pendingAction.productName}</p>
+                  <p className="text-[11px] text-slate-500">bởi {pendingAction.author} · {pendingAction.category}</p>
+                </div>
+              </div>
+              <div className="flex justify-between text-sm pt-1 border-t border-violet-200">
+                <span className="text-slate-500">Thanh toán</span>
+                <span className="font-bold text-violet-700">{pendingAction.amount} USDC</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Marketplace wallet</span>
+                <span className="font-mono text-slate-400">{pendingAction.toAddress.slice(0,10)}…</span>
               </div>
             </div>
           )}
@@ -458,7 +588,7 @@ export default function AgentPanel() {
       )}
 
       {/* Quick suggestions */}
-      {messages.length <= 1 && (
+      {activeTab === 'chat' && messages.length <= 1 && (
         <div className="px-4 pb-2 flex flex-wrap gap-1.5 shrink-0">
           {SUGGESTIONS.map(s => (
             <button key={s} onClick={() => sendMessage(s)}
@@ -469,8 +599,8 @@ export default function AgentPanel() {
         </div>
       )}
 
-      {/* ── Input ── */}
-      <div className="p-3 border-t border-slate-200 bg-white rounded-b-2xl shrink-0">
+      {/* ── Input (chat only) ── */}
+      {activeTab === 'chat' && <div className="p-3 border-t border-slate-200 bg-white rounded-b-2xl shrink-0">
         <div className="flex gap-2 items-end">
           <textarea
             ref={inputRef}
@@ -497,7 +627,7 @@ export default function AgentPanel() {
         <p className="text-[10px] text-slate-300 text-center mt-1">
           Agent tự thực hiện sau {AUTO_EXEC_SECS}s · Testnet only · Groq free
         </p>
-      </div>
+      </div>}
     </div>
   )
 }

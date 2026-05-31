@@ -21,8 +21,34 @@ const TOKEN_ADDR: Record<string, string> = {
 const TOKEN_DEC: Record<string, number> = {
   USDC: 6, EURC: 6, ARC: 6, QCAD: 6, cirBTC: 8,
 }
-const ARC_SWAP = '0x8C16097F1f9a4B7Fab0497C29D3fC6a85a43C550'
-const ARC_RPC  = 'https://rpc.testnet.arc.network'
+const ARC_SWAP          = '0x8C16097F1f9a4B7Fab0497C29D3fC6a85a43C550'
+const ARC_RPC           = 'https://rpc.testnet.arc.network'
+const MARKETPLACE_WALLET = '0xDfF4CBf94D459AeAa5cb34fa11eBE49b6213E9c9' // deployer = marketplace receiver
+
+// ── DeFi Marketplace catalog ──────────────────────────────────────────────────
+interface Product { id: string; name: string; author: string; category: string; description: string; price: number }
+const PRODUCTS: Product[] = [
+  { id:'1',  name:'DeFi Fundamentals',            author:'Arc Academy',   category:'Education',   description:'Complete beginner guide to DeFi on Arc Testnet',                price:1.5  },
+  { id:'2',  name:'Advanced Yield Strategies',    author:'YieldLab',      category:'Education',   description:'Master yield farming, liquidity provision and risk management',   price:3.0  },
+  { id:'3',  name:'Circle USDC Developer Guide',  author:'Circle Docs',   category:'Education',   description:'Build with USDC on Arc — Swap Kit, Bridge Kit, Circle APIs',       price:0.5  },
+  { id:'4',  name:'ArcSwap Strategy Book',        author:'DeFi Masters',  category:'Education',   description:'Optimal swap routing and arbitrage strategies on Arc',             price:2.0  },
+  { id:'5',  name:'Arc Testnet Analytics Pro',    author:'ArcAnalytics',  category:'Analytics',   description:'30-day access to real-time on-chain analytics dashboard',          price:4.0  },
+  { id:'6',  name:'Portfolio Tracker Access',     author:'CryptoTrack',   category:'Analytics',   description:'Multi-wallet portfolio tracking with USD value alerts',             price:1.0  },
+  { id:'7',  name:'ARC/USDC Trading Signals',     author:'SignalBot',     category:'Trading',     description:'Weekly AI-powered trading signals for ARC/USDC pair',              price:2.5  },
+  { id:'8',  name:'cirBTC Price Alert Bot',       author:'AlertBot',      category:'Trading',     description:'Real-time price alerts for cirBTC/USDC and cirBTC/EURC pairs',     price:0.5  },
+  { id:'9',  name:'Arc Builders Community',       author:'Arc House',     category:'Community',   description:'Premium membership — Discord, ArcTalks, hackathon early access',   price:1.0  },
+  { id:'10', name:'AI Agent Development Kit',     author:'AgentLab',      category:'Tools',       description:'SDK + templates for building autonomous DeFi agents on Arc',       price:3.5  },
+  { id:'11', name:'Smart Contract Audit Report',  author:'AuditDAO',      category:'Services',    description:'Security audit report template for Arc Testnet contracts',          price:5.0  },
+  { id:'12', name:'DeFi Glossary & Cheatsheet',   author:'CryptoLearn',   category:'Education',   description:'200+ DeFi terms explained with Arc-specific examples',              price:0.25 },
+  { id:'13', name:'Liquidity Provider Guide',     author:'LPMaster',      category:'Education',   description:'Step-by-step guide to providing liquidity on Arc DEXes',           price:1.5  },
+  { id:'14', name:'Stablecoin Economics',         author:'EconLab',       category:'Education',   description:'Deep dive into USDC, EURC, cirBTC mechanics and arbitrage',        price:2.0  },
+  { id:'15', name:'Arc Testnet NFT Badge',        author:'ArcNFT',        category:'Collectibles',description:'Exclusive digital badge proving you built on Arc Testnet',         price:0.1  },
+  { id:'16', name:'QCAD Integration Tutorial',    author:'Stablecorp',    category:'Education',   description:'How to integrate Canadian dollar stablecoin QCAD in dApps',        price:0.75 },
+  { id:'17', name:'Cross-Chain Bridge Mastery',   author:'BridgePro',     category:'Education',   description:'Complete guide to CCTP and cross-chain USDC transfers',            price:2.5  },
+  { id:'18', name:'Automated Trading Bot',        author:'BotFactory',    category:'Tools',       description:'Template for automated DeFi trading bots on Arc',                  price:4.5  },
+  { id:'19', name:'DeFi Risk Assessment',         author:'RiskDAO',       category:'Analytics',   description:'Framework for evaluating smart contract and liquidity risk',        price:1.5  },
+  { id:'20', name:'Arc Agentic Economy Guide',    author:'AgentEcon',     category:'Education',   description:'Building ERC-8183 compliant agentic payment flows on Arc',         price:3.0  },
+]
 
 // ── RPC helpers ───────────────────────────────────────────────────────────────
 async function ethCall(to: string, data: string): Promise<string> {
@@ -139,6 +165,62 @@ const TOOLS: OpenAI.ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
+      name: 'browse_products',
+      description: 'Xem danh sách tất cả sản phẩm trong DeFi Marketplace. Dùng khi user hỏi "xem sản phẩm", "mua gì được", "danh mục".',
+      parameters: {
+        type: 'object',
+        properties: {
+          category: { type: 'string', description: 'Lọc theo danh mục: Education, Analytics, Trading, Tools, Community, Services, Collectibles' },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_products',
+      description: 'Tìm kiếm sản phẩm theo tên, tác giả hoặc mô tả.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Từ khóa tìm kiếm' },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_product_price',
+      description: 'Lấy giá và thông tin chi tiết của một sản phẩm cụ thể.',
+      parameters: {
+        type: 'object',
+        properties: {
+          productId: { type: 'string', description: 'ID sản phẩm (số từ 1-20)' },
+        },
+        required: ['productId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'purchase_product',
+      description: 'Mua sản phẩm bằng USDC. Gọi sau khi đã xác nhận sản phẩm và kiểm tra số dư. Sẽ chuyển USDC đến marketplace wallet.',
+      parameters: {
+        type: 'object',
+        properties: {
+          productId: { type: 'string', description: 'ID sản phẩm cần mua' },
+        },
+        required: ['productId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'list_transactions',
       description: 'Xem lịch sử giao dịch (swap, transfer) gần đây của ví. Dùng khi hỏi "lịch sử", "giao dịch gần đây", "tôi đã swap gì".',
       parameters: {
@@ -220,16 +302,20 @@ QUY TRÌNH CHUYỂN TOKEN:
   Bước 2: prepare_transfer(toAddress, token, amount)
   Thông báo: "✅ Đã chuẩn bị chuyển [X] [token] → [địa chỉ]. Tự thực hiện sau 5 giây."
 
+QUY TRÌNH MUA SẢN PHẨM (marketplace):
+  Bước 1: search_products(tên) → tìm sản phẩm
+  Bước 2: get_wallet_info() → kiểm tra số dư USDC
+  Bước 3: purchase_product(productId) → chuẩn bị mua
+  Thông báo: "✅ Đã chuẩn bị mua '[tên]' với giá [X] USDC. Tự thực hiện sau 5 giây."
+
 VÍ DỤ CÁC LỆNH:
-  "Xem thị trường" → browse_market
-  "Số dư ví" → get_wallet_info
-  "Portfolio" → get_portfolio
-  "Giá ARC" → get_token_prices
+  "Xem sản phẩm / marketplace" → browse_products
+  "Tìm [tên sản phẩm]" → search_products
+  "Mua '[tên]'" → search → check balance → purchase_product
+  "Xem thị trường swap" → browse_market
   "Swap 5 USDC sang ARC" → [quy trình swap đầy đủ]
-  "Mua ARC bằng 50% số USDC tôi có" → get_wallet_info → tính 50% → swap
   "Chuyển 0.01 USDC đến 0x..." → [quy trình transfer]
-  "Lịch sử giao dịch" → list_transactions
-  "Chi tiết tx 0x..." → get_transaction
+  "Lịch sử mua sắm" → list_transactions (lọc type=purchase)
   "Tìm thông tin cirBTC" → search_tokens
 
 Trả lời tiếng Việt, ngắn gọn, chuyên nghiệp. Format đẹp với emoji.`
@@ -366,6 +452,85 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // ── get_token_prices ─────────────────────────────────────────────────
         else if (name === 'get_token_prices') {
           result = JSON.stringify(prices)
+        }
+
+        // ── browse_products ──────────────────────────────────────────────────
+        else if (name === 'browse_products') {
+          const { category } = inp as { category?: string }
+          const items = category
+            ? PRODUCTS.filter(p => p.category.toLowerCase() === category.toLowerCase())
+            : PRODUCTS
+          const byCategory: Record<string, Product[]> = {}
+          for (const p of items) {
+            if (!byCategory[p.category]) byCategory[p.category] = []
+            byCategory[p.category].push(p)
+          }
+          const lines = ['╔════════════════════════════════════════╗',
+            '║   🛒  ARC DeFi Marketplace (20 items)  ║',
+            '╚════════════════════════════════════════╝', '']
+          for (const [cat, prods] of Object.entries(byCategory)) {
+            const icon = { Education:'📚', Analytics:'📊', Trading:'📈', Tools:'🔧', Community:'🤝', Services:'⚙️', Collectibles:'🏆' }[cat] ?? '📦'
+            lines.push(`${icon} ${cat.toUpperCase()}`)
+            for (const p of prods) {
+              lines.push(`  #${p.id.padStart(2,' ')}  ${p.name} — bởi ${p.author}`)
+              lines.push(`       "${p.description}"`)
+              lines.push(`       Giá: ${p.price} USDC`)
+            }
+            lines.push('')
+          }
+          lines.push('💡 Để mua: "Mua [tên sản phẩm]" hoặc "Purchase #[số]"')
+          result = lines.join('\n')
+        }
+
+        // ── search_products ──────────────────────────────────────────────────
+        else if (name === 'search_products') {
+          const { query } = inp as { query: string }
+          const q = query.toLowerCase()
+          const found = PRODUCTS.filter(p =>
+            p.name.toLowerCase().includes(q) ||
+            p.author.toLowerCase().includes(q) ||
+            p.description.toLowerCase().includes(q) ||
+            p.category.toLowerCase().includes(q)
+          )
+          if (!found.length) {
+            result = `Không tìm thấy sản phẩm nào cho "${query}".`
+          } else {
+            result = `Tìm thấy ${found.length} sản phẩm:\n` + found.map(p =>
+              `#${p.id} "${p.name}" bởi ${p.author} — ${p.price} USDC\n  ${p.description}`
+            ).join('\n\n')
+          }
+        }
+
+        // ── get_product_price ────────────────────────────────────────────────
+        else if (name === 'get_product_price') {
+          const { productId } = inp as { productId: string }
+          const p = PRODUCTS.find(x => x.id === String(productId))
+          if (!p) {
+            result = `Không tìm thấy sản phẩm #${productId}.`
+          } else {
+            result = `#${p.id} "${p.name}" bởi ${p.author}\nDanh mục: ${p.category}\nMô tả: ${p.description}\nGiá: ${p.price} USDC`
+          }
+        }
+
+        // ── purchase_product ─────────────────────────────────────────────────
+        else if (name === 'purchase_product') {
+          const { productId } = inp as { productId: string }
+          const p = PRODUCTS.find(x => x.id === String(productId))
+          if (!p) {
+            result = `Không tìm thấy sản phẩm #${productId}.`
+          } else {
+            action = {
+              type: 'purchase',
+              toAddress: MARKETPLACE_WALLET,
+              token: 'USDC',
+              amount: p.price,
+              productId: p.id,
+              productName: p.name,
+              author: p.author,
+              category: p.category,
+            }
+            result = `Đã chuẩn bị mua "${p.name}" với giá ${p.price} USDC. Sẽ chuyển ${p.price} USDC đến marketplace và tự thực hiện sau 5 giây.`
+          }
         }
 
         // ── list_transactions ────────────────────────────────────────────────
