@@ -198,7 +198,7 @@ const TOOLS: OpenAI.ChatCompletionTool[] = [
       parameters: {
         type: 'object',
         properties: {
-          productId: { type: 'string', description: 'ID sản phẩm (số từ 1-20)' },
+          productId: { type: ['string', 'number'], description: 'ID sản phẩm (1-20)' },
         },
         required: ['productId'],
       },
@@ -212,7 +212,7 @@ const TOOLS: OpenAI.ChatCompletionTool[] = [
       parameters: {
         type: 'object',
         properties: {
-          productId: { type: 'string', description: 'ID sản phẩm cần mua' },
+          productId: { type: ['string', 'number'], description: 'ID sản phẩm cần mua (1-20)' },
         },
         required: ['productId'],
       },
