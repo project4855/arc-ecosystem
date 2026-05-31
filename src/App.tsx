@@ -16,6 +16,7 @@ import PortfolioPanel from './components/PortfolioPanel'
 import PaymentsPanel from './components/PaymentsPanel'
 import TradeBox from './components/TradeBox'
 import AgentPanel from './components/AgentPanel'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -943,7 +944,9 @@ export default function App() {
         <main className="flex-1 max-w-[1440px] mx-auto w-full px-4 xl:px-6 py-6 flex flex-col gap-6">
           {tab === 'agent'     && (
             <div className="flex-1 flex items-stretch py-4">
-              <AgentPanel />
+              <ErrorBoundary label="AI Agent">
+                <AgentPanel />
+              </ErrorBoundary>
             </div>
           )}
           {tab === 'bridge'    && <BridgePanel />}
