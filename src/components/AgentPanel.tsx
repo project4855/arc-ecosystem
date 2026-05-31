@@ -600,32 +600,32 @@ export default function AgentPanel() {
       )}
 
       {/* ── Input (chat only) ── */}
-      {activeTab === 'chat' && <div className="p-3 border-t border-slate-200 bg-white rounded-b-2xl shrink-0">
-        <div className="flex gap-2 items-end">
+      {activeTab === 'chat' && <div className="p-4 border-t border-slate-200 bg-white rounded-b-2xl shrink-0">
+        <div className="flex gap-3 items-end">
           <textarea
             ref={inputRef}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage(input) } }}
-            placeholder="Nhập lệnh… (Enter để gửi)"
+            placeholder="Nhập lệnh bằng tiếng Việt hoặc tiếng Anh… (Enter để gửi, Shift+Enter xuống dòng)"
             disabled={loading || executing}
-            rows={1}
-            className="flex-1 resize-none bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-violet-400 focus:bg-white transition-colors disabled:opacity-50"
-            style={{ maxHeight: 100 }}
+            rows={3}
+            className="flex-1 resize-none bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-3 text-[15px] outline-none focus:border-violet-400 focus:bg-white transition-colors disabled:opacity-50 leading-relaxed"
+            style={{ maxHeight: 160 }}
           />
           <button
             onClick={() => void sendMessage(input)}
             disabled={loading || executing || !input.trim()}
-            className="w-10 h-10 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center transition-colors shrink-0"
+            className="w-12 h-12 rounded-2xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center transition-colors shrink-0 shadow-md"
           >
             {loading
-              ? <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-              : <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+              ? <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+              : <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
             }
           </button>
         </div>
-        <p className="text-[10px] text-slate-300 text-center mt-1">
-          Agent tự thực hiện sau {AUTO_EXEC_SECS}s · Testnet only · Groq free
+        <p className="text-[11px] text-slate-400 text-center mt-2">
+          🤖 Agent tự thực hiện sau {AUTO_EXEC_SECS}s · Testnet only · Groq free
         </p>
       </div>}
     </div>
