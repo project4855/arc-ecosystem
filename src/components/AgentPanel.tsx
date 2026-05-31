@@ -320,7 +320,12 @@ export default function AgentPanel() {
             <span className={`w-2 h-2 rounded-full ${isReady && isArc ? 'bg-emerald-400 animate-pulse' : 'bg-slate-300'}`} />
             <span className="text-[11px] text-slate-400">{isReady && isArc ? 'Connected' : 'No wallet'}</span>
           </div>
-          <button onClick={clearChat} className="text-[10px] text-slate-300 hover:text-red-400 transition-colors" title="Xoá lịch sử">🗑</button>
+          {messages.length > 1 && (
+            <button onClick={clearChat}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] font-medium text-red-400 hover:text-red-600 hover:bg-red-50 border border-red-200 transition-colors">
+              🗑 Xoá chat
+            </button>
+          )}
         </div>
       </div>
 
@@ -626,19 +631,9 @@ export default function AgentPanel() {
             }
           </button>
         </div>
-        <div className="flex items-center justify-between mt-2">
-          <p className="text-[11px] text-slate-400">
-            🤖 Tự thực hiện sau {AUTO_EXEC_SECS}s · Groq free
-          </p>
-          {messages.length > 1 && (
-            <button
-              onClick={clearChat}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors border border-transparent hover:border-red-200"
-            >
-              🗑 Xoá lịch sử
-            </button>
-          )}
-        </div>
+        <p className="text-[11px] text-slate-400 text-center mt-2">
+          🤖 Agent tự thực hiện sau {AUTO_EXEC_SECS}s · Testnet only · Groq free
+        </p>
       </div>}
     </div>
   )
