@@ -39,29 +39,59 @@ const encAmtOut  = (a: string, b: string, n: bigint) => '0xb10a6fd6'+pad(a)+pad(
 const encLiq     = (t: string) => '0x1090ce62'+t.toLowerCase().replace('0x','').padStart(64,'0')
 const hexToNum   = (h: string, d: number) => Number(BigInt(h==='0x'||h==='0x0'?'0x0':h)) / Math.pow(10,d)
 
-// ── Marketplace catalog ───────────────────────────────────────────────────────
+// ── General Commerce Marketplace ─────────────────────────────────────────────
 interface Product { id:string; name:string; author:string; category:string; description:string; price:number }
 const PRODUCTS: Product[] = [
-  {id:'1', name:'DeFi Fundamentals',           author:'Arc Academy',  category:'Education',    description:'Complete beginner guide to DeFi on Arc Testnet',               price:1.5 },
-  {id:'2', name:'Advanced Yield Strategies',   author:'YieldLab',     category:'Education',    description:'Master yield farming and liquidity provision',                  price:3.0 },
-  {id:'3', name:'Circle USDC Developer Guide', author:'Circle Docs',  category:'Education',    description:'Build with USDC on Arc — Swap Kit, Bridge Kit, APIs',           price:0.5 },
-  {id:'4', name:'ArcSwap Strategy Book',       author:'DeFi Masters', category:'Education',    description:'Optimal swap routing and arbitrage strategies on Arc',          price:2.0 },
-  {id:'5', name:'Arc Testnet Analytics Pro',   author:'ArcAnalytics', category:'Analytics',    description:'30-day access to real-time on-chain analytics dashboard',       price:4.0 },
-  {id:'6', name:'Portfolio Tracker Access',    author:'CryptoTrack',  category:'Analytics',    description:'Multi-wallet portfolio tracking with USD value alerts',          price:1.0 },
-  {id:'7', name:'ARC/USDC Trading Signals',    author:'SignalBot',    category:'Trading',      description:'Weekly AI-powered trading signals for ARC/USDC pair',           price:2.5 },
-  {id:'8', name:'cirBTC Price Alert Bot',      author:'AlertBot',     category:'Trading',      description:'Real-time price alerts for cirBTC/USDC and cirBTC/EURC pairs',  price:0.5 },
-  {id:'9', name:'Arc Builders Community',      author:'Arc House',    category:'Community',    description:'Premium membership — Discord, ArcTalks, hackathon access',      price:1.0 },
-  {id:'10',name:'AI Agent Development Kit',    author:'AgentLab',     category:'Tools',        description:'SDK + templates for building autonomous DeFi agents on Arc',    price:3.5 },
-  {id:'11',name:'Smart Contract Audit Report', author:'AuditDAO',     category:'Services',     description:'Security audit report template for Arc Testnet contracts',       price:5.0 },
-  {id:'12',name:'DeFi Glossary & Cheatsheet',  author:'CryptoLearn',  category:'Education',    description:'200+ DeFi terms with Arc-specific examples',                    price:0.25},
-  {id:'13',name:'Liquidity Provider Guide',    author:'LPMaster',     category:'Education',    description:'Step-by-step guide to providing liquidity on Arc DEXes',        price:1.5 },
-  {id:'14',name:'Stablecoin Economics',        author:'EconLab',      category:'Education',    description:'USDC, EURC, cirBTC mechanics and arbitrage deep dive',          price:2.0 },
-  {id:'15',name:'Arc Testnet NFT Badge',       author:'ArcNFT',       category:'Collectibles', description:'Exclusive digital badge for Arc Testnet builders',              price:0.1 },
-  {id:'16',name:'QCAD Integration Tutorial',   author:'Stablecorp',   category:'Education',    description:'How to integrate Canadian stablecoin QCAD in dApps',           price:0.75},
-  {id:'17',name:'Cross-Chain Bridge Mastery',  author:'BridgePro',    category:'Education',    description:'Complete guide to CCTP and cross-chain USDC transfers',         price:2.5 },
-  {id:'18',name:'Automated Trading Bot',       author:'BotFactory',   category:'Tools',        description:'Template for automated DeFi trading bots on Arc',              price:4.5 },
-  {id:'19',name:'DeFi Risk Assessment',        author:'RiskDAO',      category:'Analytics',    description:'Framework for evaluating smart contract and liquidity risk',    price:1.5 },
-  {id:'20',name:'Arc Agentic Economy Guide',   author:'AgentEcon',    category:'Education',    description:'Building ERC-8183 agentic payment flows on Arc',               price:3.0 },
+  // 📚 E-Books
+  {id:'1', name:'The Great Gatsby',                author:'F. Scott Fitzgerald', category:'E-Book',       description:'Classic American novel — the roaring 20s, wealth and dreams',           price:0.1  },
+  {id:'2', name:'Atomic Habits',                   author:'James Clear',         category:'E-Book',       description:'Tiny changes, remarkable results — bestseller on habit formation',       price:0.2  },
+  {id:'3', name:'The Psychology of Money',         author:'Morgan Housel',       category:'E-Book',       description:'Timeless lessons on wealth, greed, and happiness',                      price:0.2  },
+  {id:'4', name:'Clean Code',                      author:'Robert C. Martin',    category:'E-Book',       description:'A handbook of agile software craftsmanship for developers',             price:0.3  },
+  {id:'5', name:'Dune',                            author:'Frank Herbert',       category:'E-Book',       description:'Epic sci-fi saga — the most celebrated novel in the genre',             price:0.15 },
+  {id:'6', name:'Harry Potter & the Sorcerer',     author:'J.K. Rowling',        category:'E-Book',       description:'The magical world of Hogwarts begins — collector edition',              price:0.25 },
+  // 🎬 Movie Tickets
+  {id:'7', name:'Avengers: Doomsday (2026)',       author:'Marvel Studios',      category:'Movie Ticket', description:'IMAX ticket — Avengers assemble one final time. May 2026',             price:0.5  },
+  {id:'8', name:'Mission: Impossible 8',           author:'Paramount Pictures',  category:'Movie Ticket', description:'Standard ticket — Tom Cruise returns for the ultimate mission',       price:0.4  },
+  {id:'9', name:'Moana 2',                         author:'Disney Animation',    category:'Movie Ticket', description:'Family ticket (4 seats) — magical voyage continues',                  price:1.2  },
+  {id:'10',name:'Inception (Remaster 4K)',         author:'Warner Bros',         category:'Movie Ticket', description:'Premium 4DX ticket — Nolan\'s masterpiece re-released in 4K',        price:0.6  },
+  // ✈️ Flight Tickets
+  {id:'11',name:'HAN → HCM (VietJet)',             author:'VietJet Air',         category:'Flight Ticket',description:'Hanoi → Ho Chi Minh City, Economy class, one-way',                  price:3.0  },
+  {id:'12',name:'SGN → Bangkok (AirAsia)',         author:'AirAsia',             category:'Flight Ticket',description:'Ho Chi Minh → Bangkok, Economy, direct flight',                     price:5.0  },
+  {id:'13',name:'HAN → Singapore (Singapore Air)', author:'Singapore Airlines',  category:'Flight Ticket',description:'Hanoi → Singapore, Business class, one-way',                       price:15.0 },
+  {id:'14',name:'SGN → Tokyo (Vietnam Airlines)',  author:'Vietnam Airlines',    category:'Flight Ticket',description:'Ho Chi Minh → Tokyo Narita, Economy, return',                      price:12.0 },
+  // 🎵 Concert & Events
+  {id:'15',name:'Sơn Tùng MTP Live Concert',      author:'M-TP Entertainment',  category:'Concert',      description:'VIP ticket — Sơn Tùng live show, Mỹ Đình Stadium 2026',              price:2.0  },
+  {id:'16',name:'Taylor Swift Eras Tour',          author:'Live Nation',         category:'Concert',      description:'Floor ticket — The Eras Tour 2026, Asia leg',                         price:8.0  },
+  {id:'17',name:'Mỹ Tâm Tour 2026',               author:'Mỹ Tâm Productions',  category:'Concert',      description:'Standard ticket — Mỹ Tâm nationwide tour, HCMC show',                price:1.5  },
+  {id:'18',name:'EDM Festival ArcFest 2026',       author:'ArcFest',             category:'Concert',      description:'3-day pass — Arc ecosystem music festival, blockchain + beats',        price:3.0  },
+  // 🎮 Gaming
+  {id:'19',name:'GTA VI (PC)',                     author:'Rockstar Games',      category:'Game',         description:'Grand Theft Auto VI — most anticipated game of the decade',            price:2.0  },
+  {id:'20',name:'Minecraft Java Edition',          author:'Mojang Studios',      category:'Game',         description:'Unlimited creative world — Java Edition, lifetime license',            price:1.5  },
+  {id:'21',name:'FIFA 2026 Ultimate Edition',      author:'EA Sports',           category:'Game',         description:'Full game + 4600 FIFA points — football simulator 2026',             price:2.5  },
+  {id:'22',name:'Steam Wallet $10',                author:'Valve Steam',         category:'Game',         description:'$10 Steam gift card — buy any game on Steam store',                   price:1.0  },
+  // 🍕 Food & Dining
+  {id:'23',name:'Grab Food Voucher 50K',           author:'Grab Vietnam',        category:'Food',         description:'50,000 VND food delivery voucher — valid all restaurants',             price:0.3  },
+  {id:'24',name:'Starbucks Coffee Bundle',         author:'Starbucks Vietnam',   category:'Food',         description:'Buy 2 get 1 free — any venti-size drink, valid 30 days',              price:0.5  },
+  {id:'25',name:'Pizza 4P\'s Dining Voucher',      author:"Pizza 4P's",          category:'Food',         description:'Dinner for 2 — include 2 pizzas and 2 drinks',                         price:1.5  },
+  {id:'26',name:'Highlands Coffee 3-pack',         author:'Highlands Coffee',    category:'Food',         description:'3 any-size drinks voucher — valid at all branches',                    price:0.4  },
+  // 🏨 Hotels
+  {id:'27',name:'Marriott Hanoi 1 Night',          author:'Marriott Hotels',     category:'Hotel',        description:'Deluxe room, breakfast included, city view — JW Marriott Hanoi',     price:8.0  },
+  {id:'28',name:'Vinpearl Resort 2 Nights',        author:'Vinpearl',            category:'Hotel',        description:'Beach resort room, Nha Trang — 2 nights with breakfast',             price:6.0  },
+  {id:'29',name:'Mường Thanh Đà Lạt',             author:'Mường Thanh Hotels',  category:'Hotel',        description:'Mountain view room, 1 night — enjoy Da Lat highland weather',        price:2.0  },
+  // 🎓 Online Courses
+  {id:'30',name:'React + TypeScript 2026',         author:'Udemy',               category:'Course',       description:'Complete React & TypeScript bootcamp — 40 hours, certificate',       price:0.5  },
+  {id:'31',name:'AI & Machine Learning A-Z',       author:'Coursera',            category:'Course',       description:'Google-certified AI/ML course — 6 months access',                    price:1.0  },
+  {id:'32',name:'Blockchain Developer Bootcamp',   author:'Alchemy University',  category:'Course',       description:'Full-stack Web3 development — Solidity, ethers.js, DeFi',            price:0.8  },
+  {id:'33',name:'IELTS 7.0+ Preparation',          author:'British Council',     category:'Course',       description:'60-day intensive IELTS prep — all 4 skills, mock tests',            price:1.5  },
+  // 🛍️ Shopping
+  {id:'34',name:'Shopee Voucher 100K',             author:'Shopee Vietnam',      category:'Shopping',     description:'100,000 VND Shopee voucher — min order 150K, valid 7 days',          price:0.5  },
+  {id:'35',name:'Tiki Premium 1 Month',            author:'Tiki Vietnam',        category:'Shopping',     description:'Free 2-hour delivery + 15% cashback on all orders for 1 month',     price:0.4  },
+  {id:'36',name:'Lazada Birthday Voucher',         author:'Lazada Vietnam',      category:'Shopping',     description:'20% off any item up to 200K — valid all categories',                  price:0.3  },
+  // 🎟️ Other
+  {id:'37',name:'Vincom Cinema Bundle',            author:'CGV Vincom',          category:'Entertainment',description:'3 movie tickets — any film, any showtime, 30-day validity',          price:0.9  },
+  {id:'38',name:'VinWonders Nha Trang Ticket',     author:'VinWonders',          category:'Entertainment',description:'Full-day access to VinWonders Nha Trang theme park',                 price:2.0  },
+  {id:'39',name:'Netflix 1 Month Premium',         author:'Netflix',             category:'Streaming',    description:'4K Ultra HD, 4 screens simultaneously — 30 days',                    price:0.8  },
+  {id:'40',name:'Spotify Premium 3 Months',        author:'Spotify',             category:'Streaming',    description:'Ad-free music, offline listening — 3 months subscription',           price:0.6  },
 ]
 
 const ARCSWAP_PAIRS: [string,string][] = [
